@@ -15,7 +15,7 @@
       "model": "gemini-2.5-flash-lite",
       "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
       "recommendedFor": [
-        "hackathon ideation",
+        "main hosted hackathon path",
         "structured drafting",
         "sponsor-aligned multimodal experiments",
         "high-volume teammate requests"
@@ -24,7 +24,7 @@
         "env": [
           "GEMINI_API_KEY"
         ],
-        "note": "Hackathon mode prefers Gemini as the cheap path when Google credits or Gemini billing are available."
+        "note": "Hackathon mode uses Gemini as the main hosted path for ideation, drafting, and most teammate requests."
       }
     },
     "deep": {
@@ -32,13 +32,14 @@
       "model": "claude-sonnet-4-20250514",
       "permissionMode": "plan",
       "recommendedFor": [
-        "deep synthesis",
-        "code review",
-        "high-stakes technical reasoning"
+        "interactive coding with Claude Max",
+        "final implementation review",
+        "final validation",
+        "last-mile debugging"
       ],
       "doctor": {
         "command": "claude",
-        "note": "Deep is for harder review/synthesis when cheap mode is not enough."
+        "note": "Hackathon mode keeps Claude for interactive coding, final reviews, and true last-mile test passes."
       }
     },
     "local": {
@@ -46,16 +47,18 @@
       "model": "auto",
       "baseUrl": "http://127.0.0.1:11434/v1",
       "recommendedFor": [
-        "private drafts",
-        "offline iteration",
-        "low-cost local runs"
+        "bulk drafting",
+        "review crews",
+        "summaries and rewrites",
+        "intermediate code passes",
+        "low-cost local helper runs"
       ],
       "doctor": {
         "command": "ollama",
-        "note": "Local is optional. Install Ollama or point OLLAMA_BASE_URL at a compatible server."
+        "note": "Hackathon mode expects assistants to use local Ollama aggressively for bulk work when it is available."
       }
     }
   },
   "generatedBy": "claudeflow",
-  "generatedAt": "2026-04-15T11:36:12.072Z"
+  "generatedAt": "2026-04-15T13:19:24.925Z"
 }

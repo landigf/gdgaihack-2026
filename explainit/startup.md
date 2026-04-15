@@ -3,7 +3,7 @@
 This file explains how to use ClaudeFlow when the technical side of the startup is mostly run by AI and you want recurring insight, critique, and improvement loops.
 
 ## The recommended setup
-- Use `cheap` (gemini / gemini-2.5-flash-lite) for daily and nightly drafting, triage, review summaries, and backlog generation.
+- Use `cheap` (openai / gpt-5-mini) for daily and nightly drafting, triage, review summaries, and backlog generation.
 - Use `deep` (claude-cli / claude-sonnet-4-20250514) for harder synthesis, final review, architecture critique, and high-stakes decisions.
 - Keep `local` (ollama / auto) as an optional privacy/cost tool, not as the main production brain.
 
