@@ -1,0 +1,9 @@
+<!-- claudeflow-teamkit-gitignore:start -->
+# ClaudeFlow Team Kit
+.claudeflow/checkpoints/
+.claudeflow/memory/
+traces/
+.env
+.env.local
+.DS_Store
+<!-- claudeflow-teamkit-gitignore:end -->

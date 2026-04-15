@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "preset": "hackathon",
+  "enabledPresets": [
+    "hackathon"
+  ],
+  "assistants": [
+    "claude",
+    "codex",
+    "copilot"
+  ],
+  "runtimeProfiles": {
+    "cheap": {
+      "provider": "gemini",
+      "model": "gemini-2.5-flash-lite",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "recommendedFor": [
+        "hackathon ideation",
+        "structured drafting",
+        "sponsor-aligned multimodal experiments",
+        "high-volume teammate requests"
+      ],
+      "doctor": {
+        "env": [
+          "GEMINI_API_KEY"
+        ],
+        "note": "Hackathon mode prefers Gemini as the cheap path when Google credits or Gemini billing are available."
+      }
+    },
+    "deep": {
+      "provider": "claude-cli",
+      "model": "claude-sonnet-4-20250514",
+      "permissionMode": "plan",
+      "recommendedFor": [
+        "deep synthesis",
+        "code review",
+        "high-stakes technical reasoning"
+      ],
+      "doctor": {
+        "command": "claude",
+        "note": "Deep is for harder review/synthesis when cheap mode is not enough."
+      }
+    },
+    "local": {
+      "provider": "ollama",
+      "model": "auto",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "recommendedFor": [
+        "private drafts",
+        "offline iteration",
+        "low-cost local runs"
+      ],
+      "doctor": {
+        "command": "ollama",
+        "note": "Local is optional. Install Ollama or point OLLAMA_BASE_URL at a compatible server."
+      }
+    }
+  },
+  "generatedBy": "claudeflow",
+  "generatedAt": "2026-04-15T10:46:15.007Z"
+}
