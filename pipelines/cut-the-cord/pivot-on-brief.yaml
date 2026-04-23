@@ -1,0 +1,131 @@
+name: cut-the-cord-pivot-on-brief
+# Purpose: at kickoff, digest the revealed MSI/Cut-the-Cord brief and
+# return ranked candidate ideas, crew critique, and a 24h demo plan,
+# so the team can lock a direction within 60 minutes.
+# Inputs:
+#   - brief_path : path to a file containing the verbatim brief (captured by H1 at kickoff)
+#   - repo_context : optional extra context about what the team pre-built
+steps:
+  - id: read-brief
+    prompt: |
+      Read the file at path: {brief_path}
+      Return the verbatim text of the kickoff brief for the "Cut the Cord" / MSI On-Device AI track.
+      If any section is ambiguous, note it.
+    tools: [Read]
+    retry: { maxAttempts: 2 }
+    output:
+      brief_text: string
+      ambiguities: string
+
+  - id: repo-scan
+    prompt: |
+      Scan this repository for anything we've already pre-built for the Cut the Cord track.
+      Look in doc/specs/cut-the-cord/, pipelines/cut-the-cord/, benchmarks/, scripts/.
+      Return: what exists, what's only a template, what's fully functional.
+    tools: [Read, Glob, Grep]
+    retry: { maxAttempts: 2 }
+    output:
+      repo_state: string
+
+  - id: five-ideas
+    prompt: |
+      Given this brief:
+      ---
+      {read-brief.brief_text}
+      ---
+      And this repo state (what the team has already pre-built):
+      ---
+      {repo-scan.repo_state}
+      ---
+      Generate FIVE concrete, different product ideas that fit the brief.
+      Each idea MUST include:
+        - name (3-5 words)
+        - one-line pitch
+        - target user + specific moment of use
+        - why cloud fails for this user (privacy / latency / bandwidth / cost / sovereignty)
+        - the core on-device stack (runtime + model(s) + data layer)
+        - the 60-second live demo moment (what the judge sees)
+        - the primary benchmark metric we'd win on
+        - feasibility in 24h with 4 people (high/medium/low) + biggest risk
+        - moat: why this is hard to copy in a weekend
+      Rank the five from best fit to worst fit, with a one-sentence justification per rank.
+    retry: { maxAttempts: 2 }
+    output:
+      ideas_ranked: string
+
+  - id: crew-critique
+    prompt: |
+      You are a crew of three reviewers critiquing the ranked ideas below.
+      Each reviewer writes a separate paragraph; then write a synthesis verdict.
+
+      Reviewers:
+        - PRODUCT: focuses on user pain, demo clarity, and narrative strength for judges.
+        - TECHNICAL: focuses on feasibility on a MacBook M3 Pro + MSI Stealth in 24h,
+          model size, latency reality, and integration risk.
+        - SKEPTIC: looks for hidden cloud dependencies, benchmark traps,
+          and "this is just a wrapper" failure modes.
+
+      Ideas:
+      ---
+      {five-ideas.ideas_ranked}
+      ---
+
+      After the three reviewer paragraphs, produce a SYNTHESIS VERDICT:
+        - pick the single idea the team should execute
+        - list the top 3 risks
+        - list the top 3 accelerators (things we can lean on from the pre-built repo)
+    retry: { maxAttempts: 2 }
+    output:
+      critique_and_verdict: string
+
+  - id: demo-plan
+    prompt: |
+      You chose this idea and produced this verdict:
+      ---
+      {crew-critique.critique_and_verdict}
+      ---
+      Now write a concrete 24-HOUR EXECUTION PLAN.
+      Use this exact structure:
+
+      ## Chosen idea
+      - name
+      - one-line pitch
+
+      ## Target user + failure-of-cloud justification
+
+      ## Scope (what ships in 24h)
+      - In:
+      - Out:
+
+      ## Solution stack (runtime, models, data layer, UI shell)
+
+      ## Acceptance criteria (4 checkboxes; see template in doc/specs/cut-the-cord/02-specification.md)
+
+      ## 24-hour timeline (T+0 to T+24, gates every 4h)
+
+      ## Primary benchmark scenario + what "winning" means numerically
+
+      ## Pitch hook (one sentence, memorable)
+
+      ## Demo 60-second sequence (who does what, second-by-second)
+
+      ## Biggest risk + mitigation
+    retry: { maxAttempts: 2 }
+    output:
+      execution_plan: string
+
+  - id: pitch-seed
+    prompt: |
+      Produce a 30-second opening pitch for this plan.
+      Plan:
+      ---
+      {demo-plan.execution_plan}
+      ---
+      Constraints:
+        - Start with the user in the moment. No "imagine if" fluff.
+        - One quantified pain point in the first 10 seconds.
+        - End with the one-sentence solution claim.
+        - Must be speakable out loud in 30 seconds. Do not exceed 75 words.
+    retry: { maxAttempts: 2 }
+    output:
+      pitch_30s: string

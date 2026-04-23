@@ -9,3 +9,17 @@ pipelines/traces/
 .env.local
 .DS_Store
 <!-- claudeflow-teamkit-gitignore:end -->
+
+# Node / npm
+node_modules/
+npm-debug.log*
+
+# Benchmarks
+benchmarks/results/*.json
+benchmarks/results/*.png
+benchmarks/datasets/
+
+# Evidence artifacts (can be large / sensitive)
+doc/specs/cut-the-cord/evidence/*.pcap
+doc/specs/cut-the-cord/evidence/*.mp4
+doc/specs/cut-the-cord/evidence/*.mov

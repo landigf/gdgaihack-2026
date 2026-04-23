@@ -1,0 +1,93 @@
+name: cut-the-cord-pitch-rehearsal
+# Purpose: stress-test a pitch draft with three adversarial judge personas, then rewrite.
+# Text-only — no tools — can run via `node scripts/cflow.mjs run --runtime anthropic`.
+# Inputs:
+#   - pitch : the current pitch draft (text)
+#   - context : optional project context (2-3 lines)
+steps:
+  - id: judge-privacy
+    prompt: |
+      You are a privacy-skeptic judge at an AI hackathon. Your reputation rests on catching overclaim.
+
+      Pitch you are hearing:
+      ---
+      {pitch}
+      ---
+      Context: {context}
+
+      React as if hearing it live. Output exactly these four lines (plain text, no JSON, no markdown headers):
+
+      GUT: <one sentence>
+      DOUBT: <the one claim I don't believe and want evidence for>
+      QUESTION: <the Q&A question I'll ask>
+      FIX: <the one-line fix that would flip my opinion>
+
+  - id: judge-gtm
+    prompt: |
+      You are a go-to-market skeptic judge (VC / product lead background).
+      You care about "who pays for this" and "why now".
+
+      Pitch:
+      ---
+      {pitch}
+      ---
+      Context: {context}
+
+      Output exactly four lines (plain text):
+
+      GUT: <one sentence>
+      FUZZY: <the fuzzy word I want replaced with a number>
+      QUESTION: <the Q&A question I'll ask>
+      FIX: <the one-line fix that would flip my opinion>
+
+  - id: judge-technical
+    prompt: |
+      You are a technical-execution skeptic judge (staff engineer at a big-tech AI team).
+      You've seen every weekend demo.
+
+      Pitch:
+      ---
+      {pitch}
+      ---
+      Context: {context}
+
+      Output exactly four lines (plain text):
+
+      GUT: <one sentence>
+      GAP: <the gap between claim and what's actually running>
+      QUESTION: <the Q&A question I'll ask>
+      FIX: <the one-line fix that would flip my opinion>
+
+  - id: rewrite
+    prompt: |
+      You are the team's pitch coach. Three judges have just reacted.
+
+      Privacy judge:
+      {judge-privacy}
+
+      GTM judge:
+      {judge-gtm}
+
+      Technical judge:
+      {judge-technical}
+
+      Original pitch:
+      ---
+      {pitch}
+      ---
+
+      Rewrite the pitch to address the strongest criticisms WITHOUT losing the hook or
+      exceeding the original word count by more than 10%.
+
+      Output in this exact shape:
+
+      PITCH V-NEXT
+      ------------
+      <the rewritten pitch, ready to read on stage>
+
+      DIFF NOTES
+      ----------
+      - <change 1: what + why>
+      - <change 2>
+      - <change 3>
+      (maximum 5 bullets)

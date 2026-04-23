@@ -1,0 +1,15 @@
+name: _template
+description: "Replace this. One sentence describing what this scenario proves."
+items:
+  - id: example-01
+    input: "Replace with the real input."
+    expected_substring: "replace-me"
+    evaluator: substring
+runs_per_item: 3
+systems_to_run: [baseline-cloud, baseline-naive-local, ours]
+metrics:
+  - latency_p50_ms
+  - latency_p95_ms
+  - accuracy
+  - peak_ram_gb
+  - network_egress_bytes

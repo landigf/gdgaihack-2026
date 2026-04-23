@@ -1,0 +1,42 @@
+name: cut-the-cord-competitive-scan
+# Purpose: identify who else solves the user's problem (cloud or on-device)
+# and sharpen our differentiator. Updates doc/specs/cut-the-cord/COMPETITIVE_SCAN.md.
+# Inputs:
+#   - problem_statement : short paragraph describing the user + problem we're solving
+steps:
+  - id: search-existing
+    prompt: |
+      Find existing products/projects (proprietary + open source) that address this user problem:
+      ---
+      {problem_statement}
+      ---
+      For each, return:
+        - name
+        - category (consumer app | developer tool | OSS library | platform)
+        - runs-fully-on-device? (yes/partial/no, with evidence)
+        - open-source? (yes/partial/no, with license if OSS)
+        - URL (real)
+        - one-sentence summary of what they do
+      Find at least 8. Group by category.
+    tool: web
+    retry: { maxAttempts: 2 }
+    output:
+      competitors_raw: string
+
+  - id: differentiator
+    prompt: |
+      Given these competitors:
+      ---
+      {search-existing.competitors_raw}
+      ---
+      And our problem statement:
+      ---
+      {problem_statement}
+      ---
+      For each competitor that is a serious overlap with us, write ONE sentence starting with
+      "Why a user picks us over X:" that is concrete and not marketing-ish. If we can't write
+      a credible sentence, write "WEAK — reconsider scope" and suggest how to narrow.
+      End with: a 3-bullet differentiator list we should put in the pitch.
+    retry: { maxAttempts: 2 }
+    output:
+      diff_map: string

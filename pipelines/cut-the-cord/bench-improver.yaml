@@ -1,0 +1,35 @@
+name: cut-the-cord-bench-improver
+# Purpose: read the latest benchmark JSON and propose three ranked improvements.
+# Inputs:
+#   - bench_json_path : path to latest bench result, e.g. benchmarks/results/latest.json
+steps:
+  - id: read-bench
+    prompt: |
+      Read the benchmark results at: {bench_json_path}
+      Return a compact summary:
+        - scenario name
+        - systems compared
+        - metrics per system (latency p50/p95, accuracy, peak RAM)
+        - where "ours" beats the cloud baseline
+        - where "ours" loses
+    tools: [Read]
+    output:
+      bench_summary: string
+
+  - id: improve
+    prompt: |
+      Given this benchmark summary:
+      ---
+      {read-bench.bench_summary}
+      ---
+
+      Propose THREE concrete improvements to the "ours" system, ranked by
+      expected_impact / engineering_effort. Each improvement has:
+        - what to change (specific file / component / model)
+        - expected delta on which metric
+        - effort (≤30min, ≤2h, ≤half-day)
+        - how to verify in the harness
+
+      Then pick the single best one to do next and justify in one line.
+    output:
+      ranked_improvements: string

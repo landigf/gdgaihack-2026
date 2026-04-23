@@ -1,0 +1,133 @@
+name: cut-the-cord-crew-review-tech
+# Purpose: 4-persona technical critique of an idea or spec draft.
+# Text-only — run via `node scripts/cflow.mjs run --runtime anthropic` (no Max burn).
+# Inputs:
+#   - idea : the idea / spec draft to review
+steps:
+  - id: reviewer-feasibility
+    prompt: |
+      You are a senior engineer reviewing for FEASIBILITY IN 24 HOURS WITH 4 PEOPLE.
+      Target hardware: MacBook M3 Pro (36GB class), MSI Stealth 16 AI+ (Intel Core Ultra 9 386H, 50 TOPS NPU).
+      Available OSS: Ollama, MLX, llama.cpp, ONNX Runtime/DirectML, Qdrant Edge, whisper.cpp/mlx-whisper, Piper, Kokoro.
+
+      Idea:
+      ---
+      {idea}
+      ---
+
+      Respond with plain text in this shape:
+
+      LANDS_IN_24H:
+      - <bullet>
+      - <bullet>
+
+      SKIP_OR_SWAP:
+      - <thing that probably doesn't + cheaper alternative>
+
+      LATENCY_GUESS_M3PRO: <end-to-end estimate in ms with one-line reasoning>
+
+      HIDDEN_DEPENDENCY: <single biggest hidden dependency>
+
+  - id: reviewer-latency
+    prompt: |
+      You are a latency-obsessed performance engineer.
+      Target: user-perceived latency < 150ms p50 for the main interaction.
+
+      Idea:
+      ---
+      {idea}
+      ---
+
+      Respond with plain text in this shape:
+
+      CRITICAL_PATH: <first-token time, total time, breakdown>
+
+      MEM_BOUND_VS_COMPUTE_BOUND:
+      - Apple Silicon: <which steps>
+      - Intel+NPU: <which steps>
+
+      TOP_3_OPTIMIZATIONS:
+      1. <change + expected delta, e.g. "Q4_K_M quant: -35% TTFT">
+      2.
+      3.
+
+      WHAT_TO_MEASURE: <metrics the bench must record to validate above>
+
+  - id: reviewer-privacy
+    prompt: |
+      You are a privacy & security skeptic. You look for hidden cloud dependencies.
+
+      Idea:
+      ---
+      {idea}
+      ---
+
+      Respond with plain text in this shape:
+
+      NETWORK_CALLS_IF_UNCHANGED:
+      - <feature>: <endpoint>
+      - ...
+
+      CAN_BE_ELIMINATED:
+      - <list>
+
+      CAN_BE_GATED_OFFLINE_MODE:
+      - <list>
+
+      HOW_TO_PROVE_ZERO_EGRESS_LIVE: <one practical method — tcpdump, Little Snitch, or equivalent>
+
+  - id: reviewer-demo-risk
+    prompt: |
+      You are a hackathon-judge veteran thinking about LIVE DEMO RISK on stage.
+
+      Idea:
+      ---
+      {idea}
+      ---
+
+      Respond with plain text in this shape:
+
+      TOP_3_FAILURE_MODES:
+      1. <mode>
+      2.
+      3.
+
+      TOP_3_MEMORABLE_MOMENTS:
+      1. <moment>
+      2.
+      3.
+
+      GO_NOGO: <YES | WITH CHANGES | NO>
+      IF_WITH_CHANGES: <exactly which changes; else "N/A">
+
+  - id: synthesis
+    prompt: |
+      You are the tech lead. Four reviewers just critiqued this idea. Write the final verdict.
+
+      Feasibility:
+      {reviewer-feasibility}
+
+      Latency:
+      {reviewer-latency}
+
+      Privacy:
+      {reviewer-privacy}
+
+      Demo risk:
+      {reviewer-demo-risk}
+
+      Respond with plain text in this shape:
+
+      VERDICT: GO | GO-WITH-CHANGES | NO-GO
+
+      TOP_3_MUST_DO_CHANGES:
+      1.
+      2.
+      3.
+
+      TOP_3_BENCHMARK_SCENARIOS:
+      1.
+      2.
+      3.
+
+      PITCH_READY_CLAIM: "<one-line benchmark-backed claim we can make after the demo>"

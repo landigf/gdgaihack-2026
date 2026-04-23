@@ -1,0 +1,37 @@
+name: cut-the-cord-research-state-of-art
+# Purpose: web-grounded research on an on-device AI sub-topic with real source links.
+# Inputs:
+#   - topic  : short phrase (e.g. "offline RAG with Qdrant Edge", "mlx-whisper vs whisper.cpp")
+#   - count  : how many sources to aim for (default 6)
+steps:
+  - id: search
+    prompt: |
+      Research this topic with up-to-date sources (2025-2026 only when possible):
+      TOPIC: {topic}
+
+      Return at least {count} high-quality sources with:
+        - title
+        - URL (must be real, not hallucinated)
+        - 1-sentence relevance note
+        - one quoted fact with a number if the source has one
+
+      Prefer: arxiv papers, project READMEs, sponsor product pages, benchmark blogs.
+      Avoid: generic listicles with no primary data.
+    tool: web
+    retry: { maxAttempts: 2 }
+    output:
+      sources: string
+
+  - id: synthesize
+    prompt: |
+      Synthesize the sources into a short brief for team PoliSa's hackathon use.
+      Structure:
+        - TL;DR (2 sentences)
+        - Key facts table: | claim | number | source# |
+        - What this means for our demo/bench
+        - Open questions worth verifying in person
+      Sources:
+      {search.sources}
+    retry: { maxAttempts: 2 }
+    output:
+      brief: string

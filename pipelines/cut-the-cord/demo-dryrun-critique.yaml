@@ -1,0 +1,82 @@
+name: cut-the-cord-demo-dryrun-critique
+# Purpose: critique a recorded demo run (transcript + timing) against the judging rubric.
+# Text-only — run via `node scripts/cflow.mjs run --runtime anthropic` (no Max burn).
+# Inputs:
+#   - transcript : full transcript of the dry-run narration
+#   - timings : second-by-second timing log
+steps:
+  - id: rubric-score
+    prompt: |
+      Score this demo dry-run against the GDG AI HACK 2026 rubric (0-3 each axis, 12 max).
+
+      Transcript:
+      ---
+      {transcript}
+      ---
+      Timing log:
+      ---
+      {timings}
+      ---
+
+      Respond with plain text in this shape:
+
+      INNOVATION: <score>/3 — <one-line justification>
+      GAIN_ONE_POINT: <the single change that would add 1 to this axis>
+
+      TECHNICAL_EXECUTION: <score>/3 — <justification>
+      GAIN_ONE_POINT: <change>
+
+      REAL_WORLD_IMPACT: <score>/3 — <justification>
+      GAIN_ONE_POINT: <change>
+
+      PRESENTATION: <score>/3 — <justification>
+      GAIN_ONE_POINT: <change>
+
+      TOTAL: <sum>/12
+
+  - id: red-team
+    prompt: |
+      Red-team the demo. Assume the worst plausible stage conditions:
+        - Laptop cold-starts wrong
+        - Wi-Fi toggle accidentally flipped
+        - Microphone picks up hall noise
+        - Projector shows the wrong tab
+        - A judge interrupts at second 40
+
+      Transcript:
+      ---
+      {transcript}
+      ---
+      Timing:
+      ---
+      {timings}
+      ---
+
+      For each failure mode, respond in this shape (plain text, no JSON):
+
+      FAILURE: <name>
+        LIKELIHOOD: low | medium | high — <why given the transcript>
+        JUDGE_SEES: <observable symptom>
+        RECOVERY: <move the team should rehearse>
+        PATCH: <where to make the demo flow more robust>
+
+  - id: verdict
+    prompt: |
+      Combine rubric and red-team into a single action list.
+
+      Rubric scorecard:
+      {rubric-score}
+
+      Red-team findings:
+      {red-team}
+
+      Respond with plain text in this shape:
+
+      OVERALL: SHIP | NEEDS ONE MORE DRY-RUN | REWORK
+
+      TOP_3_NEXT_REHEARSAL_ACTIONS:
+      1.
+      2.
+      3.
+
+      FEEDBACK_LINE: <one sentence to copy-paste into 05-feedback.md>

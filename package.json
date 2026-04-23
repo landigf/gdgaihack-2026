@@ -1,0 +1,26 @@
+{
+  "name": "gdgaihack-2026",
+  "version": "1.0.0",
+  "description": "Milan · 8–10 May 2026 · on-device AI (MSI sponsor).",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/landigf/gdgaihack-2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/landigf/gdgaihack-2026/issues"
+  },
+  "homepage": "https://github.com/landigf/gdgaihack-2026#readme",
+  "dependencies": {
+    "claudeflow": "github:landigf/claudeflow"
+  }
+}
