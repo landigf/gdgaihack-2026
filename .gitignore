@@ -23,3 +23,6 @@ benchmarks/datasets/
 doc/specs/cut-the-cord/evidence/*.pcap
 doc/specs/cut-the-cord/evidence/*.mp4
 doc/specs/cut-the-cord/evidence/*.mov
+
+# Per-developer Claude Code overrides (committed settings.json is the team default)
+.claude/settings.local.json

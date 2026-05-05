@@ -4,7 +4,7 @@ This file explains how to use ClaudeFlow when the technical side of the startup 
 
 ## The recommended setup
 - Use `cheap` (openai / gpt-5-mini) for daily and nightly drafting, triage, review summaries, and backlog generation.
-- Use `deep` (claude-cli / claude-sonnet-4-20250514) for harder synthesis, final review, architecture critique, and high-stakes decisions.
+- Use `deep` (anthropic / claude-sonnet-4-20250514) for harder synthesis, final review, architecture critique, and high-stakes decisions.
 - Keep `local` (ollama / auto) as an optional privacy/cost tool, not as the main production brain.
 
 ## What API key to buy first
@@ -14,7 +14,7 @@ This file explains how to use ClaudeFlow when the technical side of the startup 
 - Use a local model only if privacy or marginal cost matters more than output quality and maintenance simplicity.
 
 ## Practical provider strategy
-- Use Claude as the high-leverage judge, not as the only worker.
+- Use the Anthropic API (`ANTHROPIC_API_KEY`) as the high-leverage judge, not as the only worker. ClaudeFlow is API-only and does not spend a Claude Max subscription.
 - Use the cheap provider for repetitive nightly or weekly work.
 - Use a local model for bulk drafts, categorization, or privacy-sensitive internal loops only when weaker quality is acceptable.
 - On a MacBook Pro M3 Pro, treat local as a useful sidecar, not as the single source of truth for product direction or critical refactors.

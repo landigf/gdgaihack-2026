@@ -28,18 +28,19 @@
       }
     },
     "deep": {
-      "provider": "claude-cli",
+      "provider": "anthropic",
       "model": "claude-sonnet-4-20250514",
-      "permissionMode": "plan",
       "recommendedFor": [
-        "interactive coding with Claude Max",
         "final implementation review",
         "final validation",
-        "last-mile debugging"
+        "last-mile debugging",
+        "high-stakes reasoning that cheap models get wrong"
       ],
       "doctor": {
-        "command": "claude",
-        "note": "Hackathon mode keeps Claude for interactive coding, final reviews, and true last-mile test passes."
+        "env": [
+          "ANTHROPIC_API_KEY"
+        ],
+        "note": "Hackathon mode uses the Anthropic API (pay-per-token) for final reviews and last-mile verification. It never spends Claude Max / Claude Code subscription usage."
       }
     },
     "local": {
@@ -60,5 +61,5 @@
     }
   },
   "generatedBy": "claudeflow",
-  "generatedAt": "2026-04-15T13:19:24.925Z"
+  "generatedAt": "2026-04-17T10:21:18.866Z"
 }

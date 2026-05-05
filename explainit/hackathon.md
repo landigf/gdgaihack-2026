@@ -2,10 +2,15 @@
 
 This file is for teammates who are joining a hackathon repo and want clear structure without needing to understand the whole ClaudeFlow engine.
 
+## The key idea
+- ClaudeFlow is **API-only**. It never uses a Claude Max or Claude Code subscription.
+- Every pipeline call is paid for by an API key (OpenAI, Gemini, Anthropic, DeepSeek) or runs locally on Ollama.
+- You can still sit inside Claude Code or ChatGPT while authoring pipelines — ClaudeFlow executes them out-of-band using its own API keys, so you do not burn your chat-side subscription usage on automation.
+
 ## What to do first
 1. Read `README.md`, `AGENTS.md`, and `doc/specs/README.md`.
 2. If you use Copilot, also read `.github/copilot-instructions.md`.
-3. If you use Claude Code, check `.claude/commands/` for the ready-made workflows.
+3. If you use Claude Code, check `.claude/commands/` for the ready-made workflows. They are instructions to the assistant — they tell it to write/run ClaudeFlow pipelines, not to do the heavy work itself.
 4. Start with one feature folder under `doc/specs/<slug>/`.
 5. If you are doing GDG AI HACK 2026 specifically, read `explainit/gdg-ai-hack-2026/README.md` and the relevant track guide before ideating.
 6. Copy `.env.example` to `.env.local` and fill only the keys you actually have access to.
@@ -23,19 +28,21 @@ This file is for teammates who are joining a hackathon repo and want clear struc
 - "Read the GDG AI HACK challenge pack and tell me which of the three main tracks this repo fits best."
 - "Use the ClaudeFlow hackathon workflow and write `doc/specs/<slug>/01-brainstorm.md`."
 - "Turn this brainstorm into `02-specification.md` and `03-tasks.md` in a way a teammate can follow."
+- "Write and run a ClaudeFlow YAML pipeline that does X, using my API keys. Summarize the result into a priority-ranked table when it finishes."
 
 ## The intended operating mode
-- Write real code with Claude Max or Claude Code when you need hands-on implementation help.
 - Let local Ollama run as much bulk work as possible: brainstorming, rewrites, summaries, review crews, task splitting, and intermediate code passes.
 - Use Gemini as the main hosted API for most structured requests and teammate-facing drafting.
 - Use OpenAI only for important research, stronger external perspective, or a serious second opinion.
-- Use Claude-backed ClaudeFlow runs mainly for final review, final test/verify passes, and true last-mile debugging.
+- Use the Anthropic API (pay-per-token) for final review, final verify passes, and last-mile debugging. This is different from Claude Max — it uses `ANTHROPIC_API_KEY`, not your chat subscription.
+- Your Claude Code / ChatGPT / Copilot chat stays in the driver seat for conversation and for reading results. ClaudeFlow does the parallel worker runs on its own API keys so the chat subscription does not get drained on bulk automation.
 
 ## Which runtime to use
 - Start with `local`: ollama / auto whenever Ollama is available. It is the preferred bulk worker for drafting, reviews, summaries, and low-cost helper tasks.
 - Use `cheap`: gemini / gemini-2.5-flash-lite as the main hosted path for structured requests, ideation, drafting, and teammate workflows.
 - Use OpenAI as a manual override with `--runtime openai` only when you want important research or a serious second opinion.
-- Use `deep`: claude-cli / claude-sonnet-4-20250514 for interactive coding support, final critiques, final verification, and real last-mile debugging.
+- Use `deep`: anthropic / claude-sonnet-4-20250514 via `ANTHROPIC_API_KEY` for final critiques, final verification, and last-mile judgment.
+- If you omit `--runtime`, ClaudeFlow auto-detects based on which API keys you exported.
 
 ## How to handle API keys with teammates
 - Do not commit real keys to the repo.
@@ -54,23 +61,23 @@ This file is for teammates who are joining a hackathon repo and want clear struc
 - The event is short and build-first. Optimize for speed and reliability, not for fancy infrastructure.
 - GDG AI HACK gives useful sponsor resources including Google Cloud credits and Gemini API access. Use Gemini as the main hosted path first.
 - If Ollama is already working on your MacBook, lean on it heavily instead of paying for bulk helper calls.
-- Keep Claude for real coding help, final reviews, and final verification instead of burning it on bulk drafting.
+- Keep your chat-side Claude Code / ChatGPT subscription for conversation and pair coding. Let ClaudeFlow do parallel pipeline work on its own API keys so you stop running out of subscription usage mid-hackathon.
 - The safest overall plan is still laptop-first with hosted APIs as backup capacity.
 
 ## Recommended architecture
-- Use raw Claude or Claude Code for actual coding sessions and the hardest last-mile debugging.
+- Use your chat assistant (Claude Code, ChatGPT, Copilot Chat) for hands-on pair coding and for driving ClaudeFlow. Do not send bulk automation work through the chat itself.
 - Use ClaudeFlow for repeatable work: review, critique, fix-and-verify, handoff, and pitch polish.
 - Let `local` do as much grunt work as possible when it is available.
 - Let Gemini be the default hosted path.
 - Let OpenAI act as the deliberate research or second-opinion path.
-- Let Claude be the final judge and final verifier.
+- Let the Anthropic API be the final judge and final verifier.
 
 ## What API key to buy first
 - If local Ollama is already installed, use it first for volume work because it is effectively free once set up.
 - Use `GEMINI_API_KEY` as the main hosted API spend for hackathon work.
 - Add `OPENAI_API_KEY` only for important research or a serious second opinion when Gemini is not enough.
-- Keep Claude Max or Claude API for interactive coding help, final reviews, and final test passes instead of using it as the bulk worker.
-- The right order for this hackathon is usually: local first for volume, Gemini for main hosted work, OpenAI for selected research, Claude for final coding and verification.
+- Add `ANTHROPIC_API_KEY` only when you want Claude-level reasoning for final reviews and final verification.
+- The right order for this hackathon is usually: local first for volume, Gemini for main hosted work, OpenAI for selected research, Anthropic API for final coding judgment and verification.
 
 ## Repo organization rules
 - Keep feature thinking in `doc/specs/<slug>/`, not scattered across chats.
