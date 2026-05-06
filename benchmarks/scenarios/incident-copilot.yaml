@@ -1,0 +1,262 @@
+# benchmarks/scenarios/incident-copilot.yaml
+#
+# Voice-first offline incident copilot. Six core scenarios sourced from
+# NIOSH, OSHA, CDC, Red Cross, PHMSA/Transport Canada ERG. Each scenario
+# is run in voice_e2e and text_control modes; warm and cold start.
+#
+# Source: doc/specs/cut-the-cord/research/syntheses/claude-technical-stack-2026-05-06.md
+# §"Benchmark plan (concrete)" — derived from DR-10's six-core + three-stretch design,
+# extending Codex's three-scenario starter (gas leak / fire / chemical splash).
+#
+# Schema extends benchmarks/scenarios/_template.yaml with:
+#   - critical_steps[] with weights (powers cited_checklist_completeness)
+#   - forbidden_claims (powers hallucination_rate via negative checks)
+#   - numeric_facts (powers fact-extraction validation)
+#   - gold citation anchors per step (powers citation_correctness)
+
+name: incident-copilot
+description: |
+  Voice-first offline incident copilot for dangerous field work. Six core
+  scenarios cover bleeding/heat/confined-space/LOTO/tanker-fire/chlorine-leak
+  drawn from public-domain NIOSH+OSHA+ERG corpora. Three stretch scenarios
+  add ammonia hazmat, multilingual triage, and offline map lookup.
+
+schema_version: "1.0"
+runs_per_item: 3
+
+# ----------------------------------------------------------------------
+# Systems under test — ablation ladder per DR-10 §"Baseline versus ours"
+# Same device, same STT engine, same on-device LLM, same local documents,
+# same prompts; only the retrieval-and-answering strategy changes.
+# ----------------------------------------------------------------------
+systems_to_run:
+  - baseline_v0    # flat chunks + top-k vector + free-form answer
+  - ours_v1        # + section-aware chunking
+  - ours_v2        # + metadata filter (hazard_tags pre-filter)
+  - ours_v3        # + checklist template (structured output)
+  - ours_v4        # + citation gating (abstain-on-weak-evidence)
+
+# ----------------------------------------------------------------------
+# Metrics — primary is the composite from DR-10
+# ----------------------------------------------------------------------
+metrics:
+  primary: cited_checklist_completeness
+  # cited_checklist_completeness = Σ wᵢ · present(stepᵢ ∧ citation_correctᵢ) / Σ wᵢ
+  # Target: 0.60 → 0.72 on the 6-scenario core suite (≥20% relative lift)
+  secondary:
+    - p95_time_to_first_cited_step_ms   # fallback metric if quality plateaus
+    - zero_egress_pass                  # boolean, must be true for "ours_*"
+    - hallucination_rate                # 1 - (correct citations / total citations)
+    - decode_tokens_per_sec
+    - peak_pss_mb
+    - latency_p50_ms
+    - latency_p95_ms
+
+corpus_manifest: benchmarks/datasets/incident-copilot/manifest.json
+
+# ----------------------------------------------------------------------
+# CORE scenarios (6) — must build for Saturday demo
+# Sources are public domain unless flagged otherwise.
+# ----------------------------------------------------------------------
+scenarios:
+
+  - scenario_id: s01_bleeding_extremity.en
+    title: "Coworker cut on sheet metal, blood spurting"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Coworker just cut his arm on sheet metal, blood is spurting, what do I do?"
+      - "Severe bleeding, arterial spurting from forearm, one person."
+    docs:
+      - doc_id: redcross_first_aid_bleeding
+      - doc_id: cdc_stop_the_bleed
+    expected_answer_shape: { type: checklist, max_steps: 6, citation_per_step: true }
+    critical_steps:
+      - { step_id: call_911, text_paraphrases: ["call 911", "call emergency services"], weight: 0.20, gold_citation_anchor: redcross_first_aid_bleeding#call_emergency }
+      - { step_id: apply_pressure, text_paraphrases: ["apply firm pressure", "press directly on the wound"], weight: 0.30, gold_citation_anchor: redcross_first_aid_bleeding#direct_pressure }
+      - { step_id: tourniquet_if_taught, text_paraphrases: ["tourniquet", "if trained, apply tourniquet above the wound"], weight: 0.20, gold_citation_anchor: cdc_stop_the_bleed#tourniquet }
+      - { step_id: dont_remove_dressing, text_paraphrases: ["do not remove dressing", "add more dressings on top"], weight: 0.15, gold_citation_anchor: redcross_first_aid_bleeding#dressing }
+      - { step_id: monitor_for_shock, text_paraphrases: ["monitor for shock", "lay flat", "elevate legs if no spinal injury"], weight: 0.15, gold_citation_anchor: redcross_first_aid_bleeding#shock }
+    forbidden_claims:
+      - "use a tourniquet for any bleeding"   # only for life-threatening extremity bleeding
+      - "give the victim water or food"
+    notes_for_manual_review: |
+      Watch for over-recommendation of tourniquets. Stop-the-Bleed is specific:
+      tourniquet only for extremity arterial bleeding when direct pressure fails.
+
+  - scenario_id: s02_heat_stroke_worker.en
+    title: "Worker confused, very hot, barely responsive"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Worker collapsed in 35 degree sun, very hot to touch, confused and barely responsive."
+      - "Possible heat stroke, person not sweating, hot dry skin, altered mental status."
+    docs:
+      - doc_id: cdc_heat_stress
+      - doc_id: niosh_heat_topic
+      - doc_id: redcross_first_aid_heat
+    expected_answer_shape: { type: checklist, max_steps: 6, citation_per_step: true }
+    critical_steps:
+      - { step_id: call_911, text_paraphrases: ["call 911", "this is a medical emergency"], weight: 0.25, gold_citation_anchor: cdc_heat_stress#emergency }
+      - { step_id: move_to_cool, text_paraphrases: ["move to a cool place", "shade", "air conditioning"], weight: 0.20, gold_citation_anchor: cdc_heat_stress#cool_environment }
+      - { step_id: cool_aggressively, text_paraphrases: ["cool the body rapidly", "cold water immersion", "cool wet cloths"], weight: 0.30, gold_citation_anchor: cdc_heat_stress#rapid_cooling }
+      - { step_id: do_not_give_fluids, text_paraphrases: ["do not give fluids if unconscious", "do not force water if confused"], weight: 0.15, gold_citation_anchor: redcross_first_aid_heat#no_fluids_if_altered }
+      - { step_id: monitor_breathing, text_paraphrases: ["monitor breathing", "watch for cardiac arrest"], weight: 0.10, gold_citation_anchor: cdc_heat_stress#monitor }
+    forbidden_claims:
+      - "give them water"            # contraindicated if confused/unconscious
+      - "let them rest in the sun"
+    numeric_facts: { core_temp_emergency_c: 40 }
+
+  - scenario_id: s03_confined_space_entry.en
+    title: "Manhole entry with possibly bad atmosphere"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "We need to enter a manhole, possible gas, what's the procedure?"
+      - "Confined space entry, suspect bad air, two-person crew."
+    docs:
+      - doc_id: osha_confined_spaces_1910_146
+    expected_answer_shape: { type: checklist, max_steps: 7, citation_per_step: true }
+    critical_steps:
+      - { step_id: do_not_enter_yet, text_paraphrases: ["do not enter without testing", "stop"], weight: 0.20, gold_citation_anchor: osha_confined_spaces_1910_146#permit_required }
+      - { step_id: identify_permit_required, text_paraphrases: ["permit-required confined space", "PRCS"], weight: 0.15, gold_citation_anchor: osha_confined_spaces_1910_146#prcs_definition }
+      - { step_id: atmospheric_test_order, text_paraphrases: ["test atmosphere in order: oxygen, flammable, toxic", "O2 then LEL then toxic"], weight: 0.25, gold_citation_anchor: osha_confined_spaces_1910_146#atmospheric_testing }
+      - { step_id: continuous_monitoring, text_paraphrases: ["continuous atmospheric monitoring", "monitor while inside"], weight: 0.10, gold_citation_anchor: osha_confined_spaces_1910_146#continuous_monitoring }
+      - { step_id: ventilation, text_paraphrases: ["mechanical ventilation", "force fresh air"], weight: 0.10, gold_citation_anchor: osha_confined_spaces_1910_146#ventilation }
+      - { step_id: attendant_required, text_paraphrases: ["attendant outside", "standby person"], weight: 0.10, gold_citation_anchor: osha_confined_spaces_1910_146#attendant }
+      - { step_id: rescue_plan, text_paraphrases: ["rescue plan in place", "non-entry rescue if possible"], weight: 0.10, gold_citation_anchor: osha_confined_spaces_1910_146#rescue }
+    forbidden_claims:
+      - "open the lid and check by smelling"
+      - "go in for a quick look first"
+    notes_for_manual_review: |
+      Tests refusal of speculation. The right answer says STOP and TEST,
+      not "estimate from smell" or "trust the indicator on the gas-alarm
+      necklace alone". OSHA 1910.146 is explicit on the testing order.
+
+  - scenario_id: s04_loto_conveyor_jam.en
+    title: "Lockout/tagout sequence before clearing conveyor jam"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Conveyor jammed, need to clear it, what's the lockout sequence?"
+      - "Loaded conveyor stuck, going in to free product, walk me through LOTO."
+    docs:
+      - doc_id: osha_loto_29cfr1910_147
+    expected_answer_shape: { type: checklist, max_steps: 6, citation_per_step: true }
+    critical_steps:
+      - { step_id: prepare_for_shutdown, text_paraphrases: ["prepare for shutdown", "identify all energy sources"], weight: 0.10, gold_citation_anchor: osha_loto_29cfr1910_147#prepare_shutdown }
+      - { step_id: notify_affected, text_paraphrases: ["notify affected employees"], weight: 0.10, gold_citation_anchor: osha_loto_29cfr1910_147#notify }
+      - { step_id: shut_down, text_paraphrases: ["shut down the equipment", "use normal stopping procedure"], weight: 0.15, gold_citation_anchor: osha_loto_29cfr1910_147#shut_down }
+      - { step_id: isolate, text_paraphrases: ["disconnect the energy source", "open the disconnect"], weight: 0.20, gold_citation_anchor: osha_loto_29cfr1910_147#isolate }
+      - { step_id: apply_lockout, text_paraphrases: ["apply lockout device", "place tag", "each person their own lock"], weight: 0.20, gold_citation_anchor: osha_loto_29cfr1910_147#apply_lock }
+      - { step_id: dissipate_stored, text_paraphrases: ["release stored energy", "block, drain, bleed", "discharge capacitors"], weight: 0.15, gold_citation_anchor: osha_loto_29cfr1910_147#stored_energy }
+      - { step_id: verify_isolation, text_paraphrases: ["verify isolation", "try to start"], weight: 0.10, gold_citation_anchor: osha_loto_29cfr1910_147#verify }
+    forbidden_claims:
+      - "skip the verification step if you're sure"
+      - "one lock for the team is fine"
+
+  - scenario_id: s05_gasoline_tanker_fire.en
+    title: "UN1203 gasoline tanker fire — guide + evacuation distance"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Tanker fire, placard says 1203, what guide and evacuation distance?"
+      - "Gasoline tanker on fire, UN 1203, what's the ERG response?"
+    docs:
+      - doc_id: erg2024_guide_128
+    expected_answer_shape: { type: checklist, max_steps: 5, citation_per_step: true }
+    critical_steps:
+      - { step_id: identify_un_number, text_paraphrases: ["UN 1203", "identification number 1203"], weight: 0.10, gold_citation_anchor: erg2024_guide_128#un_lookup }
+      - { step_id: use_guide_128, text_paraphrases: ["Guide 128", "ERG Guide 128"], weight: 0.20, gold_citation_anchor: erg2024_guide_128#guide_header }
+      - { step_id: large_fire_evac_800m, text_paraphrases: ["800 meters", "1/2 mile", "isolate 800 m if tank/tanker involved"], weight: 0.30, gold_citation_anchor: erg2024_guide_128#evacuation_distance }
+      - { step_id: small_fire_extinguish, text_paraphrases: ["dry chemical", "CO2", "water spray", "regular foam"], weight: 0.20, gold_citation_anchor: erg2024_guide_128#extinguishing_agents }
+      - { step_id: cool_containers, text_paraphrases: ["cool containers with water", "withdraw if rising sound from venting"], weight: 0.20, gold_citation_anchor: erg2024_guide_128#protective_actions }
+    forbidden_claims:
+      - "use water to fight a fuel fire directly"     # ERG 128: use foam, water for cooling only
+      - "approach the burning tanker"
+    numeric_facts: { large_fire_isolation_m: 800, guide_number: 128, un_number: 1203 }
+
+  - scenario_id: s06_chlorine_railcar_leak.en
+    title: "UN1017 chlorine railcar leak — guide + table + isolation"
+    tier: core
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Railcar leaking chlorine, not on fire. What guide, what table, and what first isolation distance?"
+      - "Chlorine UN1017 leak from a stationary tank car, no flames. Tell me the guide and initial isolation."
+      - "There's a chlorine leak from a railcar. No fire involved. ERG guide and isolation?"
+    docs:
+      - doc_id: erg2024_guide_124
+      - doc_id: niosh_pocket_guide_chlorine
+    expected_answer_shape: { type: checklist, max_steps: 6, citation_per_step: true }
+    critical_steps:
+      - { step_id: identify_un_number, text_paraphrases: ["UN 1017", "identification number 1017"], weight: 0.10, gold_citation_anchor: erg2024_guide_124#un_lookup }
+      - { step_id: use_guide_124, text_paraphrases: ["Guide 124", "ERG Guide 124"], weight: 0.20, gold_citation_anchor: erg2024_guide_124#guide_header }
+      - { step_id: green_section_table_1, text_paraphrases: ["Table 1 of the green section", "consult Table 1"], weight: 0.20, gold_citation_anchor: erg2024_guide_124#table_1 }
+      - { step_id: initial_isolation_1000m, text_paraphrases: ["1,000 meters", "1000 m initial isolation", "isolate 1000 metres"], weight: 0.30, gold_citation_anchor: erg2024_guide_124#isolation_distance }
+      - { step_id: evacuate_downwind, text_paraphrases: ["evacuate downwind", "protect-in-place downwind population"], weight: 0.20, gold_citation_anchor: erg2024_guide_124#protective_actions }
+    forbidden_claims:
+      - "use water spray on the leak"          # ERG 124: fight fire only from protected location
+      - "approach the leak to plug it"
+    numeric_facts: { initial_isolation_m: 1000, guide_number: 124, un_number: 1017 }
+    notes_for_manual_review: |
+      Some retrieval pipelines may surface ERG Guide 125 (chlorine trifluoride);
+      that's incorrect for UN 1017 chlorine. Mark wrong_guide hallucinations.
+
+# ----------------------------------------------------------------------
+# STRETCH scenarios (3) — only if core suite is bulletproof
+# ----------------------------------------------------------------------
+
+  - scenario_id: s07_ammonia_nurse_tank_leak.en
+    title: "UN1005 ammonia nurse-tank leak — Orange vs Green section"
+    tier: stretch
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Ammonia nurse tank leaking, UN1005, what guide and isolation distance?"
+    docs:
+      - doc_id: erg2024_guide_125
+    expected_answer_shape: { type: checklist, max_steps: 5, citation_per_step: true }
+    critical_steps:
+      - { step_id: identify_un_number, text_paraphrases: ["UN 1005"], weight: 0.10, gold_citation_anchor: erg2024_guide_125#un_lookup }
+      - { step_id: use_guide_125, text_paraphrases: ["Guide 125"], weight: 0.20, gold_citation_anchor: erg2024_guide_125#guide_header }
+      - { step_id: water_curtain_caution, text_paraphrases: ["water curtain to absorb vapors", "do not direct water at leak"], weight: 0.30, gold_citation_anchor: erg2024_guide_125#water_curtain }
+      - { step_id: evacuate_downwind, text_paraphrases: ["evacuate downwind", "1/2 mile downwind"], weight: 0.20, gold_citation_anchor: erg2024_guide_125#evacuation }
+      - { step_id: protective_clothing, text_paraphrases: ["fully encapsulating chemical protective clothing", "SCBA"], weight: 0.20, gold_citation_anchor: erg2024_guide_125#ppe }
+
+  - scenario_id: s08_multilingual_triage_bleeding.es-en
+    title: "Spanish intake → English cited checklist (bleeding)"
+    tier: stretch
+    locale: es-en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Mi compañero se cortó el brazo con una lámina de metal, está sangrando mucho."
+      - "Trabajador con sangrado severo en el antebrazo, hay que actuar rápido."
+    docs:
+      - doc_id: redcross_first_aid_bleeding
+      - doc_id: emergency_multilingual_phrasebook_es
+    expected_answer_shape: { type: checklist, max_steps: 6, citation_per_step: true }
+    critical_steps:
+      - { step_id: call_911, text_paraphrases: ["call 911", "llame al 911"], weight: 0.20, gold_citation_anchor: redcross_first_aid_bleeding#call_emergency }
+      - { step_id: apply_pressure, text_paraphrases: ["apply firm pressure"], weight: 0.30, gold_citation_anchor: redcross_first_aid_bleeding#direct_pressure }
+
+  - scenario_id: s09_map_resource_lookup.en
+    title: "Nearest fire station / muster point (offline OSM)"
+    tier: stretch
+    locale: en
+    mode_defaults: { mode: voice_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Closest fire station to substation B?"
+      - "Where's the nearest muster point from this address?"
+    docs:
+      - doc_id: osm_lombardia_pbf
+    expected_answer_shape: { type: structured, fields: [name, address, distance_km, bearing_deg, citation] }
+    critical_steps:
+      - { step_id: returns_real_poi, text_paraphrases: ["fire station name + address"], weight: 0.50, gold_citation_anchor: osm_lombardia_pbf#fire_station_query }
+      - { step_id: distance_with_units, text_paraphrases: ["X km", "X metres"], weight: 0.30, gold_citation_anchor: osm_lombardia_pbf#distance_calc }
+      - { step_id: source_attribution, text_paraphrases: ["OpenStreetMap contributors", "ODbL"], weight: 0.20, gold_citation_anchor: osm_lombardia_pbf#attribution }

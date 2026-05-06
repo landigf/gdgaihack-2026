@@ -9,7 +9,7 @@
 - **M2, M3, M4** — teammate laptops. At minimum: a Node ≥ 20, Python ≥ 3.11, Git, and Ollama install. Run `./scripts/doctor.sh` (to be created) on each to confirm.
 
 ### Demo machines
-- **MSI Stealth 16 AI+** (sponsor-supplied, Copilot+ PC, Intel Core Ultra 9 386H w/ 50 TOPS NPU). Confirmed at kickoff.
+- **MSI / sponsor machine TBD at kickoff.** Current public prize page lists an MSI PRO Productivity Bundle for Cut the Cord, while MSI AI laptop specs remain useful as a possible sponsor-hardware reference only. Confirm exact CPU/GPU/NPU/RAM before doing NPU-specific work.
 - Fallback: M1 on stage.
 
 Rule: **both machines must run the demo end-to-end** by Sunday morning.

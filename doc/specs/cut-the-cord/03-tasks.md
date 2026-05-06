@@ -32,6 +32,10 @@
 ### Research / context
 - [ ] `todo` — AI agent — Run `pipelines/cut-the-cord/research-state-of-art.yaml` on each brainstormed direction (6 runs). Summarize into [TRACK_INTEL.md](TRACK_INTEL.md) references section.
 - [ ] `todo` — AI agent — Run `pipelines/cut-the-cord/competitive-scan.yaml` for the 3 most likely directions. Merge into [COMPETITIVE_SCAN.md](COMPETITIVE_SCAN.md).
+- [x] `done` — [codex] 2026-05-06 01:01 CEST — Prepared parallel ChatGPT Deep Research prompts + intake format for Cut the Cord research.
+  - Artifacts: [DEEP_RESEARCH_PROMPTS.md](DEEP_RESEARCH_PROMPTS.md), [RESEARCH_INTAKE.md](RESEARCH_INTAKE.md), [CODEX_VSCODE_PROMPT.md](CODEX_VSCODE_PROMPT.md), [research/](research/).
+- [x] `done` — [codex] 2026-05-06 01:34 CEST — Produced source-cited Codex scout report for offline incident copilot + wearable/embedded alternative.
+  - Artifact: [research/syntheses/codex-scout-2026-05-06.md](research/syntheses/codex-scout-2026-05-06.md).
 - [ ] `todo` — pitch-pair — Write three 60-second narratives (one per top-3 idea from brainstorm). Rehearse each out loud once.
 
 ### Pitch / demo prep

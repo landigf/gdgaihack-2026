@@ -14,9 +14,13 @@ models=(
   gemma3:4b
   gemma3n:e4b         # mobile-first 3GB, purpose-built for phones / laptops
   phi4-mini           # 3.8B, fastest token rate at small size
+  qwen3:4b            # Apache-2.0 reasoning brain (DR-06: best small-reasoner combo)
+  embeddinggemma      # on-device-RAG embeddings (DR-06: makes RAG actually possible)
+  nomic-embed-text    # backup embedder, Apache-2.0 (DR-05 LlamaIndex audit pattern)
   # Uncomment below if your machine has headroom:
   # qwen2.5-coder:14b
   # gemma3:12b
+  # qwen2.5vl:7b      # vision LLM — only if committing to safety-auditor stretch
 )
 
 # Idempotent: skip re-pull if already present

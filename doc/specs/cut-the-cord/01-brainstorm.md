@@ -90,3 +90,64 @@ Lean toward **Idea 1 (Airgap Incident Copilot)** or **Idea 4 (Edge Vision Safety
 - [ ] Benchmark harness skeleton (`benchmarks/`) runs end-to-end on a canned task by Day-0 evening.
 - [ ] Pitch-pair drafts three 60-second narratives (one per top-3 idea). Rehearse them out loud Day-0.
 - [ ] Kickoff pivot pipeline `pipelines/cut-the-cord/pivot-on-brief.yaml` tested on a mock brief.
+
+---
+
+## Research-surfaced amendments (2026-05-06)
+
+> Source: 11 ChatGPT Deep Research reports synthesized into [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses/claude-technical-stack-2026-05-06.md), [research/syntheses/claude-market-2026-05-06.md](research/syntheses/claude-market-2026-05-06.md), [research/syntheses/claude-pitch-strategy-2026-05-06.md](research/syntheses/claude-pitch-strategy-2026-05-06.md). See also Codex's prior scout: [research/syntheses/codex-scout-2026-05-06.md](research/syntheses/codex-scout-2026-05-06.md).
+
+### Sharpened framing for Idea 1 (Airgap Incident Copilot)
+
+The original wording ("dangerous, low-connectivity field work") is correct but generic. The DR-07 buyer analysis sharpens it: **lead the deck with hazmat / oil-&-gas (best 60-second demo + public-domain NIOSH corpus); lead the commercial slide with electric-utility storm response (best procurement velocity, DOE $2.5B grid resilience program, NERC 2026 cloud-risk roadmap, aging-workforce pull); use firefighters as the lighthouse photo.** Hazmat is the highest-drama demo; utilities is the strongest wedge buyer; firefighters is the emotional opener. Same product, three audience layers.
+
+### Differentiator one-liners (defend in Q&A)
+
+- vs **Hawkfield AI / VELP** (offline doc-Q&A): *"Hawkfield reads your manuals; we **act** on a spoken incident."*
+- vs **RealWear / Vuzix / Iristick** (industrial wearables): *"RealWear calls a remote expert; PoliSa shows the procedure offline."*
+- vs **Limitless / Humane / Plaud** (consumer wearables): *"Limitless says private but ships your audio to third parties; we don't ship anything. Humane went dark; we go dark on purpose."*
+- vs **Augmentir / Beekeeper / Sidekick** (cloud-first connected-worker): *"They are the digital work-instruction platform for the **normal day**; we are the **moment-of-risk** mode they don't have, and we ship without a cloud round-trip."*
+- vs **Apple Intelligence / Copilot Recall / Granola**: *"General-purpose consumer tools that route through cloud for anything non-trivial and have no domain RAG over NIOSH/OSHA/CJIS-bound corpora."*
+
+### Displacement scorecard — three new candidates surfaced from research
+
+Rescored on the same Why/Demo/Feasibility/Moat axes (0–3 each, 12 max):
+
+| Candidate | W | D | F | M | Total | Disposition |
+|---|---:|---:|---:|---:|---:|---|
+| **A — Lineworker Storm Copilot** (utility storm restoration; OSHA 1910.269 + NFPA 70E + customer switching procedures; tailboard mode) | 3 | 3 | 3 | 2 | **11/12** | **Sharpens Idea 1**; swap demo scenario from generic to utility-storm narrative. No idea slot freed. |
+| **B — Hazmat Voice First-Aid Assistant** (NIOSH Pocket Guide ground; chemical incident → cited first-aid + IDLH + escalation; FDA non-device CDS-compatible by construction) | 3 | 3 | 3 | 3 | **12/12** | **Recommended replacement for Idea 5 (Offline Voice Translator).** Idea 5 has TTS-quality risk + ElevenLabs-cloud disqualification trap. Hazmat reuses Idea 1's STT + retrieval + JSON skeleton with strictly safer claim surface and a public-domain corpus that ships clean. |
+| **C — Tailboard Genie** (pre-job briefing copilot; voice work-order intake → JSA + tailboard checklist + missing-info prompts) | 3 | 2 | 3 | 2 | **10/12** | **Day-2 pivot option** if kickoff brief points away from response-mode. Could displace Idea 6 (Personal Knowledge Time Machine) which has screen-capture privacy optics. Hold until brief lands. |
+
+### Buyer / user segment ranking (post-research)
+
+DR-07 explicitly ranks beachhead verticals; reproduced here so the kickoff pivot has a numeric anchor (0=no signal · 3=strongest):
+
+| Beachhead | ROI math | Regulatory pull | Willing buyer | Easy demo | Pitch drama | Total /15 | Rank |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Oil & gas / chemical / pharma hazmat (ATEX Zone 1) | 3 | 3 | 2 | 3 | 3 | **14** | **1** (best demo + balanced) |
+| Electric utility storm / substation crews | 3 | 3 | 3 | 2 | 2 | **13** | **2** (best wedge buyer) |
+| Underground mining maintenance / post-incident | 2 | 3 | 2 | 3 | 3 | **13** | **3** |
+| Firefighter interior ops (lighthouse pitch) | 2 | 3 | 1 | 3 | 3 | **12** | 4 |
+| Rural clinics & EMS protocol support | 2 | 1 | 2 | 3 | 3 | **11** | 5 (regulatory cost too high for first wedge) |
+
+### Headline metric change (technical)
+
+The benchmark headline shifts from "latency only" to **`cited_checklist_completeness`** — a composite metric `Σ wᵢ · present(stepᵢ ∧ citation_correctᵢ) / Σ wᵢ` that collapses "did it say the right things?" + "did it cite them?" into one judge-friendly number. Target: `0.60 → 0.72` on the 6-scenario core suite (≥20% relative lift). Fallback metric if quality plateaus: `p95_time_to_first_cited_step`. Pitch slide shows three numbers only — Cited Checklist Completeness, time to first cited step, zero-egress pass rate.
+
+See [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses/claude-technical-stack-2026-05-06.md) §"Benchmark plan" for the JSON schema and ablation ladder.
+
+### Mandatory model-stack additions (now in `scripts/download-models.sh`)
+
+- `qwen3:4b` — Apache-2.0; DR-06 ranks #1 small reasoner.
+- `embeddinggemma` — **without an embedder, RAG is impossible**; this was the keystone gap.
+- `nomic-embed-text` — backup embedder; A/B retrieval quality cheaply.
+
+### Anti-patterns to avoid in the pitch (research-confirmed)
+
+- Mid-demo narration filler — *the* most common on-device demo failure mode. Rehearse mute beats explicitly.
+- "Fully local" claim that collapses under one privacy-policy slide. Prove zero egress visibly via `scripts/netproof.sh`.
+- Hardware-first story when we don't ship hardware. Stick to "runs on a rugged phone or the customer's existing laptop".
+- Autonomous decision-maker in safety-critical work ("AI medic", "autonomous triage"). Wrong claim surface; collapses under FDA + EU AI Act framing.
+- "ChatGPT but offline" framing. Anchor to a *moment of risk* with a *cited corpus*.
+- Saying "we work for firefighters" while pitching to a buyer who isn't a firefighter. Firefighters are lighthouse; utilities/oil-&-gas are wedge buyers.

@@ -58,7 +58,66 @@
 
 Write 1–2 sentences per competitor *after* the idea is locked, answering "why would [user] pick us over them?". If the answer is weak, rework the idea.
 
-_(filled after kickoff)_
+## Dangerous-jobs vertical (added 2026-05-06 from research/syntheses/claude-market-2026-05-06.md)
+
+> The horizontal table above is the *consumer + general-purpose* on-device AI landscape (Apple, MS, Granola, LM Studio, etc.). This section is the *vertical* dangerous-jobs landscape that surfaces from DR-01/03/07. Every row sourced; `(weak — verify)` flags rows where DR couldn't pin down architecture.
+
+### Industrial wearables — what we differentiate against
+
+| Player | Form factor | Local / cloud | What they do well | Our one-line differentiator | Source |
+|---|---|---|---|---|---|
+| **RealWear Navigator Z1 / 520** | ATEX-certified head-mounted tablet, voice-first | Hybrid (local ASR + cloud remote-expert) | Loudest-environment-optimized voice; ATEX/MSHA-rated; multi-year deployments at Shell / Goodyear / Pfizer | "RealWear calls a remote expert; PoliSa shows the procedure offline." | https://www.realwear.com/devices/navigator-Z1 |
+| **Vuzix Shield / M400** | Rugged smart glasses | Hybrid (onboard ASR; translation needs internet) | Public co. (NASDAQ:VUZI), shipping; DoD pilots | "Vuzix is a screen on your face that calls home; we are the brain that doesn't." | https://www.vuzix.com/ |
+| **Iristick H1 / Z1** | Clip-on AR safety glasses | Hybrid (built around remote-expert calls) | Belgian; DHL / Total / BASF deployments; clips to existing safety glasses | "Iristick is a Zoom call to a remote expert; we are the expert in the headset." | https://www.iristick.com/ |
+| **Librestream Onsight Cube** | Rugged camera + comms | Cloud (Onsight platform) | ATEX-rated variants; ExxonMobil / Honeywell / GE / BP customer base | "Onsight ships pixels to a remote expert; we ship the answer to the worker." | https://librestream.com/ |
+| **Microsoft HoloLens 2 / Trimble XR10** | Mixed-reality headset / hardhat shell | Hybrid (Azure Mixed Reality + Trimble Connect) | US Army IVAS, Lockheed, Mortenson, Skanska | "HoloLens needs Azure; PoliSa needs nothing." | https://www.microsoft.com/en-us/hololens · https://www.trimble.com/en/products/hardware/xr10 *(weak — verify)* |
+| **Magic Leap 2** | Lightweight AR glasses | Hybrid (cloud-content delivery) | Healthcare AR (Heru, SentiAR), Saudi PIF backing | "Magic Leap is a render engine; we are an answer engine." | https://www.magicleap.com/ *(weak — verify)* |
+
+### Direct competitors (offline field-worker assistants) — what we beat on demo
+
+| Player | Form factor | Local / cloud | Public weakness | Our differentiator | Source |
+|---|---|---|---|---|---|
+| **Hawkfield AI** | Laptop / tablet | Local/offline | Generic doc Q&A; no voice intake; no incident log; no benchmark; no airplane-mode-on-stage proof | "Hawkfield reads your manuals; we **act** on a spoken incident." | https://www.hawkfieldai.com/ |
+| **VELP** | Mobile-first | Local/offline (claimed) | Org-knowledge wiki framing, not safety-critical workflow | "VELP is a mobile knowledge wiki; we are the moment-of-risk copilot." | https://www.velp.ai/ |
+| **Vivoka** | Embedded SDK | On-device claimed | SDK / dev-tooling, not packaged product; no safety corpus | "Vivoka is the voice runtime; we are the voice + cited safety workflow." | https://vivoka.com/ |
+| **Field1st** | Mobile app | Hybrid/cloud | Cloud-first; safety reporting *after* the fact, not real-time copiloting | "Field1st is a digital JSA pad; we are the JSA *coach* when the network is down." | https://www.field1st.com/ |
+| **Fulcrum** | Mobile app | Local maps + sync | Forms + inspections; AI-assist is workflow not safety | "Fulcrum captures the inspection form; we coach the inspector through the hazard." | https://www.fulcrumapp.com/ |
+| **Qwake C-THRU** | Helmet-mounted AR | Hybrid edge | Hardware-first; helmet ruggedization burden; no cited-procedure surface | "Qwake gives you thermal vision; PoliSa gives you the cited next step." | https://qwake.tech/ |
+
+### Cloud-first connected-worker platforms — moment-of-risk gap
+
+| Player | Form factor | Local / cloud | Public weakness | Our differentiator | Source |
+|---|---|---|---|---|---|
+| **Augmentir** | Mobile + tablet | Hybrid (cloud-centric AI) | Cloud-first; broad horizontal "connected worker" suite; no offline emergency mode | "Augmentir is the work-instruction platform for the **normal day**; we are the **moment-of-risk** mode it doesn't have, without a cloud round-trip." | https://www.augmentir.com/ |
+| **Beekeeper** | Mobile + web | Cloud-first | Generic frontline platform; not deterministic offline AI for hazardous environments | "Beekeeper is Slack for frontline; we are the safety brain when Slack is down." | https://www.beekeeper.io/ |
+| **Sidekick (YC)** | SMS / no-app | Cloud (SMS gateway + cloud LLM) | Requires SMS connectivity, which fails in the same disasters as data | "Sidekick texts answers when there's signal; we speak answers when there's none." | https://www.sidekick.com/ |
+| **Protex AI** | On-site edge box + cloud sync | Hybrid edge | CV-only (no voice; no procedure retrieval); fixed-camera, not worker-mobile; $36M Series B (2025) | "Protex watches the floor; we ride along with the worker." | https://www.protex.ai/ |
+
+### Consumer-wearable postmortems — failure modes we don't share
+
+| Player | What failed | Lesson | Source |
+|---|---|---|---|
+| **Humane AI Pin** (HP acquisition 2024) | Cloud servers shut off; device bricked overnight | Cloud-bound intelligence is service-fragile, and service fragility kills hardware. Our product is on-device by contract. | DR-03 |
+| **Rabbit R1** | Cloud-routed wrapper; "Large Action Model" claims unsubstantiated | Consumer-toy ROI loses to B2B ROI. Our buyer doesn't need entertainment, they need a quantifiable line item. | DR-03 (weak — verify) |
+| **Friend pendant** | Parasocial framing; ambient-capture creepy in social settings | Capture must be episodic, push-to-talk, visibly indicated, work-context only. | DR-03 |
+| **Limitless / Bee / Plaud** | "Private memory" branding contradicted by privacy policies (Limitless explicitly shares audio with third-party AI vendors) | Self-described privacy dies under one policy slide; contractually-mandated privacy (the customer's legal team writes the no-egress clause) does not. | DR-07 |
+| **Even Realities G2** | Support page admits all functions need internet | Industrial buyers will not accept that compromise; offline-by-reflex is the procurement gate. | DR-03 |
+
+### Three "white-space" cells with no incumbent
+
+1. **Electric utility storm-response & substation crews** — DOE $2.5B grid resilience, NERC 2026 cloud-risk roadmap, CISA OT zero-trust mandate, aging-workforce pull. RealWear has the hardware, Augmentir has the platform, ArcGIS has the map; nobody ships a software-only fully-offline cited-procedure voice copilot for the moment a tornado just ripped through substation B.
+2. **Hazmat / chemical-splash first-response in oil & gas, chemical plants, pharma (ATEX Zone 1)** — RealWear has the ATEX hardware but its AI features assume cloud; HPE/Elastic ship the air-gapped infra but not the worker app. NIOSH Pocket Guide is **public domain** (CDC/ATSDR notice) so the corpus ships clean. Highest-drama 60-second demo of any vertical.
+3. **Underground mining maintenance & post-incident response** — connectivity is structurally the worst of any vertical (NIOSH explicitly notes underground radio coverage is "difficult and time-consuming"); 30 CFR Part 75 + MINER Act emergency-comm regulations exist *because* underground comms fail. BLS 2024 fatal injury rate in mining = 13.8/100K vs ~3-4/100K manufacturing.
+
+### Anti-patterns judges will punish (DR-08 + DR-07)
+
+- "Fully local" claim that collapses under one privacy-policy slide. Prove zero egress *visibly* via `scripts/netproof.sh`.
+- Hardware-first story when we don't ship hardware. Stick to "runs on a rugged phone or the customer's existing laptop."
+- Autonomous decision-maker in safety-critical work ("AI medic", "autonomous triage"). Wrong claim surface; collapses under FDA + EU AI Act.
+- "Frontline AI for everyone." Pick one wedge, prove the loop, list adjacencies.
+- "ChatGPT but offline." Anchor to a *moment of risk* with a *cited corpus*.
+- Always-listening / surveillance vibe — push-to-talk + visible capture state + explicit retention policy or judges hear "Bee on a steel-toe boot."
+- Demoing with Wi-Fi on "because of the projector" — already in this doc; called out three more times in DR-01/03/07 as the table-stakes proof.
 
 ## Pipeline that refreshes this file
 
