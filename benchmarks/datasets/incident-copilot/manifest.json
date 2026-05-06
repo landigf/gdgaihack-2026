@@ -1,0 +1,128 @@
+{
+  "name": "incident-copilot",
+  "description": "Public-domain safety corpora for the Airgap Incident Copilot demo. Powers the 6 core scenarios in benchmarks/scenarios/incident-copilot.yaml.",
+  "schema_version": "1.0",
+  "fetched_at": null,
+  "fetcher": "scripts/download-datasets.sh",
+  "license_summary": "All sources are US/EU government public-domain works EXCEPT Red Cross step pages which are copyrighted; included under hackathon fair-use only and flagged for legal review for any productization.",
+  "sources": [
+    {
+      "doc_id": "niosh_pocket_guide",
+      "title": "NIOSH Pocket Guide to Chemical Hazards",
+      "publisher": "CDC / NIOSH",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.cdc.gov/niosh/npg/default.html",
+      "url_pdf": "https://www.cdc.gov/niosh/docs/2005-149/pdfs/2005-149.pdf",
+      "local_path": "sources/niosh_pocket_guide/",
+      "expected_size_mb": 30,
+      "powers_scenarios": ["s06_chlorine_railcar_leak", "s07_ammonia_nurse_tank_leak"],
+      "chunk_strategy": "one chunk per chemical entry; sub-anchors for Hazard ID, Symptoms, First Aid, Respirator"
+    },
+    {
+      "doc_id": "osha_loto_29cfr1910_147",
+      "title": "OSHA Lockout/Tagout 29 CFR 1910.147",
+      "publisher": "OSHA",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.147",
+      "url_pdf": null,
+      "local_path": "sources/osha_loto/",
+      "expected_size_mb": 1,
+      "powers_scenarios": ["s04_loto_conveyor_jam"],
+      "chunk_strategy": "one chunk per (c)(1)–(f) paragraph; preserve subsection anchor"
+    },
+    {
+      "doc_id": "osha_eap",
+      "title": "OSHA Emergency Action Plan eTool",
+      "publisher": "OSHA",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.osha.gov/etools/evacuation-plans-procedures/eap",
+      "url_pdf": null,
+      "local_path": "sources/osha_eap/",
+      "expected_size_mb": 5,
+      "powers_scenarios": ["fire_evacuation_decision_codex_legacy"],
+      "chunk_strategy": "one chunk per topic page; preserve heading hierarchy"
+    },
+    {
+      "doc_id": "osha_confined_spaces_1910_146",
+      "title": "OSHA Confined Spaces 29 CFR 1910.146",
+      "publisher": "OSHA",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.146",
+      "url_pdf": null,
+      "local_path": "sources/osha_confined_spaces/",
+      "expected_size_mb": 1,
+      "powers_scenarios": ["s03_confined_space_entry"],
+      "chunk_strategy": "one chunk per subsection"
+    },
+    {
+      "doc_id": "phmsa_erg_2024",
+      "title": "PHMSA Emergency Response Guidebook 2024",
+      "publisher": "PHMSA / DOT (US) and Transport Canada",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.phmsa.dot.gov/hazmat/erg/emergency-response-guidebook-erg",
+      "url_pdf": "https://www.phmsa.dot.gov/sites/phmsa.dot.gov/files/2024-04/ERG2024-Eng-Web-a.pdf",
+      "url_pdf_alt": "https://tc.canada.ca/en/dangerous-goods/canutec/emergency-response-guidebook-erg-2024",
+      "local_path": "sources/erg2024/",
+      "expected_size_mb": 8,
+      "powers_scenarios": ["s05_gasoline_tanker_fire", "s06_chlorine_railcar_leak", "s07_ammonia_nurse_tank_leak"],
+      "chunk_strategy": "one chunk per Guide page (numbered 111-172); Tables 1, 2, 3 as separate chunks"
+    },
+    {
+      "doc_id": "redcross_first_aid_steps",
+      "title": "American Red Cross First Aid step pages",
+      "publisher": "American National Red Cross",
+      "license": "copyrighted_fair_use_only",
+      "license_note": "Copyrighted material. Hackathon fair-use only. FLAG FOR LEGAL REVIEW for any productization. Do not redistribute fetched bytes.",
+      "url_html": "https://www.redcross.org/take-a-class/first-aid/performing-first-aid",
+      "url_pdf": null,
+      "local_path": "sources/redcross_first_aid/",
+      "expected_size_mb": 1,
+      "powers_scenarios": ["s01_bleeding_extremity", "s02_heat_stroke_worker"],
+      "chunk_strategy": "one chunk per condition (Bleeding, Heat Stroke, Heat Exhaustion, Severe Burn)"
+    },
+    {
+      "doc_id": "cdc_heat_stress",
+      "title": "CDC Heat Stress / Heat-Related Illness pages",
+      "publisher": "CDC / NIOSH",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.cdc.gov/niosh/topics/heatstress/",
+      "url_html_alt": "https://www.cdc.gov/disasters/extremeheat/",
+      "url_pdf": null,
+      "local_path": "sources/cdc_heat/",
+      "expected_size_mb": 2,
+      "powers_scenarios": ["s02_heat_stroke_worker"],
+      "chunk_strategy": "one chunk per FAQ / recommendation"
+    },
+    {
+      "doc_id": "cdc_stop_the_bleed",
+      "title": "CDC / DHS Stop the Bleed reference",
+      "publisher": "CDC / DHS",
+      "license": "public_domain_us_govt",
+      "url_html": "https://www.cdc.gov/niosh/topics/firstaid/stop-the-bleed.html",
+      "url_html_alt": "https://www.dhs.gov/stopthebleed",
+      "url_pdf": null,
+      "local_path": "sources/cdc_stop_the_bleed/",
+      "expected_size_mb": 1,
+      "powers_scenarios": ["s01_bleeding_extremity"],
+      "chunk_strategy": "one chunk per technique (direct pressure, tourniquet, packing)"
+    }
+  ],
+  "synthetic_sops": [
+    {
+      "doc_id": "synthetic_substation_b_sop",
+      "title": "Synthetic Substation B Switching SOP (PoliSa-authored)",
+      "publisher": "team-internal",
+      "license": "project_internal",
+      "local_path": "synthetic_sops/substation_b_sop.md",
+      "powers_scenarios": ["s03_confined_space_entry", "s04_loto_conveyor_jam"]
+    },
+    {
+      "doc_id": "synthetic_pump_room_b_sop",
+      "title": "Synthetic Pump Room B Chemical Response SOP (PoliSa-authored)",
+      "publisher": "team-internal",
+      "license": "project_internal",
+      "local_path": "synthetic_sops/pump_room_b_sop.md",
+      "powers_scenarios": ["s06_chlorine_railcar_leak", "hazmat_metadata_filter_test"]
+    }
+  ]
+}

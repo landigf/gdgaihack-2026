@@ -17,7 +17,14 @@ npm-debug.log*
 # Benchmarks
 benchmarks/results/*.json
 benchmarks/results/*.png
-benchmarks/datasets/
+# Heavy / fetched / generated dataset bytes are ignored; manifests + synthetic SOPs commit.
+benchmarks/datasets/*/sources/
+benchmarks/datasets/*/app.db
+benchmarks/datasets/*/app.db-*
+benchmarks/datasets/*/cache/
+benchmarks/datasets/*/.lock
+# Default-ignore any new top-level dataset dir without manifest scaffolding by adding
+# entries here; per-dataset manifests + READMEs + synthetic SOPs are tracked by default.
 
 # Evidence artifacts (can be large / sensitive)
 doc/specs/cut-the-cord/evidence/*.pcap
@@ -26,3 +33,12 @@ doc/specs/cut-the-cord/evidence/*.mov
 
 # Per-developer Claude Code overrides (committed settings.json is the team default)
 .claude/settings.local.json
+
+# Python venv + cache
+.venv/
+__pycache__/
+*.pyc
+
+# Benchmark run artifacts (results/ summary kept; raw traces ignored)
+benchmarks/results/raw/
+benchmarks/results/*.jsonl.tmp

@@ -100,4 +100,30 @@ Totals today: **$0.04 real money** (Anthropic API) + **~$1.30 notional Max burn*
 - [ ] H1 — decide if we invest ~2h upstream on `claudeflow` to add the CLI runtime flag, or live with the wrapper for the weekend.
 - [x] H1 — 2026-04-23 19:40 · `gemma3n:e4b` + `phi4-mini` pulls both completed; `./scripts/doctor.sh` all green.
 - [x] H1 — 2026-04-23 20:15 · Three pipelines dry-run end-to-end (2 via API, 1 via Max). Traces in [evidence/dry-runs/](evidence/dry-runs/). Schema-string-forces-JSON bug discovered and fixed.
-- [ ] H2/H3/H4 once assigned — each run `./scripts/doctor.sh` + `./scripts/download-models.sh` + repeat the npm/claudeflow build steps above.
+- [x] H1 — 2026-05-06 08:55 · Smoke-test `pitch-rehearsal.yaml` against Seed A via `cflow.mjs --runtime anthropic` (Sonnet-4-20250514) — 31.5s, $0.0226. Three judges raked Seed A; rewrite over-fabricated timing breakdown so the seed stays honest. Trace at [pipelines/traces/cut-the-cord-pitch-rehearsal-2026-05-06T08-55-05.json](../../../pipelines/traces/cut-the-cord-pitch-rehearsal-2026-05-06T08-55-05.json).
+- [x] H1 — 2026-05-06 10:30 · Pulled the 3 missing models (`qwen3:4b`, `embeddinggemma`, `nomic-embed-text`). Embedder was the keystone — RAG was impossible without it.
+- [x] H1 — 2026-05-06 11:15 · Fetched 10 public-domain corpus files (~1.6 MB): NIOSH chlorine + ammonia + index, OSHA LOTO + EAP (3 pages) + Confined Spaces, CDC heat topic, DHS Stop the Bleed. Red Cross + ERG 2024 PDF blocked by anti-bot; covered by 2 synthetic SOPs (substation B + pump room B).
+- [x] H1 — 2026-05-06 11:25 · Indexed corpus to `benchmarks/datasets/incident-copilot/app.db` — **98 chunks across 7 docs, all embedded with EmbeddingGemma**. Schema = `docs` + `chunks` + `chunks_fts` (FTS5) + `chunks_vec` (sqlite-vec, 768-dim).
+- [x] H1 — 2026-05-06 11:35 · First harness run end-to-end on 6 core scenarios × 2 systems × 1 run = 12 LLM calls. Real numbers in [benchmarks/results/latest.md](../../../benchmarks/results/latest.md): `ours_v4` mean Cited Checklist Completeness = 0.117, p50 e2e = 13.5s, halluc = 0.000, citations 100% valid. Chlorine scenario shows 2× lift (baseline 0.20 → ours 0.40). FTS5 query patched to handle conversational utterances.
+- [ ] H2/H3/H4 once assigned — each run `./scripts/doctor.sh` + `./scripts/download-models.sh` + `bash scripts/download-datasets.sh` + `/opt/homebrew/bin/python3.12 -m src.airgap.index`. Then run the harness via `/opt/homebrew/bin/python3.12 -m benchmarks.harness.run --scenario benchmarks/scenarios/incident-copilot.yaml --systems baseline_v0,ours_v4 --runs 3 --llm-model gemma3:4b`.
+
+## ⚠️ macOS-Python gotcha (added 2026-05-06)
+
+**Stdlib `python3` from python.org does NOT support `enable_load_extension`** which `sqlite-vec` needs to install its `vec0` virtual table. Symptom: `AttributeError: 'sqlite3.Connection' object has no attribute 'enable_load_extension'`.
+
+**Fix:** use Homebrew Python which has it enabled:
+
+```bash
+# install brew Python if missing
+brew install python@3.12
+
+# install deps on the brew Python (PEP 668 needs --break-system-packages)
+/opt/homebrew/bin/python3.12 -m pip install --user --break-system-packages \
+    pyyaml sqlite-vec PyMuPDF beautifulsoup4
+
+# everywhere we use Python in this repo, prefer brew Python
+/opt/homebrew/bin/python3.12 -m src.airgap.index ...
+/opt/homebrew/bin/python3.12 -m benchmarks.harness.run ...
+```
+
+Linux teammates and Windows-WSL teammates: stdlib Python typically supports extension loading; `python3` should just work.

@@ -123,28 +123,49 @@ node scripts/cflow.mjs run pipelines/cut-the-cord/crew-review-tech.yaml \
 ClaudeFlow v0.1.0 doesn't have an `OllamaRuntime`. For bulk Ollama work, call `ollama` directly from shell / Node.
 
 
-## Benchmark runbook
+## Benchmark runbook (production-ready as of 2026-05-06)
 
 ```bash
-# First-time setup (Friday evening)
-./scripts/download-models.sh
-./scripts/download-datasets.sh
+# 0. one-time: install brew Python deps if not present.
+#    macOS python.org python3 lacks enable_load_extension; use brew Python.
+/opt/homebrew/bin/python3.12 -m pip install --user --break-system-packages \
+    pyyaml sqlite-vec PyMuPDF beautifulsoup4
 
-# Run a scenario
-python -m benchmarks.harness.run \
-  --scenario benchmarks/scenarios/<scenario>.yaml \
-  --systems baseline-cloud,baseline-naive-local,ours \
-  --runs 3 \
-  --output benchmarks/results/$(date +%Y%m%d-%H%M)-<scenario>.json
+# 1. ensure ollama is running and models are pulled
+ollama serve &                               # if not running
+bash scripts/download-models.sh              # idempotent — pulls only what's missing
 
-# Render markdown report
-python -m benchmarks.harness.report benchmarks/results/latest.json > benchmarks/results/latest.md
+# 2. fetch the public-domain corpus (~50 MB across NIOSH, OSHA, CDC, DHS)
+bash scripts/download-datasets.sh
 
-# Append to history + regenerate plot
-python -m benchmarks.harness.track
+# 3. index the corpus into SQLite + FTS5 + sqlite-vec (98 chunks at last run)
+/opt/homebrew/bin/python3.12 -m src.airgap.index \
+    --db benchmarks/datasets/incident-copilot/app.db
+
+# 4. run the harness (real LLM mode)
+/opt/homebrew/bin/python3.12 -m benchmarks.harness.run \
+    --scenario benchmarks/scenarios/incident-copilot.yaml \
+    --systems baseline_v0,ours_v4 \
+    --runs 3 \
+    --llm-model gemma3:4b \
+    --embed-model embeddinggemma
+
+# 5. read the report
+cat benchmarks/results/latest.md
 ```
 
-See [BENCHMARKS.md](BENCHMARKS.md) for the harness design. Scripts TBD during tech spike.
+What the harness does:
+- 6 core scenarios × N systems × M runs from `benchmarks/scenarios/incident-copilot.yaml`
+- For each: hybrid retrieval (FTS5 + sqlite-vec → RRF fusion) → citation-bound prompt → Ollama chat → strict-JSON output → score against weighted critical_steps + forbidden_claims
+- Writes per-run JSON to `benchmarks/results/raw/<date>/` + aggregated `benchmarks/results/latest.md` + appends to `benchmarks/results/history.jsonl`
+- Falls back to mock LLM mode automatically if Ollama isn't reachable
+
+Tuning checklist (see [POST_BRIEF_PLAYBOOK.md](POST_BRIEF_PLAYBOOK.md) §"Tuning ladder"):
+1. Inspect per-step breakdown in `benchmarks/results/raw/<date>/*.json` → which `critical_steps` are missing? Add paraphrases.
+2. Try `--llm-model qwen3:4b` (Apache-2.0, ranked #1 small reasoner per DR-06) or `gemma3n:e4b`.
+3. Add hazard tags in `src/airgap/index.py` for new vertical and re-index.
+
+See [BENCHMARKS.md](BENCHMARKS.md) for the harness design philosophy. Production code in `src/airgap/` and `benchmarks/harness/`.
 
 ## Demo dry-run protocol
 

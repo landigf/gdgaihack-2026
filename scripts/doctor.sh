@@ -47,11 +47,10 @@ if [[ -f .env.local ]]; then
     || warn ".env.local has no API key set"
 else warn ".env.local missing (cp .env.example .env.local)"; fi
 
-# Models we care about
+# Models we care about (mandatory: chat models + at least one embedder)
 if command -v ollama >/dev/null 2>&1; then
-  want=(qwen2.5-coder:3b qwen2.5-coder:7b gemma3:4b gemma3n:e4b phi4-mini)
+  want=(qwen2.5-coder:3b qwen2.5-coder:7b gemma3:4b gemma3n:e4b phi4-mini qwen3:4b embeddinggemma nomic-embed-text)
   have=$(ollama list 2>/dev/null | awk 'NR>1 {print $1}')
-  # Model names in `ollama list` may be suffixed with ":latest" when no tag was given.
   match() {
     local m="$1"
     echo "$have" | grep -Eq "^(${m}|${m}:latest)$"
@@ -60,6 +59,43 @@ if command -v ollama >/dev/null 2>&1; then
     if match "$m"; then ok "model $m pulled";
     else warn "model $m NOT pulled (./scripts/download-models.sh)"; fi
   done
+fi
+
+# Brew Python with sqlite extension loading (macOS only — needed for sqlite-vec)
+if [[ "$(uname)" == "Darwin" ]]; then
+  BREW_PY=/opt/homebrew/bin/python3.12
+  if [[ -x "$BREW_PY" ]]; then
+    has_ext=$("$BREW_PY" -c "import sqlite3; conn=sqlite3.connect(':memory:'); print(hasattr(conn,'enable_load_extension'))" 2>/dev/null)
+    if [[ "$has_ext" == "True" ]]; then
+      ok "brew python3.12 supports sqlite extension loading"
+      missing=$("$BREW_PY" -c "import importlib; missing=[m for m in ('yaml','sqlite_vec','fitz','bs4') if importlib.util.find_spec(m) is None]; print(','.join(missing))" 2>/dev/null)
+      if [[ -z "$missing" ]]; then
+        ok "brew python3.12 has yaml + sqlite_vec + fitz + bs4"
+      else
+        warn "brew python3.12 missing: $missing — run: $BREW_PY -m pip install --user --break-system-packages pyyaml sqlite-vec PyMuPDF beautifulsoup4"
+      fi
+    else
+      warn "brew python3.12 found but lacks sqlite extension loading"
+    fi
+  else
+    warn "brew python3.12 missing (brew install python@3.12) — sqlite-vec needs it on macOS"
+  fi
+fi
+
+# Corpus + indexed DB
+CORPUS_DIR="benchmarks/datasets/incident-copilot/sources"
+DB_PATH="benchmarks/datasets/incident-copilot/app.db"
+if [[ -d "$CORPUS_DIR" ]] && [[ -n "$(find "$CORPUS_DIR" -type f 2>/dev/null | head -1)" ]]; then
+  count=$(find "$CORPUS_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
+  ok "corpus fetched ($count files)"
+else
+  warn "corpus not fetched — run: bash scripts/download-datasets.sh"
+fi
+if [[ -s "$DB_PATH" ]]; then
+  size=$(du -h "$DB_PATH" | cut -f1)
+  ok "app.db exists ($size)"
+else
+  warn "app.db missing — run: /opt/homebrew/bin/python3.12 -m src.airgap.index"
 fi
 
 echo "==================="

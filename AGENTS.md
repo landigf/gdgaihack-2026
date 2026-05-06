@@ -2,10 +2,21 @@
 
 ## ⚡ First thing every agent reads
 
-Team PoliSa is running track **"Cut the Cord"** (on-device AI, MSI).
-→ **[doc/specs/cut-the-cord/00-TEAM_PLAYBOOK.md](doc/specs/cut-the-cord/00-TEAM_PLAYBOOK.md)** is the entry point for ALL agents (Claude, Codex, Copilot, ChatGPT, Cursor).
-→ **[doc/specs/cut-the-cord/03-tasks.md](doc/specs/cut-the-cord/03-tasks.md)** is the task source of truth.
-→ **[doc/specs/cut-the-cord/AGENTS_ROLES.md](doc/specs/cut-the-cord/AGENTS_ROLES.md)** tells you which tool to use for which job.
+Team PoliSa is running track **"Cut the Cord"** (on-device AI, MSI). Brief reveal: **2026-05-09 11:00**.
+
+→ **[doc/specs/cut-the-cord/00-TEAM_PLAYBOOK.md](doc/specs/cut-the-cord/00-TEAM_PLAYBOOK.md)** — entry point for ALL agents.
+→ **[doc/specs/cut-the-cord/POST_BRIEF_PLAYBOOK.md](doc/specs/cut-the-cord/POST_BRIEF_PLAYBOOK.md)** — minute-by-minute 24h plan after kickoff brief reveals.
+→ **[doc/specs/cut-the-cord/03-tasks.md](doc/specs/cut-the-cord/03-tasks.md)** — task source of truth.
+→ **[doc/specs/cut-the-cord/AGENTS_ROLES.md](doc/specs/cut-the-cord/AGENTS_ROLES.md)** — which tool for which job.
+→ **[doc/specs/cut-the-cord/PITCH_REHEARSAL_CARD.md](doc/specs/cut-the-cord/PITCH_REHEARSAL_CARD.md)** — Seed A timing card.
+
+## State of the repo (2026-05-06 pre-kickoff)
+
+Pre-kickoff prep is **done**: 11 ChatGPT Deep Research streams synthesized into 4 briefs in [doc/specs/cut-the-cord/research/](doc/specs/cut-the-cord/research/); 8 Ollama models pulled (incl. embeddinggemma — RAG was impossible without it); public-domain corpus (NIOSH + OSHA + CDC + 2 synthetic SOPs) indexed into 98 chunks at `benchmarks/datasets/incident-copilot/app.db`; working harness in `benchmarks/harness/run.py` produces real numbers in `benchmarks/results/latest.md`; three pitch seeds drafted (EMS / Wildland-SAR / Mining-O&G).
+
+**macOS-Python gotcha:** stdlib `python3` (python.org build) lacks `enable_load_extension`. Use **`/opt/homebrew/bin/python3.12`** for the indexer + harness. Codex/Cursor sessions: prefer brew Python.
+
+What's still open: idea-lock decision (Saturday brief reveal); MSI demo hardware specifics. Don't write NPU-specific code until kickoff confirms hardware.
 
 ## How to use ClaudeFlow here (read this first)
 
