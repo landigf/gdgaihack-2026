@@ -36,7 +36,7 @@ T+1:00 ────────────── DEMO (60s) — switch to lapto
         *** Silence reads as confidence. Filler reads as nervousness. ***
 
 T+2:00 ──────────────────────────────────────────────────── BENCHMARK (40s — re-weighted post-brief)
-        Real numbers from our M3 Pro 36GB demo machine
+        Real numbers from our M3 Pro 18 GB demo machine
         (gemma3:4b · Q4_K_M · Ollama 0.21 · 2026-05-09):
 
         gemma3:4b chlorine scenario:
@@ -52,9 +52,11 @@ T+2:00 ────────────────────────�
 
 T+2:40 ──────────────────────────────────────────────────── WHY POLISA (15s)
         We didn't pick a model and check if it fits.
-        We started from the hardware budget — 36 GB unified —
+        We started from the hardware budget — 18 GB unified, Min tier —
         and derived the model + quantization + context window from it.
-        Measured harness; regulated-data-aware by construction.
+        The brief literally describes our team:
+        "A 7B model running beautifully on a 16 GB laptop
+         can outscore a team barely running a 70B with a broken interface."
 
 T+2:55 ──────────────────────────────────────────────────── CLOSE (15s)
         Runs on this M3 Pro.

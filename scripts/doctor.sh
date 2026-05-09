@@ -60,9 +60,11 @@ if command -v ollama >/dev/null 2>&1; then
     phi4-mini
     qwen3:4b
     embeddinggemma nomic-embed-text
-    # brief-named specialized models — warn-only; missing one is OK before T+90 lock
-    # tags VERIFIED on ollama.com/library 2026-05-09
-    gpt-oss:20b medgemma:27b devstral:24b mistral-small:22b
+    # brief-named specialized models — OUT-OF-BUDGET on M3 Pro 18 GB.
+    # Removed from doctor checks 2026-05-09 (RAM verification). Pull only if
+    # your demo machine has ≥32 GB. They were never required; the brief calls
+    # them "examples" not requirements.
+    # gpt-oss:20b medgemma:27b devstral:24b mistral-small:22b
   )
   have=$(ollama list 2>/dev/null | awk 'NR>1 {print $1}')
   match() {

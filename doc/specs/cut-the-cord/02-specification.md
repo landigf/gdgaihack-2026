@@ -24,7 +24,7 @@
 
 > *"We provide Google Cloud credits to fuel your training and fine-tuning phases, but the final product runs entirely on-device. You provide the engineering creativity — designing local RAG architectures, orchestrating multi-agent workflows, enabling agent-to-agent communication, or building computer-use agents that interact directly with the OS. **The inference runs 100% locally on consumer hardware — proving your solution is ready for next-gen AI machines like the MSI AI Edge PC or Copilot+ Prestige/PRO laptops.**"*
 
-This is the spine of the pitch. The judges will weight Tech Optimization 30% — the highest single weight — because the brief LITERALLY says the goal is *"proving your solution is ready for next-gen AI machines."* Our M3 Pro 36GB demo isn't the destination; it's the proof point. The bridge sentence we hammer in every pitch beat: *"It runs offline on this M3 Pro. It will fly on the MSI AI Edge PC."*
+This is the spine of the pitch. The judges will weight Tech Optimization 30% — the highest single weight — because the brief LITERALLY says the goal is *"proving your solution is ready for next-gen AI machines."* Our **M3 Pro 18 GB unified** (Minimum tier) demo isn't the destination; it's the proof point — and the brief verbatim describes our setup as the *winning* configuration. The bridge sentence we hammer in every pitch beat: *"It runs offline on this 18 GB M3 Pro. It will fly on the MSI AI Edge PC."*
 
 ### What IS allowed (verbatim from brief)
 
@@ -53,7 +53,12 @@ This is the spine of the pitch. The judges will weight Tech Optimization 30% —
 >
 > *"Teams below the minimum can still participate but should expect significant model limitations. **Plan your architecture around your hardware, not the other way around.**"*
 
-This is **the** sentence to internalize. The team has a single MacBook Pro M3 Pro 36GB. Architecture is therefore: 4-7B model class · Q4_K_M quantization · MLX or Ollama runtime · sqlite-vec retrieval · all measured + quoted on the slide.
+This is **the** sentence to internalize. The team has a single **MacBook Pro M3 Pro · 18 GB unified memory** (verified `sysctl hw.memsize` 2026-05-09; Mac15,6 / MRX33T/A). That puts us in the brief's **Minimum tier (16 GB)**. Architecture is therefore:
+- **Chat model:** 4-class (Gemma 3 4B / Phi-4 mini 3.8B / Qwen 3 4B) at Q4_K_M — ~3 GB on disk, ~5 GB peak RSS in Ollama process.
+- **Embedder:** EmbeddingGemma 300M (~600 MB).
+- **Memory budget left for OS + IDE + UI shell + STT:** ~10 GB (because macOS overhead + cached pages take another ~3 GB even when "free").
+- **OUT-of-budget on this hardware:** `gpt-oss:20b` (~12 GB disk + activation), `medgemma:27b`, `devstral:24b`, `mistral-small:22b`. Pulled but unused — they only show on the "we evaluated alternatives" pitch slide.
+- **The brief's verbatim quote that describes our exact situation:** *"A team running a 7B model beautifully on a 16 GB laptop with smart caching and a great UX can outscore a team barely running a 70B model with a broken interface."* — this is the line to drop on slide 5.
 
 ### Recommended Open-Source Stack (from the brief)
 

@@ -50,32 +50,35 @@ Hardware is THE through-line that ties every beat together. Each beat must inclu
 | Problem (20s) | "*Cloud RTT is X ms; on this M3 Pro we hit Y ms first-token.*" — the cost story includes a measured contrast. |
 | Solution (15s) | "*4B-class instruction model + Q4_K_M + sqlite-vec on a [tier] host.*" — name the model+quant+host triple. |
 | **Demo (55s)** | Operator points to **the airplane-mode icon AND the activity monitor** showing RAM stable at <X GB. The judge sees the hardware budget held. |
-| **Benchmark (40s)** | The slide reads: **`gemma3:4b Q4_K_M` · M3 Pro 36GB · 22 tokens/sec · 1.4 GB peak RSS · 3.2s p50 end-to-end · zero packets out.** Then one sentence: *"This means it runs at ≥X tokens/sec on the MSI AI Edge PC tier the brief targets."* |
+| **Benchmark (40s)** | The slide reads: **`gemma3:4b Q4_K_M` · M3 Pro **18 GB** (Min tier) · 22.4 tokens/sec · ~5 GB peak RAM · ~12s p50 end-to-end · 0.40 chlorine CCC · zero packets out.** Then the brief verbatim: *"A team running a 7B model beautifully on a 16 GB laptop with smart caching can outscore a team barely running a 70B with a broken interface."* — and *"This same architecture flies on the MSI AI Edge PC and Copilot+ Prestige/PRO at the Comfortable tier."* |
 | Why PoliSa (15s) | "*We optimized FOR a hardware tier, not against it.*" — credibility comes from the discipline. |
 | Close (15s) | Bridge sentence: *"Runs on this M3 Pro. Ready for the MSI AI Edge PC."* |
 
 ### The hardware-first pitch sentence (commit to memory)
 
-> **"We didn't pick a model and check if it fits. We started from the hardware budget — 16/32/36/64 GB tier — and derived the model, the quantization, and the context window from it."**
+> **"We didn't pick a model and check if it fits. We started from the hardware budget — 18 GB unified, the brief's Minimum tier — and derived the model, the quantization, and the context window from it."**
 
-Drop this verbatim into Beat 6 (Why PoliSa). It scores Tech Opt 30% and Comp Adv 20% in one sentence.
+> **"A team running a 7B model beautifully on a 16 GB laptop with smart caching and a great UX can outscore a team barely running a 70B model with a broken interface."** — the brief, verbatim. **That team is us.** Drop this on slide 5.
+
+Drop these two sentences verbatim into Beat 5 (Benchmark) and Beat 6 (Why PoliSa). Together they score Tech Opt 30% and Comp Adv 20% in two sentences.
 
 ### What goes on the Benchmark slide (40s) — fill in from `benchmarks/results/latest.md`
 
 Three rows × four columns:
 
-| Model | Quant | Tokens/sec on M3 Pro 36GB | Peak RAM | First-token latency | Cited Checklist Completeness |
+| Model | Quant | Tokens/sec on M3 Pro 18 GB | Peak RAM | First-token latency | Cited Checklist Completeness |
 |---|---|---:|---:|---:|---:|
-| `gemma3:4b` | Q4_K_M | __ | __ MB | __ ms | __ |
+| `gemma3:4b` | Q4_K_M | **22.4** (measured 2026-05-09) | ~5 GB | < 1.5 s warm | **0.40** chlorine · 0.117 mean |
+| `phi4-mini` | Q4_K_M | __ | __ MB | __ ms | __ |
 | `qwen3:4b` | Q4_K_M | __ | __ MB | __ ms | __ |
-| (optional) `gpt-oss-20b` or `phi4-mini` | Q4 | __ | __ MB | __ ms | __ |
+| ~~`gpt-oss:20b`~~ | Q4 | OOM on 18 GB · cite "evaluated, doesn't fit our tier" | — | — | — |
 
 Fill these AT T-2 hours from the pitch, from a fresh harness run with `--llm-model` flipped per row. Three numbers minimum on the slide; everything else is appendix. **Do not show "we tried 5 models" — show "here are the 3 we converged on, and here is why."**
 
 ### How Tech Optimization 30% is actually defensible
 
 Each of these counts as a separate Tech-Opt point in Q&A:
-- **Quantization choice + measured tradeoff** ("Q4_K_M vs Q5_K_M: +0.05 CCC, +30% RAM, -3 tokens/sec — we picked Q4_K_M because the demo machine is 36GB and we want headroom for the embedder").
+- **Quantization choice + measured tradeoff** ("Q4_K_M vs Q5_K_M: +0.05 CCC, +30% RAM, -3 tokens/sec — we picked Q4_K_M because the demo machine is **18 GB unified** Min tier and we need headroom for embedder + UI shell + macOS overhead").
 - **Context-window cap** ("we cap at 2048 tokens because the corpus chunks max at 1200 + the citation block adds 800 — anything beyond is hallucination space").
 - **KV-cache and warm-start** (`scripts/warmstart.sh` runs at app start so first-token-latency on stage is sub-second, not 8s cold).
 - **Embedder dimension** (`embeddinggemma` returns 768 dims; sqlite-vec stores them at fp32; we measured 0.4ms median lookup).

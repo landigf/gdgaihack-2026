@@ -51,6 +51,8 @@ Locked at T+90min team huddle. Four candidates re-scored on actual weights in [0
 
 **Important macOS-Python gotcha (still in effect):** stdlib `python3` (python.org build) does NOT support `enable_load_extension`, which sqlite-vec needs. Use `/opt/homebrew/bin/python3.12` (or any brew Python) for the indexer + harness.
 
+**Hardware reality (verified 2026-05-09):** demo machine = **MacBook Pro M3 Pro · 18 GB unified memory** (Mac15,6). That's the brief's **Minimum tier (16 GB)**. Architecture: Gemma 3 4B / Phi-4 mini / Qwen 3 4B at Q4_K_M only. **gpt-oss:20b, medgemma:27b, devstral:24b, mistral-small:22b are OUT-of-budget — OOM on 18 GB unified.** The pitch's Tech Optimization 30% beat is *strengthened* not weakened by this — the brief literally says *"a 7B model running beautifully on a 16 GB laptop can outscore a team barely running a 70B with a broken interface."* That's our team verbatim.
+
 **Standing rule from user (2026-05-09):** ALWAYS `git fetch && git pull` at the start of every session in this repo. Multi-teammate collaboration through GitHub during the hackathon. Saved as feedback memory.
 
 ## How to use ClaudeFlow here (read this first)

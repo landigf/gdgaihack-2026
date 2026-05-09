@@ -184,7 +184,7 @@ See [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses
 ### Why we don't drop the other three yet
 
 - **Enterprise Doc Copilot:** strongest brief-fit for "private by default" framing; if the team doesn't connect to the dangerous-jobs anchor emotionally, this is the safe pivot.
-- **MedGemma Clinic:** the brief NAMES MedGemma. If the team huddle converges on a clinical demo, this is a solid fallback (HIPAA moats already drafted). ⚠ **build-risk flag (verified 2026-05-09):** Ollama only ships `medgemma:27b`, NOT the 4B variant the brief names. Choosing this candidate means either (a) loading 27B which needs Comfortable+ tier (32+ GB) and may be tight on M3 Pro 36 GB once the embedder + STT + UI shell are loaded, OR (b) pulling `google/medgemma-4b-it` from Hugging Face and converting to GGUF via llama.cpp ourselves — adds 30-60 min of build time. Decide at huddle.
+- **MedGemma Clinic:** the brief NAMES MedGemma. ⚠ **HARD blocker on our hardware (verified 2026-05-09):** Ollama only ships `medgemma:27b` (no 4B variant). The team's demo machine is **M3 Pro 18 GB** (Minimum tier per the brief). 27B at Q4 is ~16 GB on disk + activation memory → **definitely OOM on 18 GB unified**. The only path that keeps Candidate 3 alive is: pull `google/medgemma-4b-it` from Hugging Face and convert to GGUF via llama.cpp ourselves (+30-60 min build time), then verify it actually loads on 18 GB alongside the embedder + STT + UI shell. **Default-OFF unless the team confirms at the huddle.**
 - **Devstral Coding Navigator:** scores well on Creative On-Device (multi-agent over a real repo is unambiguous "creative"). Highest 24h build risk because we'd rebuild corpus from scratch.
 
 ### Form-factor pivot (mandatory, all candidates)

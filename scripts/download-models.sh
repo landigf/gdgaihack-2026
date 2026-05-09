@@ -30,10 +30,14 @@ models=(
   #   phi4:14b         VERIFIED — but brief says "Phi-4 mini" (3.8B). Use the
   #                    existing phi4-mini tag we already pull (above).
   # Each pull is large; the script tolerates ":not-found" gracefully.
-  gpt-oss:20b         # brief Min-tier example (~12 GB); VERIFIED 2026-05-09
-  medgemma:27b        # brief Med example (~16 GB); requires Comfortable tier
-  devstral:24b        # brief coding example (~14 GB); for Candidate 4 (Coding Navigator)
-  mistral-small:22b   # brief generalist example (~13 GB)
+  # ⚠ All four models below are OUT-OF-BUDGET on the team's hardware
+  # (MacBook Pro M3 Pro · 18 GB unified, verified 2026-05-09). They appear in
+  # the pitch only on the "models we evaluated" slide. Uncomment ONE only if
+  # your demo machine has ≥32 GB and you genuinely intend to run it.
+  # gpt-oss:20b        # brief Min-tier example (~12 GB on disk); RAM peak >14 GB → OOM on 18 GB
+  # medgemma:27b       # brief Med example (~16 GB on disk); requires Comfortable+ tier
+  # devstral:24b       # brief coding example (~14 GB on disk)
+  # mistral-small:22b  # brief generalist example (~13 GB on disk)
   # Uncomment below if your machine has headroom:
   # qwen2.5-coder:14b
   # gemma3:12b
