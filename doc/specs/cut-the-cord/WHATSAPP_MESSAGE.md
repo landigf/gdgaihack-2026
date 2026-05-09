@@ -4,6 +4,90 @@
 
 ---
 
+## ⭐ VERSIONE WHATSAPP-FRIENDLY (link in chiaro, copia-incolla diretto)
+
+> **Questa è la versione da usare in chat WhatsApp/Telegram/Slack.** I link sono in chiaro così quando incolli rimangono cliccabili come URL nudi. Niente sintassi markdown.
+
+```
+Ragazzi, ho preparato 5 SOLUZIONI complete per Cut the Cord, ognuna su un branch separato. Per ogni branch c'è IDEA_SEMPLICE.md (1 pagina ITA terra-terra) + PITCH_DECK.md (slide pronte) + SOLUTION_OVERVIEW.md (full spec).
+
+🔗 START HERE — decision matrix con tutte le 5 opzioni a confronto:
+https://github.com/landigf/gdgaihack-2026/blob/docs/solutions-index/doc/specs/cut-the-cord/SOLUTIONS_INDEX.md
+
+═══════════════════════════════
+LE 5 OPZIONI (in 1 frase ciascuna)
+═══════════════════════════════
+
+🏆 ALPHA — Sovereign Investigation Workbench
+AI offline che legge documenti riservati (leak/audit/whistleblower) e cita ogni claim alla riga di origine. Già end-to-end TESTATA: 1839 chunks indicizzati, gemma3:4b produce 5 cited findings + 1 contradizione in 29s. PR #2 aperto.
+Idea semplice: https://github.com/landigf/gdgaihack-2026/blob/pivot/sovereign-investigation-workbench/doc/specs/cut-the-cord/IDEA_SEMPLICE.md
+Pitch deck: https://github.com/landigf/gdgaihack-2026/blob/pivot/sovereign-investigation-workbench/doc/specs/cut-the-cord/PITCH_DECK.md
+PR aperto: https://github.com/landigf/gdgaihack-2026/pull/2
+
+🟢 BETA — Control-Room Copilot
+La nostra idea originale Airgap Incident Copilot, lockata. Voce in entrata, checklist NIOSH/OSHA citata in uscita. Stack 95% pronto, zero rischio. Pitch debole ma demo solido.
+Idea semplice: https://github.com/landigf/gdgaihack-2026/blob/alt/control-room-polish/doc/specs/cut-the-cord/IDEA_SEMPLICE.md
+Pitch deck: https://github.com/landigf/gdgaihack-2026/blob/alt/control-room-polish/doc/specs/cut-the-cord/PITCH_DECK.md
+
+🟠 GAMMA — Live Translator Booth
+UN-style cabina interpreti: Whisper + NLLB + Kokoro tutto offline. Demo theater spettacolare (speaker IT → schermo EN in 240ms con airplane mode). MSI cita translation esplicitamente nel loro marketing.
+Idea semplice: https://github.com/landigf/gdgaihack-2026/blob/alt/translator-booth/doc/specs/cut-the-cord/IDEA_SEMPLICE.md
+Pitch deck: https://github.com/landigf/gdgaihack-2026/blob/alt/translator-booth/doc/specs/cut-the-cord/PITCH_DECK.md
+
+🔴 DELTA — Plant SOC Multi-Agent
+Letteralmente Case Study #1 del brief MSI: 3 agent (Log Sentinel + Threat Hunter + Incident Responder) per cyber OT. Pitch score più alto (2.75 / 3.00), ma scope grosso (12-16h).
+Idea semplice: https://github.com/landigf/gdgaihack-2026/blob/alt/plant-soc-copilot/doc/specs/cut-the-cord/IDEA_SEMPLICE.md
+Pitch deck: https://github.com/landigf/gdgaihack-2026/blob/alt/plant-soc-copilot/doc/specs/cut-the-cord/PITCH_DECK.md
+
+🟡 EPSILON — Audit Field Box
+Big4 cloud-banned ($200B TAM). Drop GL CSV → Benford analysis deterministica + LLM memo SOX-compatible. Benford analyzer GIÀ FUNZIONA (commit su branch).
+Idea semplice: https://github.com/landigf/gdgaihack-2026/blob/alt/audit-field-box/doc/specs/cut-the-cord/IDEA_SEMPLICE.md
+Pitch deck: https://github.com/landigf/gdgaihack-2026/blob/alt/audit-field-box/doc/specs/cut-the-cord/PITCH_DECK.md
+
+═══════════════════════════════
+PITCH SCORING (pesi 30/25/25/20)
+═══════════════════════════════
+🔴 DELTA   2.75  → highest score, highest scope risk
+🏆 ALPHA   2.70  → high score, ALREADY VALIDATED end-to-end
+🟡 EPSILON 2.55  → cleanest commercial pitch ($200B TAM)
+🟢 BETA    2.40  → safest fallback, 100% pre-work reuse
+🟠 GAMMA   2.30  → max demo theater, MSI sponsor-fit
+
+═══════════════════════════════
+DECISION FLOWCHART
+═══════════════════════════════
+- Hai ≥14h di build appetite? NO → BETA. SI → continua
+- Vuoi pitch score più alto? SI → DELTA (se LangGraph experience), altrimenti ALPHA
+- Priorità narrativa? → ALPHA  |  Demo theater? → GAMMA  |  Commerciale? → EPSILON
+
+═══════════════════════════════
+
+Mio voto personale: 🏆 ALPHA Sovereign Investigation Workbench
+
+Perché:
+1. È l'UNICA già end-to-end validata. Demo gira oggi sul mio M3 Pro 18GB.
+2. PR #2 già aperto, tutto il codice committed, smoke test passato.
+3. Pitch arc unico: "Snowden → Panama Papers → next leak needs sovereign AI"
+4. Cloud è LETTERALMENTE illegale per i clienti (GDPR Art. 9, attorney-client privilege, source confidentiality)
+5. BREAK_EVEN.md ha 3 customer scenarios con USD reali: 19× ROI per newsroom, 26× ROI per Big4 audit, 5× ROI per public defender
+
+Cosa serve da voi:
+1. Aprite SOLUTIONS_INDEX (primo link sopra) sul cellulare
+2. Leggete IDEA_SEMPLICE della soluzione che vi sembra migliore
+3. Votate qui nel gruppo entro stasera (T+12h da kickoff = ~23:00)
+4. Chi vince, mergiamo a main e completiamo nelle ultime 12h
+
+Le altre 4 alt-branch restano aperte come EVIDENCE in pitch Q&A: "We considered five options. Here's why we picked X."
+
+Per renderizzare un pitch deck in PDF basta:
+git checkout <branch-scelto>
+npx @marp-team/marp-cli@latest doc/specs/cut-the-cord/PITCH_DECK.md --pdf
+
+Buon huddle 🚀
+```
+
+---
+
 ## VERSIONE SHORT (1 messaggio)
 
 ```
