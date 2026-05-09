@@ -113,11 +113,6 @@ export default function GreenhouseDetail({ onClose }: Props) {
   const houstonInflight = useRef<AbortController | null>(null);
   const lastFetchKey = useRef<string>("");
 
-  // Auto-select tray 2 (mizuna READY) for the WOW beat
-  useEffect(() => {
-    setSelectedTrayId(2);
-  }, []);
-
   // Call Houston whenever selection or stage changes (debounced)
   useEffect(() => {
     if (selectedTrayId == null) return;
@@ -150,9 +145,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
 
   // Lettuce auto-advances stages over the demo for visible motion
   useEffect(() => {
-    let cancelled = false;
     const tick = setInterval(() => {
-      if (cancelled) return;
       setTrays((prev) =>
         prev.map((t) => {
           if (t.id !== 1) {
@@ -188,7 +181,6 @@ export default function GreenhouseDetail({ onClose }: Props) {
       );
     }, 500);
     return () => {
-      cancelled = true;
       clearInterval(tick);
     };
   }, []);
@@ -320,7 +312,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
             minPolarAngle={Math.PI / 8}
             maxPolarAngle={Math.PI / 2.1}
           />
-          <Stats />
+          {import.meta.env.DEV && <Stats />}
         </Canvas>
       </div>
 
