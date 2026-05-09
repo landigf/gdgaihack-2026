@@ -20,6 +20,7 @@ type Props = {
   onSelectBuilding?: (id: BuildingId) => void;
   showStats?: boolean;
   useGLB?: boolean; // when false, fall back to procedural — useful if GLB load fails
+  hideHints?: boolean; // when a modal is open above, don't render floating Html hints
 };
 
 export type BuildingId =
@@ -38,6 +39,7 @@ export default function MarsBase({
   onSelectBuilding,
   showStats = false,
   useGLB = true,
+  hideHints = false,
 }: Props) {
   return (
     <Canvas
@@ -132,7 +134,7 @@ export default function MarsBase({
           />
 
           {/* Persistent click hint above the greenhouse since it's the WOW target */}
-          <GreenhouseClickHint position={[5, 2.6, 1]} ready={greenhouseReady} />
+          {!hideHints && <GreenhouseClickHint position={[5, 2.6, 1]} ready={greenhouseReady} />}
         </Suspense>
       ) : (
         <ProceduralBase

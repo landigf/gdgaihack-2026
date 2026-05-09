@@ -24,6 +24,9 @@ type HoustonReply = {
   citations: Citation[];
   elapsed_ms: number;
   used_llm: boolean;
+  procedure?: string[];
+  procedure_elapsed_ms?: number;
+  procedure_kv_cache_hit?: boolean;
 };
 
 async function openCitation(c: Citation): Promise<void> {
@@ -350,20 +353,21 @@ export default function GreenhouseDetail({ onClose }: Props) {
           shadows
           dpr={[1, 2]}
           gl={{ antialias: true, powerPreference: "high-performance" }}
-          camera={{ position: [3.6, 1.7, 3.6], fov: 35 }}
+          camera={{ position: [5.4, 2.8, 5.4], fov: 38 }}
         >
           <color attach="background" args={["#000"]} />
-          <ambientLight intensity={0.35} color="#ddd" />
+          <ambientLight intensity={0.4} color="#ddd" />
           <directionalLight
-            position={[3, 6, 3]}
-            intensity={1.3}
+            position={[4, 8, 4]}
+            intensity={1.4}
             castShadow
             color="#fff"
             shadow-mapSize-width={1024}
             shadow-mapSize-height={1024}
           />
           {/* purple grow-light glow from above each shelf */}
-          <pointLight position={[0, 2.4, 0]} intensity={0.7} color="#a78bfa" />
+          <pointLight position={[0, 3.6, 0]} intensity={0.8} color="#a78bfa" />
+          <pointLight position={[0, 1.4, 0]} intensity={0.4} color="#a78bfa" />
           <GreenhouseRack
             shelves={shelves}
             selectedPotId={selectedPotId}
@@ -371,11 +375,11 @@ export default function GreenhouseDetail({ onClose }: Props) {
           />
           <OrbitControls
             makeDefault
-            target={[0, 0.9, 0]}
-            minDistance={2}
-            maxDistance={9}
+            target={[0, 1.5, 0]}
+            minDistance={3}
+            maxDistance={14}
             minPolarAngle={Math.PI / 8}
-            maxPolarAngle={Math.PI / 2.1}
+            maxPolarAngle={Math.PI / 2.05}
           />
           {import.meta.env.DEV && <Stats />}
         </Canvas>
@@ -552,6 +556,62 @@ export default function GreenhouseDetail({ onClose }: Props) {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* M9 — Procedure persona card (A2A chain) */}
+            {houstonReply?.procedure && houstonReply.procedure.length > 0 && (
+              <div
+                className="p-3 rounded-md mb-3"
+                style={{
+                  background: "rgba(168,85,247,0.10)",
+                  border: "1px solid rgba(168,85,247,0.45)",
+                }}
+              >
+                <div
+                  className="text-[10px] uppercase tracking-widest mb-2 font-mono flex items-center justify-between"
+                  style={{ color: "#c4b5fd" }}
+                >
+                  <span>
+                    HOUSTON ▸ procedure persona
+                    <span
+                      style={{
+                        color: "#0a0a0a",
+                        background: "#c4b5fd",
+                        marginLeft: 6,
+                        padding: "1px 5px",
+                        borderRadius: 3,
+                        fontWeight: 700,
+                        letterSpacing: 1,
+                      }}
+                    >
+                      A2A
+                    </span>
+                  </span>
+                  <span style={{ color: "#94a3b8", fontSize: 9 }}>
+                    {houstonReply.procedure_elapsed_ms} ms
+                    {houstonReply.procedure_kv_cache_hit && (
+                      <span style={{ color: "#86efac", marginLeft: 6 }}>· KV-cache hit</span>
+                    )}
+                  </span>
+                </div>
+                <ol className="text-xs space-y-1 list-none" style={{ color: "#e9d5ff" }}>
+                  {houstonReply.procedure.map((step, i) => (
+                    <li
+                      key={i}
+                      className="font-mono leading-relaxed"
+                      style={{ paddingLeft: "1.4em", textIndent: "-1.4em" }}
+                    >
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <div
+                  className="mt-2 text-[10px] font-mono opacity-70"
+                  style={{ color: "#94a3b8" }}
+                >
+                  Two personas, one Ollama process, byte-identical system prefix → KV cache reuse
+                </div>
               </div>
             )}
 

@@ -32,10 +32,10 @@ type Props = {
   onSelectPot: (id: string) => void;
 };
 
-const SHELF_Y = [0, 0.55, 1.1, 1.65];
-const SHELF_W = 2.7;
-const SHELF_D = 1.05;
-const POT_X_POSITIONS = [-0.95, -0.32, 0.32, 0.95]; // 4 pots per shelf, evenly spaced
+const SHELF_Y = [0, 0.95, 1.9, 2.85];
+const SHELF_W = 3.2;
+const SHELF_D = 1.25;
+const POT_X_POSITIONS = [-1.2, -0.4, 0.4, 1.2]; // 4 pots per shelf, breathing room
 
 function shelfTone(shelf: Shelf): string {
   // Aggregate verdict color: green if any pot ready, amber if any flowering+, cyan otherwise
@@ -53,19 +53,19 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
     <group position={[0, 0, 0]}>
       {/* Floor */}
       <mesh position={[0, -0.05, 0]} receiveShadow>
-        <boxGeometry args={[3.2, 0.05, 1.5]} />
+        <boxGeometry args={[3.7, 0.05, 1.7]} />
         <meshStandardMaterial color="#0d0d0d" roughness={0.95} />
       </mesh>
 
-      {/* 4 corner posts spanning all 4 shelves */}
+      {/* 4 corner posts spanning all 4 shelves (taller now that shelves are spread) */}
       {[
-        [-(SHELF_W / 2 + 0.02), 0.95, -(SHELF_D / 2 + 0.02)],
-        [SHELF_W / 2 + 0.02, 0.95, -(SHELF_D / 2 + 0.02)],
-        [-(SHELF_W / 2 + 0.02), 0.95, SHELF_D / 2 + 0.02],
-        [SHELF_W / 2 + 0.02, 0.95, SHELF_D / 2 + 0.02],
+        [-(SHELF_W / 2 + 0.02), 1.55, -(SHELF_D / 2 + 0.02)],
+        [SHELF_W / 2 + 0.02, 1.55, -(SHELF_D / 2 + 0.02)],
+        [-(SHELF_W / 2 + 0.02), 1.55, SHELF_D / 2 + 0.02],
+        [SHELF_W / 2 + 0.02, 1.55, SHELF_D / 2 + 0.02],
       ].map(([x, y, z], i) => (
         <mesh key={`post-${i}`} position={[x, y, z]} castShadow>
-          <boxGeometry args={[0.05, 1.95, 0.05]} />
+          <boxGeometry args={[0.05, 3.15, 0.05]} />
           <meshStandardMaterial color="#0a0a0a" metalness={0.65} roughness={0.35} />
         </mesh>
       ))}
@@ -82,17 +82,17 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
 
             {/* Per-shelf species label tag (outside, on right side, billboarded) */}
             <Html
-              position={[SHELF_W / 2 + 0.22, 0.22, 0]}
+              position={[SHELF_W / 2 + 0.55, 0.35, 0]}
               center
-              distanceFactor={6}
+              distanceFactor={9}
               style={{
                 pointerEvents: "none",
-                background: "rgba(0,0,0,0.85)",
+                background: "rgba(0,0,0,0.92)",
                 border: `1px solid ${accent}`,
                 borderRadius: 6,
-                padding: "5px 9px",
+                padding: "4px 8px",
                 fontFamily: "JetBrains Mono, monospace",
-                fontSize: 11,
+                fontSize: 10,
                 color: accent,
                 whiteSpace: "nowrap",
                 fontWeight: 600,
@@ -100,7 +100,7 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
               }}
             >
               <div>SHELF {shelf.id} · {shelf.speciesLabel}</div>
-              <div style={{ color: "#94a3b8", fontSize: 9, marginTop: 2 }}>
+              <div style={{ color: "#94a3b8", fontSize: 8, marginTop: 1 }}>
                 {shelf.pots.filter((p) => p.stage === 5).length}/{shelf.pots.length} READY
               </div>
             </Html>
@@ -152,23 +152,24 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
                     jitter={(shelf.id * 13 + i * 7) % 360}
                   />
 
-                  {/* READY badge */}
+                  {/* READY badge — small, above the plant top */}
                   {pot.stage === 5 && (
                     <Html
-                      position={[0, ph + 0.45, 0]}
+                      position={[0, ph + 0.55, 0]}
                       center
-                      distanceFactor={5}
+                      distanceFactor={11}
                       style={{
                         pointerEvents: "none",
                         background: "rgba(16,185,129,0.95)",
                         color: "#0a0a0a",
-                        padding: "2px 6px",
-                        fontSize: 9,
+                        padding: "1px 4px",
+                        fontSize: 8,
                         fontWeight: 700,
-                        borderRadius: 4,
+                        borderRadius: 3,
                         whiteSpace: "nowrap",
                         fontFamily: "JetBrains Mono, monospace",
                         textShadow: "none",
+                        letterSpacing: 0.5,
                       }}
                     >
                       READY
@@ -178,9 +179,9 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
               );
             })}
 
-            {/* Grow-light strip above shelf */}
-            <mesh position={[0, 0.46, 0]}>
-              <boxGeometry args={[SHELF_W * 0.95, 0.025, 0.18]} />
+            {/* Grow-light strip above shelf — moved higher to give clearance */}
+            <mesh position={[0, 0.78, 0]}>
+              <boxGeometry args={[SHELF_W * 0.95, 0.03, 0.22]} />
               <meshStandardMaterial
                 color="#1e1b4b"
                 emissive="#a78bfa"

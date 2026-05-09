@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import MarsBase, { type BuildingId } from "./3d/MarsBase";
 import GreenhouseDetail from "./views/GreenhouseDetail";
+import InventoryDetail from "./views/InventoryDetail";
+import VoicePTT from "./components/VoicePTT";
 
 const SOL_NUMBER = 423;
 
@@ -153,37 +155,12 @@ export default function AresApp() {
           ch4FillPct={ch4FillPct}
           onSelectBuilding={(id) => setSelected(id)}
           showStats={import.meta.env.DEV}
+          hideHints={selected === "greenhouse"}
         />
       </div>
 
-      {/* Floating PTT placeholder (next phase: real voice) */}
-      <button
-        aria-label="Push to talk to Houston"
-        className="absolute bottom-6 left-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
-        style={{
-          background: "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
-          color: "#0a0a0a",
-          boxShadow: "0 0 24px rgba(34,211,238,0.45), 0 4px 12px rgba(0,0,0,0.4)",
-          border: "1px solid #67e8f9",
-          fontWeight: 600,
-        }}
-        onMouseDown={() => setHabitatAlert(true)}
-        onMouseUp={() => setHabitatAlert(false)}
-        onKeyDown={(e) => {
-          if (e.key === " " || e.code === "Space") {
-            e.preventDefault();
-            setHabitatAlert(true);
-          }
-        }}
-        onKeyUp={(e) => {
-          if (e.key === " " || e.code === "Space") {
-            e.preventDefault();
-            setHabitatAlert(false);
-          }
-        }}
-      >
-        <span>🎙</span> HOLD TO TALK TO HOUSTON (mock)
-      </button>
+      {/* Voice push-to-talk: real STT (whisper.cpp) + LLM + TTS (macOS say) */}
+      <VoicePTT />
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div
@@ -216,6 +193,14 @@ export default function AresApp() {
       {/* Greenhouse drill-in modal */}
       {selected === "greenhouse" && (
         <GreenhouseDetail onClose={() => setSelected(null)} />
+      )}
+
+      {/* Inventory drill-in modal — habitat + eclss share the same view */}
+      {(selected === "habitat" || selected === "eclss") && (
+        <InventoryDetail
+          system={selected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );
