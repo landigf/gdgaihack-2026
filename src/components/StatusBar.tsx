@@ -3,7 +3,13 @@ import { listen } from "@tauri-apps/api/event";
 
 type Status = "starting" | "ready" | "error";
 
-export default function StatusBar({ info }: { info: string }) {
+export default function StatusBar({
+  info,
+  indexedRoot,
+}: {
+  info: string;
+  indexedRoot: string | null;
+}) {
   const [status, setStatus] = useState<Status>("starting");
 
   useEffect(() => {
@@ -15,19 +21,34 @@ export default function StatusBar({ info }: { info: string }) {
 
   const dot =
     status === "ready"
-      ? "bg-emerald-400"
+      ? "bg-success"
       : status === "error"
-      ? "bg-red-400"
-      : "bg-amber-400 animate-pulse";
+      ? "bg-danger"
+      : "bg-warning animate-pulse";
+
+  const label =
+    status === "ready"
+      ? "Ready"
+      : status === "error"
+      ? "AI engine failed"
+      : "Starting AI engine…";
 
   return (
-    <footer className="col-span-3 border-t border-border px-4 text-[11px] text-muted flex items-center justify-between gap-4">
+    <footer className="h-7 border-t border-separator px-3 text-xs text-muted flex items-center justify-between gap-4 bg-surface/60">
       <span className="flex items-center gap-2">
         <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
-        sidecar: <span className="text-text/80">{status}</span> · localhost only
+        <span>{label}</span>
+        {indexedRoot && (
+          <>
+            <span className="text-subtle">·</span>
+            <span className="font-mono truncate max-w-[200px]" title={indexedRoot}>
+              indexed: {indexedRoot.replace(/^\/Users\/[^/]+/, "~")}
+            </span>
+          </>
+        )}
       </span>
-      <span className="font-mono truncate">{info}</span>
-      <span className="font-mono text-muted/80">gemma3:4b · nomic-embed · FAISS · Tauri</span>
+      <span className="font-mono text-subtle truncate">{info}</span>
+      <span className="text-subtle">100% offline · gemma3:4b · nomic-embed-text</span>
     </footer>
   );
 }
