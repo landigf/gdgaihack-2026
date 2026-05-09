@@ -1,6 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { DirEntry } from "./types";
 
 export const tauri = {
+  homeDir: () => invoke<string>("home_dir"),
+  listDir: (path: string) => invoke<DirEntry[]>("list_dir", { path }),
   pickFolder: () => invoke<string | null>("pick_folder"),
   revealInFinder: (path: string) => invoke<void>("reveal_in_finder", { path }),
   openFile: (path: string) => invoke<void>("open_file", { path }),

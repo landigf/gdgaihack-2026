@@ -12,6 +12,8 @@ pub fn run() {
         .manage(sidecar::SidecarHandle(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::backend_url,
+            commands::home_dir,
+            commands::list_dir,
             commands::pick_folder,
             commands::reveal_in_finder,
             commands::open_file,
