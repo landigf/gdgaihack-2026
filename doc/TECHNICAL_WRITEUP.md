@@ -100,10 +100,21 @@ All numbers below come from `python benchmarks/houston/run_benchmarks.py` runnin
 
 ### Plots (committed under `benchmarks/houston/out/`)
 
-- **`houston_latency.png`** — bar chart, cold-vs-warm latency for greenhouse, survival, voice.
-- **`voice_breakdown.png`** — stacked breakdown of warm voice round-trip: ASR + LLM + TTS.
-- **`perf_timeline.png`** — CPU % and RAM (GB / 18) timeline during a Houston call burst.
-- **`a2a_kv_cache.png`** — multi-agent A2A latency split, showing the second persona's call benefiting from the shared prompt prefix.
+![Houston endpoint latency cold vs warm](../benchmarks/houston/out/houston_latency.png)
+
+*Figure 1 — Cold vs warm latency across the three Houston endpoints. The cold call carries the gemma3:4b model load; subsequent warm calls amortize over the `keep_alive=30m` window.*
+
+![Voice round-trip breakdown](../benchmarks/houston/out/voice_breakdown.png)
+
+*Figure 2 — Warm voice round-trip stacked: whisper.cpp ASR + gemma3:4b LLM + macOS `say` TTS. Total under two seconds end-to-end on M3 Pro 18 GB.*
+
+![Multi-agent A2A KV-cache reuse](../benchmarks/houston/out/a2a_kv_cache.png)
+
+*Figure 3 — Two-persona A2A chain (greenhouse → procedure). The second call is consistently faster because the system prompt prefix is bytes-identical and the KV cache is reused.*
+
+![Perf timeline during a Houston call burst](../benchmarks/houston/out/perf_timeline.png)
+
+*Figure 4 — CPU % and RAM (GB / 18 ceiling) sampled at 1 Hz during a five-call greenhouse burst. The 18 GB hard ceiling is shown as a dashed line; load peak stays at ~10.2 GB.*
 
 ## 6. What we'd do next (engineering, not pitch)
 

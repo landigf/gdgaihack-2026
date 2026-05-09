@@ -1,10 +1,72 @@
-# Rover
+# Rover · GDG AI Hack 2026 · MSI "Cut the Cord" — Team PoliSa
+
+> 🚀 **Hackathon submission entry-point: see [`feat/houston-rag`](https://github.com/landigf/gdgaihack-2026/tree/feat/houston-rag).**
+> The default branch shows the team-A "Rover Finder" MVP (offline AI file search).
+> The submitted product is **Rover Houston** — an on-device AI habitat controller
+> for a Mars base, layered on top of Rover Core. Both ship from this repo.
+
+---
+
+## Rover Houston — 100% on-device Mars Habitat AI
+
+> *"We didn't choose offline. Mars chose for us. The closest data center is
+> 78 million kilometers away."*
+
+A single MacBook M3 Pro 18 GB drives the entire stack: 4-persona Houston AI
+(greenhouse · procedure · survival · voice), RAG over 30 NASA public-domain
+manuals (1 292 chunks indexed locally), a voice loop (whisper.cpp + macOS
+`say`), an isometric 3D Mars base with a clickable greenhouse drill-in
+(16 individual pots, 4 NASA Veggie / APH species, 6 growth stages each),
+and live perf metrics — all behind an airplane-mode test. **Zero outbound
+packets** verified by `tcpdump` during the 90-second demo loop.
+
+### Live numbers (measured on the demo machine — see `benchmarks/houston/out/`)
+
+| Metric | Value |
+|---|---|
+| Voice round-trip (warm: ASR + LLM + TTS) | **1.8 s** |
+| Greenhouse + procedure A2A (warm) | **8.1 s** |
+| Survival tip (warm) | **3.6 s** |
+| Idle RAM / Load RAM | 8.1 GB / **10.2 GB** of 18 GB |
+| Outbound packets during demo | **0** |
+| Tests | **16/16** green |
+
+### Demo it in 3 lines
+
+```bash
+git clone https://github.com/landigf/gdgaihack-2026.git
+git checkout feat/houston-rag
+bash scripts/setup.sh && bash scripts/download-mars-corpus.sh
+GEN_MODEL=gemma3:4b npm run tauri dev      # then open hash #ares
+```
+
+### Submission documents
+
+- 📋 [`doc/SUBMISSION.md`](doc/SUBMISSION.md) — single source of truth for portal fields
+- 📄 [`doc/TECHNICAL_WRITEUP.md`](doc/TECHNICAL_WRITEUP.md) — architecture, A2A multi-agent, optimizations for M3 Pro 18 GB, measured numbers, plots
+- 🎬 [`pipelines/video-prompt-gemini.md`](pipelines/video-prompt-gemini.md) — 2-min demo video shot list + voiceover script
+- 🖼️ [`doc/SLIDES_OUTLINE.md`](doc/SLIDES_OUTLINE.md) — 11-slide deck content + speaker notes
+- 📊 [`benchmarks/houston/out/`](benchmarks/houston/out/) — `houston_latency.png`, `voice_breakdown.png`, `perf_timeline.png`, `a2a_kv_cache.png`, CSVs, summary.json
+
+### Compliance with MSI Cut the Cord
+
+| Hard constraint | How we satisfy it |
+|---|---|
+| Zero cloud AI at demo | `bash scripts/airplane-check.sh` exits 0; `tcpdump` shows 0 packets |
+| 100% local inference | Ollama (gemma3:4b + nomic-embed-text) + whisper.cpp + macOS `say` |
+| OS / file integration | Tauri folder picker, citation chips open NASA PDFs in Preview |
+| Single machine | Everything runs on one M3 Pro 18 GB |
+
+---
+
+## Rover Finder (default branch) — for reference
 
 > A 100% offline, AI-powered Finder alternative for macOS. Semantic file search
 > + on-device LLM actions. Cross-platform desktop app built on Tauri 2 + Rust.
 > Demos in airplane mode.
 >
-> Built for the **GDG AI Hack Milano 2026 — MSI "Cut the Cord"** track.
+> The Houston work above re-uses Rover Finder's Tauri shell + Python sidecar +
+> Ollama integration. Both products coexist in this repo.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
