@@ -1,0 +1,157 @@
+ROVER HOUSTON · KEYWORDS PER SLIDE — paste in WhatsApp / share with team
+
+Stage cast: 4 (Operator + Earth + Mars + AV-Ops)
+Total time: 2 min + 12 s pre-show
+Full script: doc/PRESENTATION_SCRIPT.md
+Visual brief: doc/SLIDES_OUTLINE.md (Iter 4 — color tokens, fonts)
+
+
+────────────────────────────────────────
+PRE-SHOW (~12 s, before slide 1)
+────────────────────────────────────────
+Operator at podium. Rover Finder open. STT push-to-talk:
+"Find the Mars pitch slides on this machine."
+→ Rover finds and opens pitch.pdf in <2 s, on-device.
+
+
+════════════════════════════════════════
+SLIDE 1 · 0:00–0:23 · CORD-CUT + TITLE
+════════════════════════════════════════
+Earth + Mars hold tin-can phones, taut string.
+Operator walks in: "This is what cloud AI looks like at Mars."
+Cuts the string at 0:14.
+Slide hits:
+
+    CUT THE CORD
+
+
+════════════════════════════════════════
+SLIDE 2 · 0:23–0:35 · APOLLO 13 HOOK
+════════════════════════════════════════
+Visual: iconic Apollo 13 capsule shot.
+
+    HOUSTON, WE HAVE A PROBLEM
+
+Voiceover keyword: "Cloud SLA · only thing standing between crew and silence"
+
+
+════════════════════════════════════════
+SLIDE 3 · 0:35–0:50 · WHY MARS
+════════════════════════════════════════
+
+    78,000,000 km
+    4–24 min one-way
+    14-day blackout every 26 months
+
+Voiceover keyword: "Cloud AI fails by physics, not by SLA"
+
+
+════════════════════════════════════════
+SLIDE 4 · 0:50–1:02 · THE PROMISE
+════════════════════════════════════════
+
+    1 LAPTOP
+    MSI's next-gen AI PC
+    M3 Pro · 18 GB unified
+
+Voiceover keyword: "Built tonight. It works."
+
+
+════════════════════════════════════════
+SLIDE 5 · 1:02–1:32 · DEMO #1 — GREENHOUSE
+════════════════════════════════════════
+[LIVE LAPTOP — switch projector input]
+
+    16 pots · 4 NASA Veggie species
+    Click pot → "HARVEST NOW"
+    Procedure persona auto-chains 5 steps
+    [S1] chip → real NASA PDF in Preview
+
+Voiceover keyword: "byte-identical prompt prefix · KV-cache reuse measured"
+
+
+════════════════════════════════════════
+SLIDE 6 · 1:32–1:50 · DEMO #2 — VOICE
+════════════════════════════════════════
+[LIVE LAPTOP continues]
+
+    whisper.cpp + gemma3:4b + macOS say
+    Streaming MLX SSE
+    Cold TTFT 1 786 ms
+    First token < 2 s
+
+Operator hold PTT: "What is tray two doing on shelf two?"
+Audible Houston reply.
+
+
+════════════════════════════════════════
+SLIDE 7 · 1:50–1:55 · HOW
+════════════════════════════════════════
+
+    4 personas · 1 Ollama process · KV reuse
+    RAG · 30 NASA PDFs · 1 292 chunks
+    0 packets out · airplane-mode certified
+
+
+════════════════════════════════════════
+SLIDE 8 · 1:55–1:57 · TECH RUBRIC TICKS
+════════════════════════════════════════
+(Audience reads silently while operator transitions)
+
+    MCP tool registry · Docker sandbox declared
+    FAISS · multi-agent A2A · streaming SSE
+    macOS-native TTS · whisper.cpp Metal
+
+
+════════════════════════════════════════
+SLIDE 9 · 1:55–2:00 · OUTRO
+════════════════════════════════════════
+
+    github.com/landigf/gdgaihack-2026
+    branch  feat/houston-rag
+
+Closing line:
+    "Cloud is impossible at Mars. Houston doesn't need it."
+
+
+────────────────────────────────────────
+KEY NUMBERS THE TEAM SHOULD MEMORIZE
+────────────────────────────────────────
+
+    78 million km         (distance to nearest data center)
+    4–24 min              (one-way light delay)
+    14-day blackouts      (solar conjunction every 26 months)
+    1 786 ms TTFT cold    (streaming MLX, parallel session result)
+    < 2 s first token     (warm voice round-trip)
+    30 NASA PDFs / 1 292 chunks indexed locally
+    0 packets out         (verified by tcpdump every demo)
+    18 GB unified         (M3 Pro Min tier — and 10.2 GB used)
+
+
+────────────────────────────────────────
+PROPS CHECKLIST
+────────────────────────────────────────
+
+    [ ] String ~3 m, kitchen twine (cuts cleanly with scissors)
+    [ ] 2 tin cans or paper cups
+    [ ] 1 pair of scissors (Operator pocket)
+    [ ] MacBook M3 Pro 18 GB on podium
+    [ ] HDMI/USB-C cable to projector — confirmed working
+    [ ] Lapel mic on Operator
+    [ ] Airplane mode ON before walking on stage
+
+
+────────────────────────────────────────
+RUBRIC MAPPING (for pitch coach)
+────────────────────────────────────────
+
+  Tech Optimization 30%   → SLIDE 6 + SLIDE 7 (TTFT, KV reuse, 0 packets)
+  Practical Utility 25%   → SLIDE 4 + SLIDE 5 (real Mars use case + demo)
+  Creative On-Device 25%  → SLIDE 5 + SLIDE 6 + SLIDE 8 (multi-agent A2A,
+                            RAG, voice, MCP, sandbox)
+  Comp Adv 20%            → CORD-CUT + SLIDE 3 (physics enforces offline)
+
+
+────────────────────────────────────────
+END
+────────────────────────────────────────
