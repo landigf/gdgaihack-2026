@@ -133,12 +133,22 @@ def build_messages(
     ]
 
 
+_SMART_QUOTES = str.maketrans({
+    "‘": "'", "’": "'",   # ‘ ’
+    "“": '"', "”": '"',   # “ ”
+    "′": "'", "″": '"',   # ′ ″
+    "«": '"', "»": '"',   # « »
+})
+
+
 def parse_response(raw: str) -> dict | None:
     """Extract the first balanced JSON object from a model response.
-    Tolerant to prose-around-JSON. Returns None if no JSON found."""
+    Tolerant to prose-around-JSON, ```json fences, and unicode smart quotes
+    (gemma3:4b often emits ‘ ’ inside string values, breaking strict JSON).
+    Returns None if no JSON found."""
     if not raw:
         return None
-    cleaned = raw.strip()
+    cleaned = raw.translate(_SMART_QUOTES).strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
 
