@@ -31,15 +31,16 @@ class OllamaClient:
             "prompt": prompt,
             "stream": False,
             "keep_alive": "30m",
+            "think": False,  # disable reasoning preamble across all thinking models
             "options": {
                 "temperature": 0.3,
                 "top_p": 0.9,
-                "num_predict": 384,
+                "num_predict": 512,
                 "num_ctx": 4096,
             },
         }
+        # qwen3 also needs the in-prompt /no_think directive in addition to the flag
         if self.gen_model.startswith("qwen3"):
-            payload["think"] = False
             payload["prompt"] = f"{prompt}\n\n/no_think"
         if system:
             payload["system"] = system
