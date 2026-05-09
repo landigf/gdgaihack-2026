@@ -140,6 +140,17 @@ input { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--rule);
   position: relative;
   z-index: 10;
+  /* macOS WebKit: this is the actual mechanism that lets the OS drag the
+     window. Children with -webkit-app-region: no-drag opt out below. */
+  -webkit-app-region: drag;
+}
+.tb-btn,
+.tb-segment,
+.tb-segment button,
+.search,
+.search input,
+.search .clear {
+  -webkit-app-region: no-drag;
 }
 .tb-left, .tb-mid, .tb-right { display: flex; align-items: center; height: 52px; }
 .tb-left { padding: 0 12px 0 80px; gap: 6px; }
