@@ -36,6 +36,8 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
   const [lastTranscript, setLastTranscript] = useState<string>("");
   const [lastReply, setLastReply] = useState<VoiceReply | null>(null);
   const [error, setError] = useState<string>("");
+  const [textInput, setTextInput] = useState<string>("");
+  const [textBusy, setTextBusy] = useState(false);
 
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<BlobPart[]>([]);
@@ -151,6 +153,56 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
     }
   }
 
+  // Text-input path: hits the same Houston pipeline as voice, but skips ASR.
+  // Useful when (a) the demo audio is unreliable, (b) the operator wants to
+  // show that Houston works regardless of speech.
+  async function sendText() {
+    const text = textInput.trim();
+    if (!text || textBusy) return;
+    setTextBusy(true);
+    setError("");
+    try {
+      const r = await fetch("http://127.0.0.1:8765/ares/voice/houston/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          trays_json: trays && trays.length > 0 ? JSON.stringify(trays) : undefined,
+          selected_tray_id: selectedTrayId,
+          speak: true,
+        }),
+      });
+      if (!r.ok) throw new Error(`text ${r.status}`);
+      const reply = (await r.json()) as VoiceReply;
+      setLastTranscript(reply.transcript);
+      setLastReply(reply);
+      onResult?.(reply);
+      setTextInput("");
+      if (reply.reply_wav_b64) {
+        const bin = atob(reply.reply_wav_b64);
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        const wavBlob = new Blob([u8], { type: "audio/wav" });
+        const url = URL.createObjectURL(wavBlob);
+        if (!audioElement.current) audioElement.current = new Audio();
+        audioElement.current.src = url;
+        audioElement.current.onended = () => URL.revokeObjectURL(url);
+        audioElement.current.play().catch(() => {});
+      }
+    } catch (e) {
+      setError(`text: ${(e as Error).message}`);
+    } finally {
+      setTextBusy(false);
+    }
+  }
+
+  function onTextKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendText();
+    }
+  }
+
   const disabled = voiceAvailable === false || busy;
   const buttonLabel = recording
     ? "🔴 RELEASE TO SEND"
@@ -194,6 +246,56 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
       >
         {buttonLabel}
       </button>
+
+      {/* Text input — same Houston pipeline as voice but skips ASR. Useful for
+          the demo video when mic / STT isn't reliable. */}
+      <div className="flex items-center gap-2" style={{ minWidth: 280 }}>
+        <input
+          type="text"
+          value={textInput}
+          onChange={(e) => setTextInput(e.target.value)}
+          onKeyDown={onTextKeyDown}
+          placeholder={
+            textBusy
+              ? "Houston is thinking…"
+              : "or type a prompt to Houston…"
+          }
+          disabled={textBusy || busy}
+          aria-label="Type a prompt to Houston"
+          className="flex-1 px-3 py-2 rounded-md text-xs font-mono"
+          style={{
+            background: "rgba(0,0,0,0.65)",
+            border: "1px solid rgba(34,211,238,0.4)",
+            color: "#fafafa",
+            outline: "none",
+            boxShadow: textBusy
+              ? "0 0 12px rgba(251,191,36,0.4)"
+              : "inset 0 0 0 1px rgba(34,211,238,0.1)",
+            fontSize: 12,
+          }}
+        />
+        <button
+          onClick={sendText}
+          disabled={!textInput.trim() || textBusy || busy}
+          className="px-3 py-2 rounded-md text-xs font-mono"
+          style={{
+            background:
+              !textInput.trim() || textBusy || busy
+                ? "rgba(60,60,60,0.6)"
+                : "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
+            color: "#0a0a0a",
+            border: "1px solid #67e8f9",
+            fontWeight: 600,
+            cursor:
+              !textInput.trim() || textBusy || busy ? "not-allowed" : "pointer",
+            opacity: !textInput.trim() || textBusy || busy ? 0.55 : 1,
+            minWidth: 70,
+          }}
+          aria-label="Send text prompt to Houston"
+        >
+          {textBusy ? "…" : "SEND ⏎"}
+        </button>
+      </div>
 
       {(lastTranscript || error || lastReply) && (
         <div

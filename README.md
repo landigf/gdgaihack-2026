@@ -20,7 +20,7 @@ manuals (1 292 chunks indexed locally), a voice loop (whisper.cpp + macOS
 and live perf metrics — all behind an airplane-mode test. **Zero outbound
 packets** verified by `tcpdump` during the 90-second demo loop.
 
-### Live numbers — MLX-LM Qwen2.5-3B-4bit + tile cache (measured on the demo machine)
+### Live numbers — MLX-LM Qwen2.5-3B-4bit + tile cache + code-as-action (measured on the demo machine)
 
 | Metric | Naive baseline (Ollama gemma3:4b) | **Optimized stack (this branch)** | Win |
 |---|---:|---:|---:|
@@ -28,6 +28,7 @@ packets** verified by `tcpdump` during the 90-second demo loop.
 | TTFT (RAG prefill, 100 tokens) | 2249 ms | **1668 ms** | **−26 %** |
 | Greenhouse + procedure A2A (warm) | 8124 ms | **4050 ms** | **2.0× speedup** |
 | Sensor cache trace 50d→20d→70d | 2104 ms (no cache) | **72 ms** (29× cache reuse) | **29.2× speedup** |
+| Code-as-action `python_exec` (LLM-emitted Python: sensors + plot) | (would need a 2nd LLM round to format aggregates) | **438 ms** (sandbox + cache + matplotlib) | LLM answers quantitative Q without a 2nd decode |
 | Voice round-trip (warm: ASR + LLM + TTS) | 1820 ms | 2649 ms (MLX 3B + RAG retrieval) | — |
 | RAM under load | 10.2 / 18 GB | **9.09 / 18 GB** (50 %) | **9.86 GB headroom** |
 | Outbound packets during demo | 0 | **0** | airplane-check 0 exit |

@@ -377,6 +377,41 @@ async def sensor_cache_stats(state=Depends(_get_state)):
     return state.tile_cache.export_summary()
 
 
+# ---------------------------------------------------------------------------
+# Code-as-action — the LLM (or any client) can submit Python that we execute
+# in a hardened-best-effort subprocess. Snippet sees a small `houston` SDK
+# bound at exec time so it can read sensor history, query RAG, and emit a
+# plot — no LLM round needed for quantitative answers.
+# Pattern: CodeAct (Wang et al., ICML 2024, arXiv:2402.01030).
+# ---------------------------------------------------------------------------
+
+
+class PythonExecRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=8000)
+    timeout_s: float = Field(default=15.0, ge=1.0, le=30.0)
+    notes: str | None = None  # free text; useful when an LLM emits the call
+
+
+@router.post("/agent/python_exec")
+async def agent_python_exec(req: PythonExecRequest):
+    """Run a Python snippet in a sandboxed subprocess and return its
+    stdout / stderr / artifacts. The snippet has access to the `houston`
+    SDK (sensors, rag, files, plot). See `backend/agent_tools/`.
+
+    The subprocess can call back into THIS sidecar (HTTP self-call) so
+    the snippet sees the same tile cache + RAG state the personas do.
+    To avoid blocking the event loop while the subprocess is running,
+    we offload the (synchronous) `run_python` to a worker thread.
+    """
+    import asyncio
+    from agent_tools import ExecRequest, run_python
+
+    er = ExecRequest(code=req.code, timeout_s=req.timeout_s, notes=req.notes)
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, run_python, er)
+    return result.to_dict()
+
+
 @router.post("/houston/greenhouse", response_model=HoustonResponse)
 async def houston_greenhouse(req: HoustonGreenhouseRequest, state=Depends(_get_state)):
     """Houston narrates a greenhouse decision for the selected tray, citing
@@ -925,6 +960,95 @@ async def voice_houston(
         "transcript": transcript,
         "reply": reply_text,
         "asr_ms": asr_ms,
+        "llm_ms": llm_ms,
+        "tts_ms": tts_ms,
+        "used_llm": used_llm,
+        "reply_wav_b64": base64.b64encode(wav_b).decode("ascii") if wav_b else "",
+        "citations": [c.model_dump() for c in citation_pool],
+    }
+
+
+class HoustonTextRequest(BaseModel):
+    """Text-input variant of the voice loop — same Houston voice persona,
+    same RAG retrieval, just no ASR + optional TTS. Lets the demo show a
+    typed prompt path that doesn't depend on mic permissions / STT quality."""
+
+    text: str
+    trays_json: str | None = None
+    selected_tray_id: int | None = None
+    speak: bool = True  # set False to skip TTS entirely (faster reply)
+
+
+@router.post("/voice/houston/text")
+async def voice_houston_text(req: HoustonTextRequest, state=Depends(_get_state)):
+    """Same pipeline as POST /voice/houston but the input is a typed prompt,
+    not a WAV upload. Returns the same envelope shape so the frontend can
+    reuse the existing renderer for both paths."""
+    import base64
+
+    transcript = (req.text or "").strip()
+    if not transcript:
+        raise HTTPException(400, "empty text")
+
+    # 1) RAG retrieval (same as voice path)
+    llm_t0 = time.time()
+    used_llm = False
+    reply_text = ""
+    chunk_block = ""
+    citation_pool: list[Citation] = []
+    try:
+        retriever = Retriever(state.embedder, state.store)
+        hits = await retriever.search(transcript, k=3)
+    except Exception:
+        hits = []
+    if hits:
+        parts = []
+        for i, h in enumerate(hits):
+            cid = f"S{i+1}"
+            text = (h.get("chunk_text") or "")[:400]
+            parts.append(f"[{cid}] {h['filename']}: {text}")
+            citation_pool.append(
+                Citation(
+                    id=cid,
+                    path=h["path"],
+                    filename=h["filename"],
+                    chunk_index=h["chunk_index"],
+                )
+            )
+        chunk_block = "\n\n".join(parts)
+
+    # 2) LLM
+    user_msg = _build_voice_user_prompt(
+        transcript, req.trays_json, req.selected_tray_id, chunk_block
+    )
+    try:
+        reply_raw = await state.generator.generate(user_msg, system=HOUSTON_VOICE_SYSTEM)
+        used_llm = True
+        reply_text = _strip_voice_artifacts(reply_raw)
+        if len(reply_text) > 320:
+            reply_text = reply_text[:317] + "..."
+    except Exception:
+        used_llm = False
+        reply_text = (
+            "Houston copy. I cannot reach the language model right now. "
+            "Switching to manual fallback. Stand by, crew."
+        )
+    llm_ms = int((time.time() - llm_t0) * 1000)
+
+    # 3) TTS (optional)
+    tts_t0 = time.time()
+    wav_b = b""
+    if req.speak:
+        try:
+            wav_b, _ = await synthesize(reply_text)
+        except VoiceUnavailable:
+            wav_b = b""
+    tts_ms = int((time.time() - tts_t0) * 1000) if req.speak else 0
+
+    return {
+        "transcript": transcript,
+        "reply": reply_text,
+        "asr_ms": 0,  # no ASR on text path
         "llm_ms": llm_ms,
         "tts_ms": tts_ms,
         "used_llm": used_llm,
