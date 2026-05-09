@@ -26,6 +26,9 @@ const ICON_BY_EXT: Record<string, string> = {
   mp3: "🎵",
   wav: "🎵",
   zip: "🗜️",
+};
+
+const TEXT_BADGE: Record<string, string> = {
   json: "{ }",
   ts: "TS",
   tsx: "TSX",
@@ -65,25 +68,27 @@ function fmtDate(ms: number): string {
 function FileGlyph({ entry }: { entry: DirEntry }) {
   if (entry.is_dir)
     return (
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-accent/15 text-accent">
-        <Folder size={15} />
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-accent/15 text-accent">
+        <Folder size={16} />
       </span>
     );
-  const badge = ICON_BY_EXT[entry.ext];
-  if (badge && /^[A-Z{}]/.test(badge)) {
-    // text badge
+  if (TEXT_BADGE[entry.ext]) {
     return (
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-bg/60 border border-border text-[9px] font-mono font-semibold text-muted">
-        {badge}
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-black/5 dark:bg-white/5 text-[9px] font-mono font-semibold text-muted">
+        {TEXT_BADGE[entry.ext]}
       </span>
     );
   }
-  if (badge) {
-    return <span className="inline-flex items-center justify-center w-6 h-6 text-base">{badge}</span>;
+  if (ICON_BY_EXT[entry.ext]) {
+    return (
+      <span className="inline-flex items-center justify-center w-7 h-7 text-base">
+        {ICON_BY_EXT[entry.ext]}
+      </span>
+    );
   }
   return (
-    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-bg/60 border border-border text-muted">
-      <FileText size={13} />
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-black/5 dark:bg-white/5 text-muted">
+      <FileText size={14} />
     </span>
   );
 }
@@ -91,24 +96,23 @@ function FileGlyph({ entry }: { entry: DirEntry }) {
 export default function BrowseList({ entries, selected, onSelect, onOpen }: Props) {
   if (entries.length === 0)
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted py-12 animate-fade-in">
-        <Folder size={36} className="text-subtle" />
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted py-16 animate-fade-in">
+        <span className="w-12 h-12 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-subtle">
+          <Folder size={22} />
+        </span>
         <p className="text-sm">This folder is empty.</p>
       </div>
     );
 
   return (
-    <div className="card overflow-hidden animate-fade-in">
-      <div
-        className="grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-2xs uppercase tracking-wider text-muted bg-surface/40 border-b border-separator"
-        role="row"
-      >
+    <div className="animate-fade-in">
+      <div className="grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-3 pb-2 text-2xs uppercase tracking-wider text-muted">
         <span>Name</span>
         <span className="text-right">Size</span>
         <span className="text-right">Modified</span>
       </div>
-      <div role="rowgroup">
-        {entries.map((e, i) => {
+      <div className="flex flex-col gap-0.5">
+        {entries.map((e) => {
           const isSel = !!selected && selected.path === e.path;
           return (
             <button
@@ -117,9 +121,11 @@ export default function BrowseList({ entries, selected, onSelect, onOpen }: Prop
               onDoubleClick={() => onOpen(e)}
               role="row"
               aria-selected={isSel}
-              className={`grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-sm text-left items-center transition ${
-                i < entries.length - 1 ? "border-b border-separator" : ""
-              } ${isSel ? "row-selected" : "hover:bg-surface/60"}`}
+              className={`pill grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-3 py-1.5 text-sm text-left items-center ${
+                isSel
+                  ? "pill-selected"
+                  : "hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
             >
               <span className="flex items-center gap-3 min-w-0">
                 <FileGlyph entry={e} />

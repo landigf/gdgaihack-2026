@@ -37,7 +37,6 @@ export default function Toolbar({
     setDraft(query);
   }, [query]);
 
-  // ⌘K shortcut to focus the search field
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       const isMac = navigator.platform.toLowerCase().includes("mac");
@@ -72,7 +71,7 @@ export default function Toolbar({
         disabled={!enabled}
         title={label}
         aria-label={label}
-        className="h-7 w-8 inline-flex items-center justify-center rounded-md text-muted enabled:hover:bg-bg/70 enabled:hover:text-text disabled:opacity-30 transition"
+        className="h-7 w-8 inline-flex items-center justify-center rounded-md text-muted enabled:hover:bg-black/5 dark:enabled:hover:bg-white/5 enabled:hover:text-text disabled:opacity-30 transition"
       >
         <Icon size={15} />
       </button>
@@ -82,31 +81,29 @@ export default function Toolbar({
   return (
     <header
       data-tauri-drag-region
-      className="vibrancy h-12 border-b border-separator px-3 flex items-center gap-2 select-none"
+      className="toolbar-surface h-14 px-3 flex items-center gap-3 select-none"
     >
       {/* Spacer for traffic lights */}
       <div className="w-16 shrink-0" />
 
-      {/* Navigation cluster */}
+      {/* Navigation cluster — pill group */}
       <div
-        className="flex items-center bg-bg/50 rounded-lg p-0.5 gap-0"
-        data-tauri-drag-region={false}
+        className="flex items-center bg-black/5 dark:bg-white/5 rounded-lg p-0.5"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {navBtn("Back", ArrowLeft, onBack, canBack)}
         {navBtn("Forward", ArrowRight, onForward, canForward)}
-        <span className="w-px h-4 bg-separator mx-0.5" />
+        <span className="w-px h-4 bg-black/10 dark:bg-white/10 mx-0.5" />
         {navBtn("Up to parent folder", ArrowUp, onUp, canUp)}
       </div>
 
-      {/* App title (centered area for drag) */}
-      <div className="flex-1 text-center font-display font-semibold text-sm text-text/70 tracking-tight pointer-events-none">
+      <div className="flex-1 text-center font-display font-semibold text-sm text-text/65 tracking-tight pointer-events-none">
         Rover
       </div>
 
-      {/* Search bar — right side */}
+      {/* Search bar — fully rounded, glassy */}
       <div
-        className="relative w-[320px] shrink-0"
+        className="relative w-[340px] shrink-0"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
@@ -122,7 +119,7 @@ export default function Toolbar({
           }}
           placeholder={searchEnabled ? searchHint : "Index a folder to enable search"}
           disabled={!searchEnabled}
-          className="w-full h-8 pl-9 pr-16 rounded-lg bg-bg/70 border border-border text-sm placeholder:text-subtle text-text focus:bg-bg focus:border-accent focus:shadow-focus-ring outline-none transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full h-8 pl-9 pr-16 rounded-full bg-black/5 dark:bg-white/5 text-sm placeholder:text-subtle text-text focus:bg-elevated focus:shadow-[0_0_0_3px_var(--accent-soft),0_2px_6px_rgba(0,0,0,0.06)] outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <span
           className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 pointer-events-none"

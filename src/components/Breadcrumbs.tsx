@@ -8,7 +8,7 @@ type Props = {
 
 function buildSegments(path: string, home: string) {
   const out: { label: string; full: string; isHome?: boolean }[] = [];
-  if (path.startsWith(home)) {
+  if (path.startsWith(home) && home) {
     out.push({ label: "Home", full: home, isHome: true });
     const rest = path.slice(home.length).split("/").filter(Boolean);
     let acc = home;
@@ -43,10 +43,10 @@ export default function Breadcrumbs({ path, home, onNavigate }: Props) {
             {i > 0 && <ChevronRight size={12} className="text-subtle mx-0.5" />}
             <button
               onClick={() => onNavigate(s.full)}
-              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md transition ${
+              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition ${
                 last
-                  ? "text-text font-medium"
-                  : "text-muted hover:text-text hover:bg-bg/60"
+                  ? "text-text font-semibold"
+                  : "text-muted hover:text-text hover:bg-black/5 dark:hover:bg-white/5"
               }`}
               title={s.full}
             >

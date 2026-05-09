@@ -63,11 +63,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled || busy}
-      className={`w-full inline-flex items-center justify-center gap-2 h-9 rounded-md text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
-        primary
-          ? "bg-accent hover:bg-accent-hover text-white shadow-macos-sm"
-          : "bg-bg border border-border text-text hover:bg-surface"
-      }`}
+      className={`btn w-full ${primary ? "btn-primary" : "btn-secondary"}`}
     >
       {busy ? <Loader size={14} /> : <Icon size={14} />}
       <span>{children}</span>
@@ -83,9 +79,7 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
   const file = targetFile(selection);
   const isFolder = selection?.kind === "entry" && selection.entry.is_dir;
   const folderPath =
-    selection?.kind === "entry" && selection.entry.is_dir
-      ? selection.entry.path
-      : null;
+    selection?.kind === "entry" && selection.entry.is_dir ? selection.entry.path : null;
 
   async function summarize() {
     if (!file) return;
@@ -143,9 +137,9 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
   // Empty state
   if (!selection) {
     return (
-      <aside className="w-[380px] border-l border-separator bg-surface/40 p-5 flex flex-col items-center justify-center text-center gap-3 animate-fade-in">
-        <span className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-accent">
-          <Sparkles size={26} />
+      <aside className="details-surface w-[380px] p-6 flex flex-col items-center justify-center text-center gap-3 animate-fade-in">
+        <span className="w-16 h-16 rounded-3xl bg-accent-soft text-accent flex items-center justify-center shadow-[var(--shadow-card)]">
+          <Sparkles size={28} />
         </span>
         <h3 className="font-display text-base font-semibold text-text">
           Select something to begin
@@ -163,14 +157,17 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
     const e = selection.entry;
     const isIndexed = indexedRoot === e.path;
     return (
-      <aside className="w-[380px] border-l border-separator bg-surface/40 flex flex-col animate-fade-in">
-        <div className="p-5 border-b border-separator">
-          <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-lg bg-accent/15 flex items-center justify-center text-accent">
-              <Folder size={22} />
+      <aside className="details-surface w-[380px] flex flex-col animate-fade-in overflow-hidden">
+        <div className="p-5 pt-6">
+          <div className="flex items-center gap-3.5">
+            <span className="w-14 h-14 rounded-2xl bg-accent/15 flex items-center justify-center text-accent shadow-[var(--shadow-card)]">
+              <Folder size={24} />
             </span>
             <div className="min-w-0">
-              <h2 className="font-display text-base font-semibold truncate" title={e.name}>
+              <h2
+                className="font-display text-base font-semibold truncate"
+                title={e.name}
+              >
                 {e.name}
               </h2>
               <p className="text-xs text-muted">Folder</p>
@@ -184,7 +181,7 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
           </p>
         </div>
 
-        <div className="p-5 flex flex-col gap-2">
+        <div className="px-5 pb-4 flex flex-col gap-2">
           <ActionButton
             onClick={() => onIndexFolder(e.path)}
             primary
@@ -199,12 +196,12 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
         </div>
 
         {toast && (
-          <div className="mx-5 mb-5 text-xs text-muted bg-bg/70 border border-border rounded-md px-3 py-2">
+          <div className="mx-5 mb-4 text-xs text-muted bg-black/5 dark:bg-white/5 rounded-xl px-3 py-2">
             {toast}
           </div>
         )}
 
-        <div className="mt-auto p-5 border-t border-separator text-xs text-muted leading-relaxed">
+        <div className="mt-auto m-5 mt-2 rounded-xl bg-black/5 dark:bg-white/5 p-4 text-xs text-muted leading-relaxed">
           <strong className="text-text font-medium">What does indexing do?</strong>
           <br />
           Rover reads every PDF, DOCX, MD, and TXT file inside this folder
@@ -221,22 +218,24 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
   const preview = selection.kind === "hit" ? selection.hit.chunk_text : "";
 
   return (
-    <aside className="w-[380px] border-l border-separator bg-surface/40 flex flex-col overflow-y-auto animate-fade-in">
-      <div className="p-5 border-b border-separator">
-        <div className="flex items-center gap-3">
-          <span className="w-12 h-12 rounded-lg bg-bg border border-border flex items-center justify-center text-muted">
-            <FileText size={22} />
+    <aside className="details-surface w-[380px] flex flex-col overflow-y-auto animate-fade-in">
+      <div className="p-5 pt-6">
+        <div className="flex items-center gap-3.5">
+          <span className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-muted shadow-[var(--shadow-card)]">
+            <FileText size={24} />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold truncate" title={f.filename}>
+            <h2
+              className="font-display text-base font-semibold truncate"
+              title={f.filename}
+            >
               {f.filename}
             </h2>
-            {meta && (
+            {meta ? (
               <p className="text-xs text-muted">
                 {fmtBytes(meta.size)} · {fmtDate(meta.modifiedMs)}
               </p>
-            )}
-            {!meta && (
+            ) : (
               <p className="text-xs text-muted">From semantic search</p>
             )}
           </div>
@@ -249,7 +248,7 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
         </p>
       </div>
 
-      <div className="p-5 flex flex-col gap-2">
+      <div className="px-5 pb-4 flex flex-col gap-2">
         <ActionButton
           onClick={summarize}
           primary
@@ -277,9 +276,9 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
       </div>
 
       {toast && (
-        <div className="mx-5 -mt-2 mb-3 text-xs text-text bg-bg/80 border border-border rounded-md px-3 py-2 flex items-start gap-2 animate-fade-in-fast">
-          <span className="text-success">●</span>
-          <span className="flex-1 break-words">{toast}</span>
+        <div className="mx-5 -mt-2 mb-3 text-xs bg-black/5 dark:bg-white/5 rounded-xl px-3 py-2 flex items-start gap-2 animate-fade-in-fast">
+          <span className="text-success mt-0.5">●</span>
+          <span className="flex-1 break-words text-text">{toast}</span>
         </div>
       )}
 
@@ -288,7 +287,7 @@ export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: P
         <h3 className="text-2xs font-semibold uppercase tracking-wider text-muted">
           {summary ? "AI summary" : preview ? "Matched excerpt" : "Preview"}
         </h3>
-        <div className="flex-1 bg-bg border border-border rounded-md p-3 text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap min-h-[120px]">
+        <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-xl p-4 text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap min-h-[140px]">
           {summary ? (
             summary
           ) : preview ? (

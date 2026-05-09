@@ -16,10 +16,10 @@ export default function WelcomeOverlay({
   onSkip,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-6 backdrop-blur-md bg-bg/70 animate-fade-in-fast">
-      <div className="card max-w-md w-full p-7 text-center shadow-macos-lg">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-4">
-          <Sparkles size={28} />
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-6 backdrop-blur-md bg-black/15 dark:bg-black/50 animate-fade-in-fast">
+      <div className="card max-w-md w-full p-7 text-center shadow-[var(--shadow-pop)]">
+        <div className="mx-auto w-16 h-16 rounded-3xl bg-accent-soft text-accent flex items-center justify-center mb-4 shadow-[var(--shadow-card)]">
+          <Sparkles size={30} />
         </div>
         <h1 className="font-display text-xl font-semibold text-text mb-2">
           Welcome to Rover
@@ -32,7 +32,7 @@ export default function WelcomeOverlay({
           Let's get your documents ready to search.
         </p>
 
-        <div className="text-left bg-bg/50 border border-border rounded-lg p-4 mb-5">
+        <div className="text-left rounded-xl bg-black/5 dark:bg-white/5 p-4 mb-5">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 text-accent">
               <FolderSearch size={18} />
@@ -66,13 +66,13 @@ export default function WelcomeOverlay({
           <div className="flex flex-col gap-2">
             <button
               onClick={onStart}
-              className="w-full h-10 rounded-lg bg-accent hover:bg-accent-hover text-white text-sm font-semibold transition shadow-macos-sm"
+              className="btn btn-primary w-full h-11 text-[14px]"
             >
               Set up Rover
             </button>
             <button
               onClick={onSkip}
-              className="w-full h-9 rounded-lg text-sm text-muted hover:text-text hover:bg-surface transition"
+              className="btn w-full h-10 text-muted hover:text-text hover:bg-black/5 dark:hover:bg-white/5"
             >
               Skip for now — I'll pick a folder later
             </button>

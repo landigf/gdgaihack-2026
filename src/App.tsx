@@ -36,8 +36,6 @@ export default function App() {
   const [indexBusy, setIndexBusy] = useState(false);
 
   const [info, setInfo] = useState<string>("");
-
-  // OOTB first-run flow
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
 
@@ -64,25 +62,21 @@ export default function App() {
     []
   );
 
-  // Boot: home → list home → check index state → maybe show welcome
   useEffect(() => {
     (async () => {
       try {
         const h = await tauri.homeDir();
         setHome(h);
         await navigateTo(h, true);
-
-        // Wait for sidecar to be ready before hitting /state
         for (let i = 0; i < 30; i++) {
           try {
             const ok = await api.health();
             if (ok?.ok) break;
           } catch {
-            // not ready
+            /* not ready */
           }
           await new Promise((r) => setTimeout(r, 500));
         }
-
         try {
           const s = await api.state();
           if (s.indexed && s.root) {
@@ -92,7 +86,6 @@ export default function App() {
             setWelcomeOpen(true);
           }
         } catch {
-          // sidecar issue — show welcome anyway, user can skip
           setWelcomeOpen(true);
         }
         setBootChecked(true);
@@ -109,21 +102,18 @@ export default function App() {
     setHistory((h) => ({ ...h, index: i }));
     navigateTo(history.stack[i], false);
   }
-
   function goForward() {
     if (history.index >= history.stack.length - 1) return;
     const i = history.index + 1;
     setHistory((h) => ({ ...h, index: i }));
     navigateTo(history.stack[i], false);
   }
-
   function goUp() {
     if (!path || path === "/") return;
     const parent = path.replace(/\/[^/]+$/, "") || "/";
     if (parent === path) return;
     navigateTo(parent);
   }
-
   function onOpenEntry(e: DirEntry) {
     if (e.is_dir) {
       navigateTo(e.path);
@@ -151,7 +141,6 @@ export default function App() {
       setSearchBusy(false);
     }
   }
-
   function clearSearch() {
     setQuery("");
     setHits([]);
@@ -185,10 +174,9 @@ export default function App() {
       await indexFolder(home);
       setWelcomeOpen(false);
     } catch {
-      // Stay on welcome with error visible in info
+      /* keep overlay with error */
     }
   }
-
   function skipWelcome() {
     setWelcomeOpen(false);
   }
@@ -204,7 +192,7 @@ export default function App() {
   const canIndexCurrent = !!path;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <Toolbar
         canBack={history.index > 0}
         canForward={history.index < history.stack.length - 1}
@@ -237,23 +225,23 @@ export default function App() {
           canIndexCurrent={canIndexCurrent}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-bg">
-          {/* Path bar row */}
-          <div className="h-11 px-4 border-b border-separator flex items-center gap-3">
+        <main className="flex-1 flex flex-col min-w-0 main-surface">
+          {/* Breadcrumb row — no border, just whitespace */}
+          <div className="h-12 px-5 flex items-center gap-3">
             <Breadcrumbs path={path} home={home} onNavigate={(p) => navigateTo(p)} />
             {query && (
               <button
                 onClick={clearSearch}
-                className="ml-auto text-xs px-3 py-1 rounded-md bg-surface hover:bg-bg border border-border hover:border-muted/40 transition"
+                className="ml-auto text-xs px-3 py-1.5 rounded-lg btn-secondary"
               >
                 ← Back to folder
               </button>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 overflow-y-auto px-5 pb-5">
             {browseError && !query && (
-              <div className="mb-3 text-sm text-danger bg-danger/8 border border-danger/20 rounded-md px-3 py-2">
+              <div className="mb-3 text-sm text-danger bg-danger/8 rounded-lg px-3 py-2">
                 {browseError}
               </div>
             )}
@@ -269,9 +257,7 @@ export default function App() {
             ) : (
               <BrowseList
                 entries={entries}
-                selected={
-                  selection?.kind === "entry" ? selection.entry : null
-                }
+                selected={selection?.kind === "entry" ? selection.entry : null}
                 onSelect={(e) => setSelection({ kind: "entry", entry: e })}
                 onOpen={onOpenEntry}
               />

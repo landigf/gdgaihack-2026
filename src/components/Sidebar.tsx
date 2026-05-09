@@ -32,10 +32,10 @@ export default function Sidebar({
   const home = items.find((i) => i.kind === "home")?.path ?? "";
 
   return (
-    <aside className="vibrancy w-64 border-r border-separator p-3 flex flex-col gap-5 overflow-y-auto">
+    <aside className="sidebar-surface w-64 px-2.5 pt-3 pb-3 flex flex-col gap-5 overflow-y-auto">
       {/* Favorites */}
       <section>
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-2 pb-1.5">
+        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-2.5 pb-1.5">
           Favorites
         </h2>
         <ul className="flex flex-col gap-0.5">
@@ -46,13 +46,16 @@ export default function Sidebar({
               <li key={it.path}>
                 <button
                   onClick={() => onNavigate(it.path)}
-                  className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition ${
+                  className={`pill w-full flex items-center gap-2.5 px-2.5 py-1.5 text-sm ${
                     active
-                      ? "row-selected font-medium"
-                      : "text-text/85 hover:bg-surface/60"
+                      ? "pill-selected font-medium"
+                      : "text-text/85 hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
-                  <Icon size={15} className="text-accent" />
+                  <Icon
+                    size={15}
+                    className={active ? "text-accent" : "text-accent/85"}
+                  />
                   <span className="truncate">{it.label}</span>
                 </button>
               </li>
@@ -61,15 +64,14 @@ export default function Sidebar({
         </ul>
       </section>
 
-      {/* Search corpus section */}
-      <section>
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-2 pb-1.5">
+      {/* Smart search section */}
+      <section className="px-1">
+        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-1.5 pb-2">
           Smart Search
         </h2>
-        <div className="px-2 flex flex-col gap-2">
-          <p className="text-xs text-muted leading-snug">
-            Pick a folder to make every file inside searchable by meaning, not
-            just by name.
+        <div className="flex flex-col gap-2.5">
+          <p className="text-xs text-muted leading-snug px-1.5">
+            Make a folder searchable by meaning — not just by name.
           </p>
           <button
             onClick={onIndexCurrent}
@@ -79,7 +81,7 @@ export default function Sidebar({
                 ? `Make "${currentPathLabel}" searchable`
                 : "Open a folder to index it"
             }
-            className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-md bg-accent hover:bg-accent-hover text-white text-sm font-medium transition disabled:bg-accent/40 disabled:cursor-not-allowed"
+            className="btn btn-primary w-full disabled:bg-accent disabled:opacity-40"
           >
             {indexBusy ? (
               <>
@@ -95,8 +97,8 @@ export default function Sidebar({
             )}
           </button>
           {indexedRoot && (
-            <div className="bg-bg/60 border border-border rounded-md p-2 text-xs">
-              <div className="flex items-center gap-1.5 text-success">
+            <div className="mx-1 rounded-xl bg-black/5 dark:bg-white/5 p-2.5 text-xs">
+              <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-success" />
                 <span className="font-medium text-text">Search ready</span>
               </div>
@@ -108,8 +110,7 @@ export default function Sidebar({
               </div>
               {indexedFiles !== null && (
                 <div className="text-muted mt-0.5">
-                  {indexedFiles} {indexedFiles === 1 ? "file" : "files"}{" "}
-                  indexed
+                  {indexedFiles} {indexedFiles === 1 ? "file" : "files"}
                 </div>
               )}
             </div>
@@ -118,11 +119,11 @@ export default function Sidebar({
       </section>
 
       {/* Tips */}
-      <section className="mt-auto">
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-2 pb-1.5">
+      <section className="mt-auto px-1">
+        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted px-1.5 pb-1.5">
           Try
         </h2>
-        <ul className="px-2 flex flex-col gap-1 text-xs text-muted leading-snug">
+        <ul className="px-1.5 flex flex-col gap-1 text-xs text-muted leading-snug">
           <li>"presentazione budget alpha"</li>
           <li>"meeting notes last sprint"</li>
           <li>"contratto vendor X"</li>

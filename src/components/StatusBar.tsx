@@ -34,21 +34,21 @@ export default function StatusBar({
       : "Starting AI engine…";
 
   return (
-    <footer className="h-7 border-t border-separator px-3 text-xs text-muted flex items-center justify-between gap-4 bg-surface/60">
+    <footer className="h-7 px-4 text-xs text-muted flex items-center justify-between gap-4 bg-black/5 dark:bg-white/5">
       <span className="flex items-center gap-2">
         <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
         <span>{label}</span>
         {indexedRoot && (
           <>
             <span className="text-subtle">·</span>
-            <span className="font-mono truncate max-w-[200px]" title={indexedRoot}>
+            <span className="font-mono truncate max-w-[260px]" title={indexedRoot}>
               indexed: {indexedRoot.replace(/^\/Users\/[^/]+/, "~")}
             </span>
           </>
         )}
       </span>
       <span className="font-mono text-subtle truncate">{info}</span>
-      <span className="text-subtle">100% offline · gemma3:4b · nomic-embed-text</span>
+      <span className="text-subtle">100% offline</span>
     </footer>
   );
 }
