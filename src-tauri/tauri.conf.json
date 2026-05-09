@@ -30,7 +30,9 @@
   "bundle": {
     "active": true,
     "targets": ["dmg", "app"],
-    "resources": ["../backend/**/*"],
+    "resources": {
+      "../backend/": "backend/"
+    },
     "macOS": {
       "minimumSystemVersion": "12.0"
     }

@@ -24,10 +24,10 @@ export default function StatusBar({ info }: { info: string }) {
     <footer className="col-span-3 border-t border-border px-4 text-[11px] text-muted flex items-center justify-between gap-4">
       <span className="flex items-center gap-2">
         <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
-        sidecar: <span className="text-text/80">{status}</span> · airplane mode ✓
+        sidecar: <span className="text-text/80">{status}</span> · localhost only
       </span>
       <span className="font-mono truncate">{info}</span>
-      <span className="font-mono text-muted/80">qwen3:4b · nomic-embed · faiss · tauri</span>
+      <span className="font-mono text-muted/80">gemma3:4b · nomic-embed · FAISS · Tauri</span>
     </footer>
   );
 }
