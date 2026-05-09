@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { DirEntry, SearchHit, Selection } from "./types";
 import { api } from "./api";
@@ -13,7 +19,7 @@ import StatusBar from "./components/StatusBar";
 import WelcomeOverlay from "./components/WelcomeOverlay";
 
 type HistoryState = { stack: string[]; index: number };
-type EngineState = "ready" | "starting" | "error";
+type EngineState = "ready" | "starting" | "installing" | "error";
 
 function homeRel(p: string, home: string) {
   if (!p) return p;
@@ -122,52 +128,57 @@ export default function App() {
     };
   }, []);
 
-  // Boot
+  // Boot — only sets up filesystem navigation. Sidecar /state and /config
+  // are fetched separately once engineState transitions to 'ready' (see below)
+  // because first-launch install can take a minute or two.
   useEffect(() => {
     (async () => {
       try {
         const h = await tauri.homeDir();
         setHome(h);
         await navigateTo(h, true);
-        for (let i = 0; i < 30; i++) {
-          try {
-            const ok = await api.health();
-            if (ok?.ok) break;
-          } catch { /* not ready */ }
-          await new Promise((r) => setTimeout(r, 500));
-        }
-        try {
-          const s = await api.state();
-          if (s.indexed && s.root) {
-            setIndexedRoot(s.root);
-            setIndexedFiles(s.files ?? null);
-          } else {
-            setWelcomeOpen(true);
-          }
-        } catch {
-          setWelcomeOpen(true);
-        }
-        // Fetch live model info (name, params, quant) from Ollama
-        try {
-          const c = await api.config();
-          const fmt = (m: typeof c.gen, withQuant: boolean) => {
-            const cleanName = m.name.replace(/:latest$/, "");
-            const parts = [m.params, withQuant ? m.quant : null].filter(Boolean);
-            return parts.length ? `${cleanName} · ${parts.join(" · ")}` : cleanName;
-          };
-          setModelGen(fmt(c.gen, true));
-          setModelEmbed(fmt(c.embed, true));
-        } catch {
-          setModelGen("models unavailable");
-          setModelEmbed("");
-        }
-        setBootChecked(true);
       } catch (e) {
         setBrowseError((e as Error).message);
-        setBootChecked(true);
       }
     })();
   }, [navigateTo]);
+
+  // Sidecar-dependent setup. Fires once engineState becomes 'ready', which
+  // can take >1 min on first launch when the .app needs to create the
+  // venv and pip-install dependencies.
+  const sidecarSyncedRef = useRef(false);
+  useEffect(() => {
+    if (engineState !== "ready" || sidecarSyncedRef.current) return;
+    sidecarSyncedRef.current = true;
+
+    (async () => {
+      try {
+        const s = await api.state();
+        if (s.indexed && s.root) {
+          setIndexedRoot(s.root);
+          setIndexedFiles(s.files ?? null);
+        } else {
+          setWelcomeOpen(true);
+        }
+      } catch {
+        setWelcomeOpen(true);
+      }
+      try {
+        const c = await api.config();
+        const fmt = (m: typeof c.gen, withQuant: boolean) => {
+          const cleanName = m.name.replace(/:latest$/, "");
+          const parts = [m.params, withQuant ? m.quant : null].filter(Boolean);
+          return parts.length ? `${cleanName} · ${parts.join(" · ")}` : cleanName;
+        };
+        setModelGen(fmt(c.gen, true));
+        setModelEmbed(fmt(c.embed, true));
+      } catch {
+        setModelGen("models unavailable");
+        setModelEmbed("");
+      }
+      setBootChecked(true);
+    })();
+  }, [engineState]);
 
   // Debounce search
   useEffect(() => {
@@ -330,6 +341,8 @@ export default function App() {
       ? "AI engine ready"
       : engineState === "starting"
       ? "Starting AI engine…"
+      : engineState === "installing"
+      ? "Installing AI engine (first launch, ~1 min)…"
       : "AI engine offline";
   let centerStatus = "";
   if (indexBusy) centerStatus = "Indexing…";

@@ -32,7 +32,16 @@
     "active": true,
     "targets": ["dmg", "app"],
     "resources": {
-      "../backend/": "backend/"
+      "../backend/main.py": "backend/main.py",
+      "../backend/config.py": "backend/config.py",
+      "../backend/models.py": "backend/models.py",
+      "../backend/parsing.py": "backend/parsing.py",
+      "../backend/chunking.py": "backend/chunking.py",
+      "../backend/ollama_client.py": "backend/ollama_client.py",
+      "../backend/store.py": "backend/store.py",
+      "../backend/indexer.py": "backend/indexer.py",
+      "../backend/retriever.py": "backend/retriever.py",
+      "../backend/requirements.txt": "backend/requirements.txt"
     },
     "macOS": {
       "minimumSystemVersion": "12.0"

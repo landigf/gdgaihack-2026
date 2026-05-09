@@ -13,7 +13,7 @@ export type QuickItem = {
   kind: "home" | "documents" | "downloads" | "desktop" | "starred";
 };
 
-type EngineState = "ready" | "starting" | "error";
+type EngineState = "ready" | "starting" | "installing" | "error";
 
 type Props = {
   items: QuickItem[];
@@ -53,12 +53,18 @@ export default function Sidebar({
   canIndex,
 }: Props) {
   const dotClass =
-    engineState === "ready" ? "" : engineState === "starting" ? "warn" : "err";
+    engineState === "ready"
+      ? ""
+      : engineState === "error"
+      ? "err"
+      : "warn";
   const engineLabel =
     engineState === "ready"
       ? "AI engine ready"
       : engineState === "starting"
-      ? "Starting AI engine…"
+      ? "Starting…"
+      : engineState === "installing"
+      ? "Installing… (~1 min)"
       : "AI engine offline";
 
   return (

@@ -1,5 +1,5 @@
 type Props = {
-  engineState: "ready" | "starting" | "error";
+  engineState: "ready" | "starting" | "installing" | "error";
   engineLabel: string;
   modelInfo: string;
   centerText: string;
@@ -12,7 +12,11 @@ export default function StatusBar({
   centerText,
 }: Props) {
   const dotClass =
-    engineState === "ready" ? "" : engineState === "starting" ? "warn" : "err";
+    engineState === "ready"
+      ? ""
+      : engineState === "error"
+      ? "err"
+      : "warn";
   return (
     <footer className="statusbar">
       <div className="sb-l">
