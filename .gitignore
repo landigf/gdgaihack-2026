@@ -1,5 +1,5 @@
 # ============================================================
-# FinderAI .gitignore — Python backend + React/Vite frontend
+# Rover .gitignore — Tauri 2 + Rust + Python sidecar + React
 # ============================================================
 
 # ---------- Python ----------
@@ -11,7 +11,6 @@ __pycache__/
 *.egg
 *.egg-info/
 .eggs/
-dist/
 build/
 develop-eggs/
 downloads/
@@ -61,27 +60,23 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Build outputs
-frontend/dist/
-frontend/dist-ssr/
-frontend/build/
+# Build outputs (Vite renderer + Tauri bundles)
+dist/
+dist-ssr/
 *.local
 
 # Vite cache
 .vite/
-frontend/.vite/
 
-# ---------- FinderAI runtime artifacts ----------
+# ---------- Rover runtime artifacts ----------
 # Embedding indices and parsed data
-data/
 backend/data/
 *.faiss
 *.index
 index_metadata.json
 
-# User-indexed paths (never commit user files)
-indexed/
-.finderai/
+# Indexed user folder breadcrumbs
+.rover/
 
 # Logs
 logs/
@@ -112,9 +107,10 @@ Icon?
 *.pem
 *.key
 
-# ---------- Tauri (in case we pivot to Option A) ----------
+# ---------- Tauri ----------
 src-tauri/target/
-src-tauri/Cargo.lock
+src-tauri/gen/schemas/
+# Cargo.lock IS committed for binary crates (Rover is a bin)
 
 # ---------- Models / heavy artifacts (Ollama lives in ~/.ollama) ----------
 *.gguf
