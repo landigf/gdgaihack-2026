@@ -1,10 +1,15 @@
-# SOLUTIONS_INDEX.md — five candidate solutions, pick one to merge to main
+# SOLUTIONS_INDEX.md — 5 soluzioni candidate, scegline una
 
-> **Status:** 2026-05-09, 5 candidate hackathon solutions on 5 separate branches. Team picks one at the next decision checkpoint and merges to `main` for final 24h push to submission.
+> **🇮🇹 LEGGI PRIMA QUESTO se sei della squadra:**
 >
-> **Decision deadline:** picking-a-solution should be locked **no later than T+12h from kickoff** (Saturday ~23:00) so the chosen branch has 12h of polish runway. Earlier is better.
+> Sono state preparate **5 soluzioni complete** per la track Cut the Cord, ognuna su un branch separato di GitHub. Ogni branch contiene:
+> - `IDEA_SEMPLICE.md` — 1 pagina ITA terra-terra (leggi questo PER PRIMO)
+> - `PITCH_DECK.md` — slide markdown pronte da presentare (Marp, render con `npx @marp-team/marp-cli@latest PITCH_DECK.md --pdf`)
+> - `SOLUTION_OVERVIEW.md` — full spec tecnica con risk + outstanding work
 >
-> **How to use this doc:** read the 5 one-liners. If one resonates, go directly to its branch's `doc/specs/cut-the-cord/SOLUTION_OVERVIEW.md` for full pitch + risk + outstanding-work details.
+> **Per il messaggio da mandare nel gruppo WhatsApp:** apri [WHATSAPP_MESSAGE.md](WHATSAPP_MESSAGE.md) e copia-incolla la versione preferita (short / medium / long).
+>
+> **Decision deadline:** entro T+12h da kickoff (sabato ~23:00) per lasciare 12h di polish runway sulla branch scelta. Prima è meglio.
 
 ---
 
