@@ -92,12 +92,17 @@ function parseBullets(text: string): string[] {
   return bullets;
 }
 
-/** Bold inside bullets: **text** → <b>text</b>. Returns sanitized HTML. */
+/** Bold inside bullets: **text** → <b>text</b>. Returns sanitized HTML.
+ *  Also normalises spacing around bold runs — gemma occasionally emits
+ *  "**AIFA**APIs" with no separator, which would render as "AIFAAPIs". */
 function renderBullet(b: string): string {
-  const escaped = b
+  let escaped = b
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+  // Insert a space when an alphanumeric char hugs a bold-open / bold-close.
+  escaped = escaped.replace(/(\w)\*\*(\S)/g, "$1 **$2");
+  escaped = escaped.replace(/(\S)\*\*(\w)/g, "$1** $2");
   return escaped.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
 
@@ -424,10 +429,12 @@ export default function DetailPanel({
               </div>
               <ul>
                 {bullets.map((b, i) => (
-                  <li
-                    key={i}
-                    dangerouslySetInnerHTML={{ __html: renderBullet(b) }}
-                  />
+                  <li key={i}>
+                    <span
+                      className="bullet-body"
+                      dangerouslySetInnerHTML={{ __html: renderBullet(b) }}
+                    />
+                  </li>
                 ))}
               </ul>
               {aiState === "done" && (
