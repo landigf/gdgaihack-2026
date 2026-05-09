@@ -1,3 +1,4 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+# `tests/` covers Rover Core; `ares/tests/` covers the Houston layer (M5 voice etc).
+testpaths = ["tests", "ares/tests"]

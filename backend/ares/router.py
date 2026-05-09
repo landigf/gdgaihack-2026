@@ -2,6 +2,9 @@
 
 Endpoints exposed:
     POST /ares/houston/greenhouse   — narrate greenhouse status with citations
+    POST /ares/voice/transcribe     — multipart wav → text (whisper.cpp)
+    POST /ares/voice/synthesize     — JSON {text} → wav binary (Piper)
+    POST /ares/voice/houston        — multipart wav → transcript + Houston reply + reply wav
     GET  /ares/health               — ARES-side health check (separate from Rover Core)
 
 Why this lives in a router and not in main.py: keeps Stream A's main.py clean.
@@ -9,13 +12,20 @@ Stream A only adds one line to main.py: `app.include_router(ares_router)`.
 """
 from __future__ import annotations
 
+import base64
 import json
+import os
 import re
+import tempfile
 import time
-from typing import Literal
+from pathlib import Path
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
+
+from . import voice as voice_mod
 
 
 router = APIRouter(prefix="/ares", tags=["ares"])
@@ -243,3 +253,268 @@ async def houston_greenhouse(req: HoustonGreenhouseRequest, state=Depends(_get_s
         elapsed_ms=int((time.time() - t0) * 1000),
         used_llm=used_llm,
     )
+
+
+# ===========================================================================
+# Voice loop — whisper.cpp (STT) → Houston (LLM) → Piper (TTS)
+# ===========================================================================
+
+# Voice persona is the same Houston character but tuned for *spoken* output:
+# no JSON envelope, no "[S2]" inline citations (Piper would read "open
+# bracket S two" verbatim), 1-2 plain sentences. We still keep the corpus
+# claim ("Veggie", "APH", "NASA-STD-3001") so authority shows through audibly.
+HOUSTON_VOICE_SYSTEM = (
+    "You are Houston — Mars habitat AI mission-control assistant on Sol 423. "
+    "You support 4 crew on a Mars surface base. You speak only from on-disk "
+    "NASA corpora (Veggie, APH PH-04, NASA-STD-3001). You never invent "
+    "procedures, dosages, or thresholds. You are decisive and concise.\n\n"
+    "Output rules for SPOKEN replies:\n"
+    "  - Plain English. NO JSON. NO markdown. NO bracket citations like [S1].\n"
+    "  - Exactly 1-2 short sentences (max ~35 words total).\n"
+    "  - When you cite a manual, say it naturally: 'per the Veggie fact "
+    "sheet' or 'NASA-STD-3001 calls for'. Never say bracket-S-one.\n"
+    "  - Imperative voice when giving direction. Calm, factual otherwise.\n"
+    "  - If the crew asks about a tray, ground your answer in the GREENHOUSE "
+    "STATUS block when one is provided. If not provided, answer generally "
+    "from the corpora.\n"
+)
+
+
+def _build_voice_user_prompt(transcript: str, trays_json: Optional[str], selected_tray_id: Optional[int]) -> str:
+    """Assemble the user-side prompt for the voice loop.
+
+    Includes greenhouse state when the frontend supplies it, so Houston can
+    answer "what is tray two doing" with real data instead of guessing.
+    """
+    parts: list[str] = []
+
+    if trays_json:
+        try:
+            trays = json.loads(trays_json)
+        except (json.JSONDecodeError, TypeError):
+            trays = None
+
+        if isinstance(trays, list) and trays:
+            lines = []
+            for t in trays:
+                if not isinstance(t, dict):
+                    continue
+                tid = t.get("id", "?")
+                label = t.get("label", "?")
+                species = t.get("species", "?")
+                stage = t.get("stage", "?")
+                ndvi = t.get("ndvi")
+                ec = t.get("ec")
+                ph = t.get("ph")
+                ppfd = t.get("ppfd")
+                moist = t.get("moisture")
+                dth = t.get("days_to_harvest")
+                # Format only when value is present so missing fields don't read as "None".
+                bits = [f"#{tid} {label} ({species}) stage {stage}/5"]
+                if ndvi is not None:
+                    bits.append(f"NDVI {float(ndvi):.2f}")
+                if ec is not None:
+                    bits.append(f"EC {float(ec):.1f}")
+                if ph is not None:
+                    bits.append(f"pH {float(ph):.1f}")
+                if ppfd is not None:
+                    bits.append(f"PPFD {float(ppfd):.0f}")
+                if moist is not None:
+                    bits.append(f"moisture {float(moist) * 100:.0f}%")
+                if dth is not None:
+                    bits.append(f"ETA harvest {dth} sols")
+                lines.append("  - " + ", ".join(bits))
+            parts.append("GREENHOUSE STATUS — Sol 423:\n" + "\n".join(lines))
+            if selected_tray_id is not None:
+                parts.append(f"Selected tray on the operator's screen: #{selected_tray_id}.")
+
+    parts.append(f"Crew member's spoken question: \"{transcript}\"")
+    parts.append("Reply now — 1 to 2 plain sentences. No JSON. No brackets.")
+    return "\n\n".join(parts)
+
+
+def _strip_voice_artifacts(narration: str) -> str:
+    """Make narration safe for Piper to read aloud.
+
+    Removes accidental [S_n] citations, JSON-y wrappers, and markdown — the
+    LLM occasionally drifts into the schema from HOUSTON_SYSTEM even though
+    the voice prompt asks for plain text.
+    """
+    text = narration.strip()
+    # Strip outer markdown fences if any
+    text = re.sub(r"^```(?:json|markdown|text)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    # Drop bracket-S citations (read awkwardly aloud)
+    text = re.sub(r"\s*\[S\d+\]", "", text)
+    # If the model returned JSON, pull narration field if present, else use raw.
+    if text.startswith("{"):
+        try:
+            obj = json.loads(text)
+            if isinstance(obj, dict):
+                text = str(obj.get("narration") or obj.get("verdict") or text)
+        except json.JSONDecodeError:
+            pass
+    # Collapse internal whitespace.
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+@router.post("/voice/transcribe")
+async def voice_transcribe(audio: UploadFile = File(...)):
+    """Multipart wav upload → {transcript, asr_ms}.
+
+    Writes the upload to a temp WAV file, runs whisper.cpp, returns text.
+    """
+    t0 = time.time()
+    # Persist upload so whisper.cpp can mmap it
+    suffix = Path(audio.filename or "in.wav").suffix.lower() or ".wav"
+    if suffix not in (".wav", ".wave"):
+        # whisper.cpp wants PCM WAV; reject other formats explicitly so the
+        # frontend gets a clear error rather than a cryptic decode failure.
+        raise HTTPException(415, f"unsupported audio format: {suffix} (send 16kHz mono PCM WAV)")
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="houston-in-")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(await audio.read())
+        try:
+            text = voice_mod.transcribe(tmp_path)
+        except voice_mod.VoiceError as e:
+            raise HTTPException(503, str(e)) from e
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+    return {
+        "transcript": text,
+        "asr_ms": int((time.time() - t0) * 1000),
+    }
+
+
+class SynthesizeRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/voice/synthesize")
+async def voice_synthesize(req: SynthesizeRequest):
+    """JSON {text} → audio/wav binary body."""
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="houston-out-")
+    os.close(fd)
+    try:
+        try:
+            voice_mod.synthesize(req.text, tmp_path)
+        except voice_mod.VoiceError as e:
+            raise HTTPException(503, str(e)) from e
+        wav_bytes = Path(tmp_path).read_bytes()
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+    return Response(content=wav_bytes, media_type="audio/wav")
+
+
+@router.post("/voice/houston")
+async def voice_houston(
+    audio: UploadFile = File(...),
+    trays_json: Optional[str] = Form(None),
+    selected_tray_id: Optional[int] = Form(None),
+    state=Depends(_get_state),
+):
+    """Full voice loop: transcribe → Houston persona → synthesize.
+
+    Returns:
+      transcript          — what whisper heard
+      narration           — Houston's spoken reply (plain text)
+      reply_wav_b64       — base64-encoded WAV of the spoken reply
+      elapsed_breakdown   — {asr_ms, llm_ms, tts_ms}
+      used_llm            — false when Ollama unreachable (graceful fallback)
+    """
+    t_total = time.time()
+
+    # ---- 1) Persist upload + transcribe ---------------------------------
+    suffix = Path(audio.filename or "in.wav").suffix.lower() or ".wav"
+    if suffix not in (".wav", ".wave"):
+        raise HTTPException(415, f"unsupported audio format: {suffix} (send 16kHz mono PCM WAV)")
+    fd_in, in_path = tempfile.mkstemp(suffix=".wav", prefix="houston-in-")
+    fd_out, out_path = tempfile.mkstemp(suffix=".wav", prefix="houston-out-")
+    os.close(fd_out)
+
+    try:
+        with os.fdopen(fd_in, "wb") as f:
+            f.write(await audio.read())
+
+        t_asr = time.time()
+        try:
+            transcript = voice_mod.transcribe(in_path)
+        except voice_mod.VoiceError as e:
+            raise HTTPException(503, f"ASR: {e}") from e
+        asr_ms = int((time.time() - t_asr) * 1000)
+
+        if not transcript:
+            # Mic captured silence / unintelligible audio. Tell the operator
+            # rather than synthesizing an empty reply.
+            return {
+                "transcript": "",
+                "narration": "I didn't catch that — try again, closer to the mic.",
+                "reply_wav_b64": "",
+                "elapsed_breakdown": {"asr_ms": asr_ms, "llm_ms": 0, "tts_ms": 0},
+                "used_llm": False,
+            }
+
+        # ---- 2) Houston (LLM) ------------------------------------------
+        prompt = _build_voice_user_prompt(transcript, trays_json, selected_tray_id)
+        t_llm = time.time()
+        narration_raw = ""
+        used_llm = False
+        try:
+            narration_raw = await state.generator.generate(
+                prompt, system=HOUSTON_VOICE_SYSTEM
+            )
+            used_llm = True
+        except Exception:
+            # Ollama unreachable — give the crew an honest acknowledgement.
+            narration_raw = (
+                f"Houston copies you on '{transcript[:120]}'. "
+                "LLM offline; I'll respond when generation resumes."
+            )
+            used_llm = False
+        llm_ms = int((time.time() - t_llm) * 1000)
+
+        narration = _strip_voice_artifacts(narration_raw) or "Houston standing by."
+
+        # ---- 3) Piper synthesize --------------------------------------
+        t_tts = time.time()
+        try:
+            voice_mod.synthesize(narration, out_path)
+            wav_bytes = Path(out_path).read_bytes()
+        except voice_mod.VoiceError as e:
+            # Don't 503 the whole loop — frontend can still show the
+            # transcript/narration even if TTS is unavailable.
+            wav_bytes = b""
+            tts_err = str(e)
+        else:
+            tts_err = None
+        tts_ms = int((time.time() - t_tts) * 1000)
+
+        return {
+            "transcript": transcript,
+            "narration": narration,
+            "reply_wav_b64": base64.b64encode(wav_bytes).decode("ascii") if wav_bytes else "",
+            "elapsed_breakdown": {
+                "asr_ms": asr_ms,
+                "llm_ms": llm_ms,
+                "tts_ms": tts_ms,
+                "total_ms": int((time.time() - t_total) * 1000),
+            },
+            "used_llm": used_llm,
+            **({"tts_error": tts_err} if tts_err else {}),
+        }
+    finally:
+        for p in (in_path, out_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass

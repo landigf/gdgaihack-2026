@@ -9,3 +9,8 @@ python-docx==1.1.2
 tiktoken==0.8.0
 pytest==8.3.4
 pytest-asyncio==0.24.0
+# Voice loop (M5 — Houston PTT). python-multipart powers UploadFile;
+# sounddevice is optional, used only by voice.record_to_wav for CLI testing
+# (the Tauri frontend records via MediaRecorder and uploads WAV directly).
+python-multipart==0.0.20
+sounddevice==0.5.1

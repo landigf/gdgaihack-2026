@@ -41,7 +41,9 @@ type Props = {
   onClose: () => void;
 };
 
-const INITIAL_TRAYS: Tray[] = [
+// Exported so the top-level voice loop can ground Houston's spoken answers
+// in the same tray data the operator sees in the drill-in view.
+export const INITIAL_TRAYS: Tray[] = [
   {
     id: 1,
     species: "lettuce",

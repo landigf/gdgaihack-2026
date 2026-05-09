@@ -1,8 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import MarsBase, { type BuildingId } from "./3d/MarsBase";
-import GreenhouseDetail from "./views/GreenhouseDetail";
+import GreenhouseDetail, { INITIAL_TRAYS } from "./views/GreenhouseDetail";
+import VoicePTT, { type VoicePTTEvent } from "./components/VoicePTT";
 
 const SOL_NUMBER = 423;
+
+type VoiceLogEntry = {
+  t: number; // ms since epoch
+  transcript: string;
+  narration: string;
+  asr_ms?: number;
+  llm_ms?: number;
+  tts_ms?: number;
+  used_llm: boolean;
+};
 
 function formatBlackoutCountdown(secondsLeft: number) {
   const m = Math.max(0, Math.floor(secondsLeft / 60));
@@ -16,6 +27,42 @@ export default function AresApp() {
   const [habitatAlert, setHabitatAlert] = useState(false);
   const [greenhouseReady, setGreenhouseReady] = useState(true);
   const [ch4FillPct, setCh4FillPct] = useState(0.45);
+  const [voiceLog, setVoiceLog] = useState<VoiceLogEntry[]>([]);
+
+  // Snapshot of greenhouse trays in the backend's snake_case schema, attached
+  // to every PTT round-trip so Houston can ground tray-specific questions in
+  // real values rather than guessing. Frozen for the demo: trays don't drift
+  // fast enough during a 30s round-trip to matter.
+  const traysSnapshot = useCallback(() => {
+    return INITIAL_TRAYS.map((t) => ({
+      id: t.id,
+      species: t.species,
+      label: t.label,
+      stage: t.stage,
+      ndvi: t.ndvi,
+      ec: t.ec,
+      ph: t.ph,
+      ppfd: t.ppfd,
+      moisture: t.moisture,
+      days_to_harvest: t.daysToHarvest,
+    }));
+  }, []);
+
+  const handleVoiceResult = useCallback((e: VoicePTTEvent) => {
+    setVoiceLog((prev) => {
+      const next: VoiceLogEntry = {
+        t: Date.now(),
+        transcript: e.transcript,
+        narration: e.narration,
+        asr_ms: e.elapsed_breakdown?.asr_ms,
+        llm_ms: e.elapsed_breakdown?.llm_ms,
+        tts_ms: e.elapsed_breakdown?.tts_ms,
+        used_llm: e.used_llm,
+      };
+      // Keep the agent log scrollable but bounded — last 8 turns is plenty.
+      return [next, ...prev].slice(0, 8);
+    });
+  }, []);
 
   // Blackout timer ticks down each second
   useEffect(() => {
@@ -118,25 +165,41 @@ export default function AresApp() {
             Agent Log
           </div>
           <div
-            className="rounded-md p-3 text-xs font-mono space-y-2"
+            className="rounded-md p-3 text-xs font-mono space-y-3 overflow-y-auto"
             style={{
               background: "rgba(0,0,0,0.4)",
               border: "1px solid rgba(34,211,238,0.15)",
               minHeight: 200,
+              maxHeight: 360,
             }}
           >
-            {selected ? (
-              <div style={{ color: "#fbbf24" }}>
-                ▶ Selected: <span className="font-bold">{selected}</span>
-                <div className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
-                  (drill-in scenes coming next phase)
-                </div>
-              </div>
-            ) : (
+            {voiceLog.length === 0 && !selected && (
               <div style={{ color: "#64748b" }}>
-                Houston idle. Click a building on the map to drill in.
+                Houston idle. Hold the mic (or press space) and ask anything.
               </div>
             )}
+            {selected && voiceLog.length === 0 && (
+              <div style={{ color: "#fbbf24" }}>
+                ▶ Selected: <span className="font-bold">{selected}</span>
+              </div>
+            )}
+            {voiceLog.map((entry, idx) => {
+              const total = (entry.asr_ms ?? 0) + (entry.llm_ms ?? 0) + (entry.tts_ms ?? 0);
+              return (
+                <div key={`${entry.t}-${idx}`} className="space-y-1 pb-2 border-b border-white/5 last:border-b-0">
+                  <div style={{ color: "#22d3ee" }}>
+                    YOU: <span style={{ color: "#cbd5e1" }}>{entry.transcript || "(silence)"}</span>
+                  </div>
+                  <div style={{ color: "#86efac" }}>
+                    HOUSTON: <span style={{ color: "#e8e8ea" }}>{entry.narration}</span>
+                  </div>
+                  <div className="text-[10px] opacity-60" style={{ color: "#94a3b8" }}>
+                    asr {entry.asr_ms ?? "?"}ms · llm {entry.llm_ms ?? "?"}ms · tts {entry.tts_ms ?? "?"}ms · total {total}ms
+                    {!entry.used_llm && " · fallback"}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -156,21 +219,13 @@ export default function AresApp() {
         />
       </div>
 
-      {/* Floating PTT placeholder (next phase: real voice) */}
-      <button
-        className="absolute bottom-6 left-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
-        style={{
-          background: "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
-          color: "#0a0a0a",
-          boxShadow: "0 0 24px rgba(34,211,238,0.45), 0 4px 12px rgba(0,0,0,0.4)",
-          border: "1px solid #67e8f9",
-          fontWeight: 600,
-        }}
-        onMouseDown={() => setHabitatAlert(true)}
-        onMouseUp={() => setHabitatAlert(false)}
-      >
-        <span>🎙</span> HOLD TO TALK TO HOUSTON (mock)
-      </button>
+      {/* Real voice loop — whisper.cpp + Houston + Piper, all on-device.
+          (setHabitatAlert is still driven by the demo controls bar below.) */}
+      <VoicePTT
+        onResult={handleVoiceResult}
+        traysContext={traysSnapshot}
+        selectedTrayId={() => (selected === "greenhouse" ? 2 : null)}
+      />
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div
