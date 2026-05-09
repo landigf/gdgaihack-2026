@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -517,11 +517,95 @@ def _survival_fallback_tip(req: SurvivalRequest) -> dict:
 HOUSTON_VOICE_SYSTEM = (
     HOUSTON_PREFIX
     + "ROLE: voice persona. The crew speaks to you over an intercom. "
-    + "You answer in 1-2 short sentences max — speak like NASA Capcom: clipped, "
-    + "imperative, never hedge. Do not use markdown. Do not include citations "
-    + "in the spoken reply (citations are shown on the dashboard, not voiced).\n\n"
+    + "Output rules for SPOKEN replies:\n"
+    + "  - Plain English. NO JSON. NO markdown. NO bracket citations like [S1].\n"
+    + "  - Exactly 1-2 short sentences (max ~35 words total).\n"
+    + "  - When you cite a manual, say it naturally: 'per the Veggie fact sheet' "
+    + "or 'NASA-STD-3001 calls for'. Never say bracket-S-one.\n"
+    + "  - Imperative voice when giving direction. Calm, factual otherwise.\n"
+    + "  - If the crew asks about a tray, ground your answer in the GREENHOUSE "
+    + "STATUS block when one is provided.\n\n"
     + "Return PLAIN TEXT ONLY (no JSON, no formatting). Just the spoken reply."
 )
+
+
+def _build_voice_user_prompt(
+    transcript: str,
+    trays_json: str | None,
+    selected_tray_id: int | None,
+    chunk_block: str = "",
+) -> str:
+    """Voice user prompt with optional greenhouse + RAG context.
+    Forward-port from feat/houston-voice (PR #7) so Houston grounds spoken
+    answers in the same tray data the operator sees on the drill-in."""
+    parts: list[str] = []
+    if trays_json:
+        try:
+            trays = json.loads(trays_json)
+        except (json.JSONDecodeError, TypeError):
+            trays = None
+        if isinstance(trays, list) and trays:
+            lines = []
+            for t in trays:
+                if not isinstance(t, dict):
+                    continue
+                bits = [
+                    f"#{t.get('id', '?')} {t.get('label', '?')} "
+                    f"({t.get('species', '?')}) stage {t.get('stage', '?')}/5"
+                ]
+                for k, fmt in (
+                    ("ndvi", "NDVI {v:.2f}"),
+                    ("ec", "EC {v:.1f}"),
+                    ("ph", "pH {v:.1f}"),
+                    ("ppfd", "PPFD {v:.0f}"),
+                ):
+                    v = t.get(k)
+                    if v is not None:
+                        try:
+                            bits.append(fmt.format(v=float(v)))
+                        except (TypeError, ValueError):
+                            pass
+                m = t.get("moisture")
+                if m is not None:
+                    try:
+                        bits.append(f"moisture {float(m) * 100:.0f}%")
+                    except (TypeError, ValueError):
+                        pass
+                dth = t.get("days_to_harvest")
+                if dth is not None:
+                    bits.append(f"ETA harvest {dth} sols")
+                lines.append("  - " + ", ".join(bits))
+            parts.append("GREENHOUSE STATUS — Sol 423:\n" + "\n".join(lines))
+            if selected_tray_id is not None:
+                parts.append(
+                    f"Selected tray on the operator's screen: #{selected_tray_id}."
+                )
+    if chunk_block:
+        parts.append("Reference (do not speak the [S_n] tags aloud):\n" + chunk_block)
+    parts.append(f"Crew member's spoken question: \"{transcript}\"")
+    parts.append("Reply now — 1 to 2 plain sentences. No JSON. No brackets.")
+    return "\n\n".join(parts)
+
+
+def _strip_voice_artifacts(narration: str) -> str:
+    """Make narration safe for TTS to read aloud. Drops [S_n] citations,
+    JSON wrappers, and markdown that the LLM occasionally drifts into
+    despite the voice prompt rules."""
+    text = (narration or "").strip()
+    text = re.sub(r"^```(?:json|markdown|text)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    text = re.sub(r"\s*\[S\d+\]", "", text)
+    if text.startswith("{"):
+        try:
+            obj = json.loads(text)
+            if isinstance(obj, dict):
+                text = str(
+                    obj.get("narration") or obj.get("reply") or obj.get("verdict") or text
+                )
+        except json.JSONDecodeError:
+            pass
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 
 class VoiceTextResponse(BaseModel):
@@ -536,6 +620,8 @@ class VoiceTextResponse(BaseModel):
 @router.post("/voice/houston")
 async def voice_houston(
     audio: UploadFile = File(...),
+    trays_json: str | None = Form(default=None),
+    selected_tray_id: int | None = Form(default=None),
     state=Depends(_get_state),
 ):
     """Full voice round-trip: WAV/WebM upload → whisper STT → Houston voice
@@ -610,20 +696,14 @@ async def voice_houston(
             )
         chunk_block = "\n\n".join(parts)
 
-    user_msg = (
-        f"Crew member to Houston:\n  {transcript!r}\n\n"
+    user_msg = _build_voice_user_prompt(
+        transcript, trays_json, selected_tray_id, chunk_block
     )
-    if chunk_block:
-        user_msg += "Reference (do not speak the [S_n] tags):\n" + chunk_block + "\n\n"
-    user_msg += "Houston, your reply:"
 
     try:
         reply_raw = await state.generator.generate(user_msg, system=HOUSTON_VOICE_SYSTEM)
         used_llm = True
-        # Strip any [S_n] tags that the LLM might have leaked despite the rule
-        reply_text = re.sub(r"\s*\[S\d+\]\s*", " ", reply_raw or "").strip()
-        reply_text = re.sub(r"\s+", " ", reply_text).strip()
-        # Cap length so TTS doesn't run forever
+        reply_text = _strip_voice_artifacts(reply_raw)
         if len(reply_text) > 320:
             reply_text = reply_text[:317] + "..."
     except Exception:

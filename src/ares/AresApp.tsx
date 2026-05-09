@@ -2,11 +2,23 @@ import { useEffect, useState } from "react";
 import MarsBase, { type BuildingId } from "./3d/MarsBase";
 import GreenhouseDetail from "./views/GreenhouseDetail";
 import InventoryDetail from "./views/InventoryDetail";
-import VoicePTT from "./components/VoicePTT";
+import VoicePTT, { type TraySnapshot } from "./components/VoicePTT";
 import MarsLatencyChip from "./components/MarsLatencyChip";
 import PerfFooter from "./components/PerfFooter";
 
 const SOL_NUMBER = 423;
+
+// Snapshot the voice loop sends to Houston so spoken answers are grounded
+// in the same per-tray data the operator sees in the greenhouse drill-in.
+// Forward-port from feat/houston-voice (PR #7): without this, "what is tray
+// two doing?" gets a generic "in the corpora" answer; with it, Houston
+// quotes Mizuna stage 5/5 ETA 0 sols.
+const VOICE_TRAY_SNAPSHOT: TraySnapshot[] = [
+  { id: 1, label: "Outredgeous lettuce", species: "lettuce", stage: 4, ndvi: 0.78, ec: 1.8, ph: 6.0, ppfd: 300, moisture: 0.61, days_to_harvest: 6 },
+  { id: 2, label: "Mizuna mustard", species: "mizuna", stage: 5, ndvi: 0.81, ec: 1.9, ph: 6.3, ppfd: 295, moisture: 0.6, days_to_harvest: 0 },
+  { id: 3, label: "Hatch chile pepper", species: "pepper", stage: 2, ndvi: 0.55, ec: 1.7, ph: 6.4, ppfd: 310, moisture: 0.52, days_to_harvest: 95 },
+  { id: 4, label: "Red Robin tomato", species: "tomato", stage: 3, ndvi: 0.7, ec: 1.8, ph: 6.0, ppfd: 305, moisture: 0.55, days_to_harvest: 24 },
+];
 
 function formatBlackoutCountdown(secondsLeft: number) {
   const m = Math.max(0, Math.floor(secondsLeft / 60));
@@ -162,8 +174,10 @@ export default function AresApp() {
         />
       </div>
 
-      {/* Voice push-to-talk: real STT (whisper.cpp) + LLM + TTS (macOS say) */}
-      <VoicePTT />
+      {/* Voice push-to-talk: real STT (whisper.cpp) + LLM + TTS (macOS say).
+          Tray snapshot lets Houston ground spoken answers in real per-tray
+          data (PR #7 forward-port). */}
+      <VoicePTT trays={VOICE_TRAY_SNAPSHOT} selectedTrayId={2} />
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div

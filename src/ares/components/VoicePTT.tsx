@@ -10,11 +10,26 @@ type VoiceReply = {
   reply_wav_b64: string;
 };
 
-type Props = {
-  onResult?: (reply: VoiceReply) => void;
+export type TraySnapshot = {
+  id: number;
+  label: string;
+  species: "lettuce" | "mizuna" | "pepper" | "tomato";
+  stage: number;
+  ndvi?: number;
+  ec?: number;
+  ph?: number;
+  ppfd?: number;
+  moisture?: number;
+  days_to_harvest?: number;
 };
 
-export default function VoicePTT({ onResult }: Props) {
+type Props = {
+  onResult?: (reply: VoiceReply) => void;
+  trays?: TraySnapshot[];
+  selectedTrayId?: number;
+};
+
+export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState<boolean | null>(null);
@@ -87,6 +102,13 @@ export default function VoicePTT({ onResult }: Props) {
     try {
       const fd = new FormData();
       fd.append("audio", blob, "recording.webm");
+      // Ground Houston's spoken answer in the same tray data the operator sees.
+      if (trays && trays.length > 0) {
+        fd.append("trays_json", JSON.stringify(trays));
+      }
+      if (selectedTrayId !== undefined) {
+        fd.append("selected_tray_id", String(selectedTrayId));
+      }
       const r = await fetch("http://127.0.0.1:8765/ares/voice/houston", {
         method: "POST",
         body: fd,
