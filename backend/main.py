@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 import asyncio
 import json
@@ -149,24 +150,70 @@ async def search(req: SearchRequest, state: AppState = Depends(get_app_state)):
     return SearchResponse(hits=hits, elapsed_ms=int((time.time() - t0) * 1000))
 
 
-@app.post("/summarize", response_model=SummarizeResponse)
-async def summarize(req: SummarizeRequest, state: AppState = Depends(get_app_state)):
-    t0 = time.time()
-    p = Path(req.path).expanduser().resolve()
+def _build_summary_prompt(text: str) -> str:
+    return (
+        "Summarize the following document in 5-8 bullet points, "
+        "in the same language as the source. Output markdown.\n\n"
+        f"---\n{text}\n---"
+    )
+
+
+SUMMARY_SYSTEM = "You are a precise document summarizer. Be concise."
+
+
+def _read_for_summary(path: str) -> str:
+    p = Path(path).expanduser().resolve()
     if not p.exists():
         raise HTTPException(404, "file not found")
     text = parse_file(p)[:8000]
     if not text.strip():
         raise HTTPException(422, "could not extract text")
-    prompt = (
-        "Summarize the following document in 5-8 bullet points, "
-        "in the same language as the source. Output markdown.\n\n"
-        f"---\n{text}\n---"
-    )
+    return text
+
+
+@app.post("/summarize", response_model=SummarizeResponse)
+async def summarize(req: SummarizeRequest, state: AppState = Depends(get_app_state)):
+    t0 = time.time()
+    text = _read_for_summary(req.path)
     summary = await state.generator.generate(
-        prompt,
-        system="You are a precise document summarizer. Be concise.",
+        _build_summary_prompt(text),
+        system=SUMMARY_SYSTEM,
     )
     return SummarizeResponse(
         summary=summary, elapsed_ms=int((time.time() - t0) * 1000)
+    )
+
+
+@app.post("/summarize/stream")
+async def summarize_stream(
+    req: SummarizeRequest, state: AppState = Depends(get_app_state)
+):
+    """Server-sent-events stream of summary token deltas.
+
+    Each event is `data: {"delta": "..."}\\n\\n`; the stream ends with
+    `data: [DONE]\\n\\n`. Errors land as `data: {"error": "..."}\\n\\n`.
+    The renderer rebuilds the cumulative summary client-side; this lets
+    the bullet list appear word-by-word instead of waiting for the
+    full response (~5 s warm) before showing anything.
+    """
+    text = _read_for_summary(req.path)
+
+    async def event_gen():
+        try:
+            async for delta in state.generator.generate_stream(
+                _build_summary_prompt(text),
+                system=SUMMARY_SYSTEM,
+            ):
+                yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:  # noqa: BLE001 — last-resort surface to client
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable any reverse-proxy buffering
+        },
     )

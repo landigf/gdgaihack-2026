@@ -1,4 +1,8 @@
+import json
+from typing import AsyncIterator
+
 import httpx
+
 from config import OLLAMA_HOST, EMBED_MODEL, GEN_MODEL
 
 
@@ -26,12 +30,19 @@ class OllamaClient:
         return [await self.embed(t) for t in texts]
 
     async def generate(self, prompt: str, system: str | None = None) -> str:
+        payload = self._generate_payload(prompt, system)
+        payload["stream"] = False
+        r = await self._client.post(f"{self.host}/api/generate", json=payload)
+        r.raise_for_status()
+        data = r.json()
+        return (data.get("response") or data.get("thinking") or "").strip()
+
+    def _generate_payload(self, prompt: str, system: str | None) -> dict:
         payload: dict = {
             "model": self.gen_model,
             "prompt": prompt,
-            "stream": False,
             "keep_alive": "30m",
-            "think": False,  # disable reasoning preamble across all thinking models
+            "think": False,
             "options": {
                 "temperature": 0.3,
                 "top_p": 0.9,
@@ -39,15 +50,38 @@ class OllamaClient:
                 "num_ctx": 4096,
             },
         }
-        # qwen3 also needs the in-prompt /no_think directive in addition to the flag
         if self.gen_model.startswith("qwen3"):
             payload["prompt"] = f"{prompt}\n\n/no_think"
         if system:
             payload["system"] = system
-        r = await self._client.post(f"{self.host}/api/generate", json=payload)
-        r.raise_for_status()
-        data = r.json()
-        return (data.get("response") or data.get("thinking") or "").strip()
+        return payload
+
+    async def generate_stream(
+        self, prompt: str, system: str | None = None
+    ) -> AsyncIterator[str]:
+        """Yield token deltas as Ollama produces them.
+
+        Each Ollama NDJSON line carries either an incremental `response`
+        chunk or `done: true`. We yield the chunk text and stop at done.
+        """
+        payload = self._generate_payload(prompt, system)
+        payload["stream"] = True
+        async with self._client.stream(
+            "POST", f"{self.host}/api/generate", json=payload
+        ) as r:
+            r.raise_for_status()
+            async for line in r.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                delta = obj.get("response") or obj.get("thinking") or ""
+                if delta:
+                    yield delta
+                if obj.get("done"):
+                    break
 
     async def aclose(self) -> None:
         await self._client.aclose()

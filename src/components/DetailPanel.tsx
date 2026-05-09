@@ -154,10 +154,22 @@ export default function DetailPanel({
     setAiState("thinking");
     setSummary("");
     setSummaryMeta("");
+    const t0 = performance.now();
+    let firstDeltaAt: number | null = null;
+    let acc = "";
     try {
-      const r = await api.summarize(file.path);
-      setSummary(r.summary);
-      setSummaryMeta(`gemma · ${(r.elapsed_ms / 1000).toFixed(1)}s · local`);
+      await api.summarizeStream(file.path, {
+        onDelta: (d) => {
+          if (firstDeltaAt === null) firstDeltaAt = performance.now();
+          acc += d;
+          setSummary(acc);
+        },
+      });
+      const total = performance.now() - t0;
+      const ttft = firstDeltaAt !== null ? firstDeltaAt - t0 : total;
+      setSummaryMeta(
+        `gemma · ${(ttft / 1000).toFixed(1)}s first · ${(total / 1000).toFixed(1)}s total · local`
+      );
       setAiState("done");
     } catch (e) {
       setAiState("idle");
@@ -275,7 +287,7 @@ export default function DetailPanel({
             </div>
           )}
 
-          {aiState === "thinking" && (
+          {aiState === "thinking" && summary === "" && (
             <div className="summary-thinking">
               <span className="pulse" />
               <span>
@@ -284,28 +296,34 @@ export default function DetailPanel({
             </div>
           )}
 
-          {aiState === "done" && bullets.length > 0 && (
+          {bullets.length > 0 && (
             <div className="summary">
               <div className="head">
-                <span className="badge"><Spark /> Summary</span>
+                <span className="badge">
+                  <Spark /> Summary
+                  {aiState === "thinking" && (
+                    <span style={{ marginLeft: 4, opacity: 0.7 }}>· streaming…</span>
+                  )}
+                </span>
                 <span className="by">{summaryMeta}</span>
               </div>
               <ul>
                 {bullets.map((b, i) => (
                   <li
                     key={i}
-                    style={{ animationDelay: `${i * 50}ms` }}
                     dangerouslySetInnerHTML={{ __html: renderBullet(b) }}
                   />
                 ))}
               </ul>
-              <button
-                className="btn ai-ghost"
-                onClick={saveNote}
-                style={{ marginTop: 12, height: 28, fontSize: 12 }}
-              >
-                <NoteIcon /> Save summary as note
-              </button>
+              {aiState === "done" && (
+                <button
+                  className="btn ai-ghost"
+                  onClick={saveNote}
+                  style={{ marginTop: 12, height: 28, fontSize: 12 }}
+                >
+                  <NoteIcon /> Save summary as note
+                </button>
+              )}
             </div>
           )}
         </div>
