@@ -3,9 +3,9 @@
 ASR: whisper.cpp (CLI subprocess, ggml-base.en).
 TTS: Piper (CLI subprocess, en_US-lessac-medium).
 
-Why CLI-by-subprocess and not Python bindings: avoids C++ build deps in the
-backend venv and keeps the airplane-mode story simple — the demo machine
-provisions whisper.cpp + piper once at install time, and pip never sees them.
+Why CLI-by-subprocess and not Python bindings: simple and uniform — same
+codepath whether the ops team installed whisper-cpp via brew, built it
+from source, or installed piper-tts via pip in the venv.
 
 All paths are configurable via env vars (WHISPER_BIN, WHISPER_MODEL,
 PIPER_BIN, PIPER_MODEL). When a binary is missing, callers get a VoiceError
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 import wave
 from pathlib import Path
@@ -49,9 +50,17 @@ _WHISPER_DEFAULT = _first_existing(
 )
 _WHISPER_MODEL_DEFAULT = HOME / ".local" / "whisper.cpp" / "models" / "ggml-base.en.bin"
 
-# The piper macOS tarball extracts to ~/.local/piper/piper/piper (binary
-# inside a piper/ subdir). Prefer that, but accept the flat layout too.
+# Piper ships in three common shapes:
+#   - pip install piper-tts → <venv>/bin/piper       (preferred — native arm64,
+#     the released macos_aarch64.tar.gz binary at GitHub is mislabeled x86_64)
+#   - the legacy tarball   → ~/.local/piper/piper/piper
+#   - flat layout          → ~/.local/piper/piper
+# The CLI flags (-m / -f) are identical across all three, so the same
+# subprocess invocation works regardless.
+# NB: don't .resolve() — the venv's python is a symlink to the real
+# interpreter; we want the venv's bin/ dir, not the python install's.
 _PIPER_DEFAULT = _first_existing(
+    Path(sys.executable).parent / "piper",
     HOME / ".local" / "piper" / "piper" / "piper",
     HOME / ".local" / "piper" / "piper",
 )
