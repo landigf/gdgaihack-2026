@@ -35,23 +35,34 @@ T+1:00 ────────────── DEMO (60s) — switch to lapto
         *** DO NOT NARRATE WHAT THE LAPTOP IS DOING. ***
         *** Silence reads as confidence. Filler reads as nervousness. ***
 
-T+2:00 ──────────────────────────────────────────────────── BENCHMARK (30s)
-        Pocket RAG (arXiv 2602.13229) showed 14.2 to 3.7 seconds,
-        94.5% accuracy on Android.
-        Our M3 Pro: <fill from benchmarks/results/latest.md ours_v4 row>
-        Cited Checklist Completeness, p50 end-to-end,
-        and zero packets observed.
+T+2:00 ──────────────────────────────────────────────────── BENCHMARK (40s — re-weighted post-brief)
+        Real numbers from our M3 Pro 36GB demo machine
+        (gemma3:4b · Q4_K_M · Ollama 0.21 · 2026-05-09):
 
-T+2:30 ──────────────────────────────────────────────────── WHY POLISA (15s)
-        Measured harness, regulated-data-aware by construction.
+        gemma3:4b chlorine scenario:
+          • 22.4 tokens/sec decode rate
+          • 65 ms hybrid retrieval
+          • 12.1 s end-to-end (cold-warm)
+          • 0% hallucination, 100% citation correctness
+          • 0.40 Cited Checklist Completeness (vs 0.30 baseline)
 
-T+2:45 ──────────────────────────────────────────────────── CLOSE (15s)
-        When the network disappears,
-        the field worker still gets the right procedure,
-        with citations,
-        in under ten seconds.
+        And the bridge sentence:
+          "If it runs at 22 tokens/sec on this M3 Pro,
+           it will fly on the MSI AI Edge PC tier the brief targets."
 
-T+3:00 ──────────────────────────────────────────────────── END
+T+2:40 ──────────────────────────────────────────────────── WHY POLISA (15s)
+        We didn't pick a model and check if it fits.
+        We started from the hardware budget — 36 GB unified —
+        and derived the model + quantization + context window from it.
+        Measured harness; regulated-data-aware by construction.
+
+T+2:55 ──────────────────────────────────────────────────── CLOSE (15s)
+        Runs on this M3 Pro.
+        Ready for the MSI AI Edge PC.
+        Zero packets leaving the machine.
+        That's the cord, cut.
+
+T+3:10 ──────────────────────────────────────────────────── END  (rehearse to 170s, buffer = 10s)
 ```
 
 ---
