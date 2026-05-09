@@ -38,7 +38,7 @@ export default function AresTest() {
           border: "1px solid #22d3ee44",
         }}
       >
-        ARES WebGL spike · R3F + drei · target ≥45 FPS
+        HOUSTON WebGL spike · R3F + drei · target ≥45 FPS
       </div>
       <Canvas
         shadows

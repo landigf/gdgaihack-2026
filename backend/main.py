@@ -24,6 +24,9 @@ from indexer import Indexer
 from retriever import Retriever
 from parsing import parse_file
 
+# ARES / Houston (Mars Base AI Habitat Controller) — additive endpoints
+from ares.router import router as ares_router
+
 
 @dataclass
 class AppState:
@@ -69,6 +72,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(ares_router)
 
 
 @app.get("/health")
