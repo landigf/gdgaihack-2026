@@ -1,0 +1,74 @@
+{
+  "name": "investigation-corpus",
+  "description": "Mixed-format corpus for the Sovereign Investigation Workbench demo. Powers the scenarios in benchmarks/scenarios/investigation-copilot.yaml. Anchors on the public-domain CMU Enron Email Dataset (a real-world, well-documented corpus of 500k+ emails released as US legal evidence in 2003) plus synthetic leak-style PDFs and audit-style XLSX files generated locally so the demo doesn't depend on any third party at run time.",
+  "schema_version": "1.0",
+  "fetched_at": null,
+  "fetcher": "scripts/download-datasets.sh",
+  "license_summary": "CMU Enron Email Dataset is in the public domain (released by FERC during the Enron investigation; cleaned and re-published by William Cohen at CMU). Synthetic SOPs / leak-style PDFs / audit XLSX are project-internal hackathon content (PoliSa). All sources are usable for hackathon demo without attribution constraints.",
+  "sources": [
+    {
+      "doc_id": "enron_lay_kenneth_sent",
+      "title": "Enron Email Dataset — Kenneth Lay /sent (CEO outbound, 266 emails)",
+      "publisher": "CMU (William Cohen) / FERC public release",
+      "license": "public_domain_legal_evidence",
+      "url_html": "https://www.cs.cmu.edu/~enron/",
+      "url_archive": "https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz",
+      "local_path": "sources/enron/lay-k/sent/",
+      "expected_size_mb": 1.3,
+      "powers_scenarios": ["i01_money_flow_surfacing", "i03_executive_contradictions", "i04_timeline_construction"],
+      "chunk_strategy": "one chunk per email; From/To/Subject/Date in anchor metadata. Sent folder chosen because executive *outbound* mail is signal-dense (decisions, instructions, public-facing statements) vs inbound noise."
+    },
+    {
+      "doc_id": "enron_skilling_jeffrey_sent",
+      "title": "Enron Email Dataset — Jeffrey Skilling /_sent_mail (CEO outbound, 275 emails)",
+      "publisher": "CMU (William Cohen) / FERC public release",
+      "license": "public_domain_legal_evidence",
+      "url_html": "https://www.cs.cmu.edu/~enron/",
+      "local_path": "sources/enron/skilling-j/_sent_mail/",
+      "expected_size_mb": 1.2,
+      "powers_scenarios": ["i03_executive_contradictions", "i04_timeline_construction"],
+      "chunk_strategy": "one chunk per email; outbound CEO mail dataset. _sent_mail is the Notes-format sent folder; sent/ is the Outlook-format sent folder (overlap exists, prefer _sent_mail for richer threading)."
+    },
+    {
+      "doc_id": "enron_derrick_james_sent",
+      "title": "Enron Email Dataset — James Derrick /sent_items (General Counsel outbound, 583 emails)",
+      "publisher": "CMU (William Cohen) / FERC public release",
+      "license": "public_domain_legal_evidence",
+      "url_html": "https://www.cs.cmu.edu/~enron/",
+      "local_path": "sources/enron/derrick-j/sent_items/",
+      "expected_size_mb": 2.5,
+      "powers_scenarios": ["i02_whistleblower_corroboration", "i04_timeline_construction", "i03_executive_contradictions"],
+      "chunk_strategy": "one chunk per email. Derrick was Enron's General Counsel; his sent_items captures legal advice, disclosure analyses, and SPE consolidation discussions — the closest in-dataset analog to a Watkins-style whistleblower voice (Sherron Watkins is NOT in the CMU 150-employee subset, so we use the GC's outbound legal correspondence instead)."
+    },
+    {
+      "doc_id": "synthetic_leak_pdfs",
+      "title": "Synthetic leak-style PDF memos (PoliSa-generated)",
+      "publisher": "PoliSa (hackathon synthetic)",
+      "license": "project_internal",
+      "url_html": null,
+      "local_path": "synthetic_leak_pdfs/",
+      "expected_size_mb": 2,
+      "powers_scenarios": ["i01_money_flow_surfacing", "i05_redaction_detection"],
+      "chunk_strategy": "one chunk per memo (typically 1-2 pages); anchor by memo title",
+      "generator": "scripts/generate-synthetic-leak-docs.py"
+    },
+    {
+      "doc_id": "synthetic_audit_xlsx",
+      "title": "Synthetic Big4 audit-style spreadsheets (PoliSa-generated)",
+      "publisher": "PoliSa (hackathon synthetic)",
+      "license": "project_internal",
+      "url_html": null,
+      "local_path": "synthetic_audit_xlsx/",
+      "expected_size_mb": 1,
+      "powers_scenarios": ["i06_audit_findings_draft"],
+      "chunk_strategy": "one chunk per worksheet (GL, trial balance, anomalies); preserve column headers as anchor metadata",
+      "generator": "scripts/generate-synthetic-leak-docs.py"
+    }
+  ],
+  "synthetic_sops": [],
+  "todo": [
+    "Implement scripts/generate-synthetic-leak-docs.py to materialize synthetic_leak_pdfs/ + synthetic_audit_xlsx/ at corpus-prep time (T+120 task).",
+    "Decide between full-mailbox subsetting (whole maildir per user) vs hand-picked email selection (curate ~150 emails total covering the smoking-gun threads).",
+    "Add ENTITY_KEYWORDS dict to src/airgap/index.py (persons, orgs, money, dates) analogous to HAZARD_KEYWORDS — repurpose the hazard_tags column or add tags column."
+  ]
+}

@@ -147,48 +147,65 @@ MCP (Model Context Protocol) · Google ADK · LangGraph · CrewAI · Open Interp
 
 ## Chosen idea
 
-> **NOT LOCKED YET.** Decision at T+90min team huddle (`POST_BRIEF_PLAYBOOK.md` §"Phase B"). Until then, all four candidates from [01-brainstorm.md](01-brainstorm.md) §"Brief-conditional re-scoring (2026-05-09)" remain live. **Recommended default: Control-Room Copilot** (maximum pre-work reuse, strong brief fit, preserves dangerous-jobs anchor).
+> **RECOMMENDED — confirm at T+90 huddle.** Decision rationale + 2-subagent stress test in [`~/.claude/plans/aiutami-a-fare-brainstorming-generic-boole.md`](../../../../../.claude/plans/aiutami-a-fare-brainstorming-generic-boole.md). The recommendation is a "third path" that takes the pitch arc of the Pandora Newsroom pivot but the technical scope of Control-Room (max pre-work reuse + AnythingLLM as desktop shell). The team can override at the huddle, but the docs are pre-written for this pick.
 
-- **Name:** _(filled at T+90)_
-- **One-line pitch:** _(filled at T+90)_
-- **Selected from:** `01-brainstorm.md` → _(Idea 1 sharpened, or one of Candidate 2/3/4)_
+- **Name:** **Sovereign Investigation Workbench** (working title; pitch-pair may rename)
+- **One-line pitch:** *Drop a folder of sensitive documents (leak, internal audit, whistleblower files, evidence box) — AI on-device builds entity graph + timeline + cross-references + cites every claim back to source. Same architecture serves investigative journalism, Big4 audit, EU whistleblower offices, public defenders, internal compliance.*
+- **Selected from:** `01-brainstorm.md` → synthesis of N1 (Pandora Newsroom narrative) + Candidate 1 (Control-Room technical reuse). Pivot of seed framing from *dangerous jobs* → *dangerous documents*.
 
 ## Target user
 
-- **Who:**
-- **Moment of use:**
-- **What failure mode of cloud AI they hit today:**
-- **Why they are reachable by the hackathon demo:** (i.e. why the judges will recognize this user)
+- **Who:** primary buyer category = investigative journalism org (ICIJ, OCCRP, Bellingcat, ProPublica, AP, large national newsrooms). Secondary buyer categories named in pitch slide 4 = (a) Big4 audit teams in client trasferta, (b) EU whistleblower offices under Directive 2019/1937, (c) public defender e-discovery, (d) internal compliance / DPO under GDPR Art. 9 sensitive data.
+- **Moment of use:** an analyst / journalist / auditor receives a folder of documents (emails, PDFs, spreadsheets, screenshots) that contain confidential, privileged, or source-protected material. They need to surface entities, build a timeline, find contradictions, draft a cited findings memo — *and the cloud is not an option for legal, ethical, or contractual reasons*.
+- **What failure mode of cloud AI they hit today:** cloud LLM upload of source-protected material is a **legal hazard** (source confidentiality, attorney-client privilege, NDA, GDPR Art. 9, professional secrecy). ICIJ's own tool **Datashare** explicitly avoids cloud LLM for this reason; current alternatives are grep + manual reading. The cloud doesn't just cost too much — it **voids the work**.
+- **Why judges will recognize this user:** every Italian/EU judge knows "Panama Papers" and "Snowden". The pitch opener anchors on a named, internationally recognized case. Sponsor MSI (EdgeXpert positioning = sovereign AI at fixed cost) gets a clean named-customer slide they can screenshot for sales.
 
 ## Scope (what ships by Sunday 12:00)
 
 ### In
 
-- [ ]
-- [ ]
+- [ ] Drop-folder ingestion of `.eml`, `.pdf`, `.txt`, `.xlsx` via existing `src/airgap/index.py` (extended with ENTITY_KEYWORDS dict)
+- [ ] Hybrid retrieval over indexed corpus via existing `src/airgap/retrieve.py` (FTS5 + sqlite-vec + RRF — INVARIATO)
+- [ ] System-prompt swap in `src/airgap/prompt.py` to "investigative analyst" mode with citation-bound JSON contract (INVARIATO schema, new persona)
+- [ ] Demo corpus: Enron email subset (~500 public-domain emails) + 30 synthetic leak-style PDFs + 5 synthetic XLSX
+- [ ] 4-6 benchmark scenarios in new `benchmarks/scenarios/investigation-copilot.yaml` (find contradictions, build timeline, surface entities, cross-ref deposition)
+- [ ] Desktop shell: **AnythingLLM** (or Open WebUI fallback) — kills "isolated chatbot" disqualifier, gives free OSS pitch credit
+- [ ] Custom MCP server `src/airgap/mcp_server.py` exposing `search_corpus`, `get_entity_graph`, `cite_source` over our retrieval stack
+- [ ] Pitch deck with Snowden→Panama→sovereign AI opener; 3 named customer categories; cloud-vs-EdgeXpert break-even slide; airplane-mode demo
 
 ### Out
 
-- [ ]
+- [ ] Forking ICIJ Datashare (RAM math fails on 18GB, multi-repo Java/Vue 24h trap — see Plan agent verdict in plan doc)
+- [ ] Live audio (no whisper.cpp); audio is a stretch goal for v2
+- [ ] Vision/VLM (no PDF screenshot OCR beyond what Apache Tika already does in our index step)
+- [ ] Multi-agent orchestration beyond MCP tool-calls (single-agent + tool-use is enough to pass Creative 25%)
+- [ ] Custom Streamlit UI from scratch (replaced by AnythingLLM)
 
 ## Solution shape
 
-- **Inference runtime:**
-- **Model(s):**
-- **On-device data / RAG:**
-- **Orchestration layer:**
-- **UI shell:**
-- **Integration with sponsor stack (if any):**
-- **Non-cloud dependency ceiling:** ("if Wi-Fi dies, these features still work: ...")
+- **Inference runtime:** Ollama HTTP (existing `src/airgap/llm.py` with zero-cloud guards — INVARIATO)
+- **Model(s):** chat = `gemma3:4b` Q4_K_M (~3 GB on disk, ~5 GB peak RSS) · embedder = `embeddinggemma:300m` (~600 MB) · backup chat = `qwen3:4b` (Apache-2.0 best small reasoner per DR-06) · OUT-of-budget fallbacks pulled but unused: `gpt-oss:20b`, `medgemma:27b`
+- **On-device data / RAG:** SQLite + FTS5 + sqlite-vec at `benchmarks/datasets/investigation-corpus/app.db`; corpus = Enron 500 emails + 30 synthetic PDFs + 5 XLSX; chunking via existing `index.py` with ENTITY_KEYWORDS dict (persons, orgs, money, dates) replacing HAZARD_KEYWORDS
+- **Orchestration layer:** AnythingLLM Desktop calls our MCP server `investigation-rag` (stdio transport) which wraps `retrieve.py`. Plus `modelcontextprotocol/servers` filesystem MCP for direct file actions. Plus optionally `desktop-commander` MCP for terminal/process commands during demo
+- **UI shell:** **AnythingLLM Desktop (Electron)** — RAG + agents + MCP support out-of-box; defeats "isolated chatbot" disqualifier in zero minutes. Fallback: Open WebUI (web). Last-resort fallback: Streamlit custom (only if AnythingLLM phones home in airplane mode and we can't block it)
+- **Integration with sponsor stack (if any):** MSI EdgeXpert is the aspirational hardware (we demo on M3 Pro 18GB Minimum tier, claim "flies on EdgeXpert"). Side challenges: 0-2 from `TRACK_INTEL.md` — likely none, focus the pitch
+- **Non-cloud dependency ceiling:** if Wi-Fi dies, these still work: Ollama inference, sqlite-vec retrieval, AnythingLLM (post airplane-mode audit), MCP filesystem, all benchmark commands. Wi-Fi-dependent (development only): model downloads via Ollama, Enron dataset download, AnythingLLM telemetry/update-checks (must be blocked for airplane mode)
 
 ## Acceptance criteria
 
 Each criterion must be checkable in ≤1 minute without network.
 
-- [ ] **AC1 — core flow:**
-- [ ] **AC2 — benchmark gate:** ours beats `naive-local` by ≥50% on metric `X` and is within 20% of `baseline-cloud` on accuracy. Numbers in `benchmarks/results/latest.md`.
-- [ ] **AC3 — airplane-mode demo:** the demo in [DEMO_SCRIPT.md](DEMO_SCRIPT.md) completes successfully in airplane mode on both M1 and the MSI laptop.
-- [ ] **AC4 — zero egress proven:** `tcpdump` / Little Snitch confirms no outbound traffic during the full demo.
+- [ ] **AC1 — core flow:** drop a folder of 200+ test docs into AnythingLLM, ask "find every email that contradicts the press release of [entity X]", get a JSON answer with ≥3 cited source emails in <10 seconds, all in airplane mode.
+- [ ] **AC2 — benchmark gate:** `cited_checklist_completeness` on `investigation-copilot.yaml` ≥ **0.65** with `gemma3:4b`, vs baseline (no retrieval) ≤ 0.30. Numbers in `benchmarks/results/latest.md`. Tokens/sec ≥ **8 tok/s**, p50 first-cited-step latency ≤ **6s**.
+- [ ] **AC3 — airplane-mode demo:** the demo completes successfully in airplane mode on M3 Pro 18GB. (MSI sponsor laptop is opportunistic, not required.)
+- [ ] **AC4 — zero egress proven:** `scripts/netproof.sh` (tcpdump on demo PID + AnythingLLM PID) confirms no outbound traffic during the full demo. Pre-recorded clip on USB as backup.
+
+## Pivot rationale (why "Sovereign Investigation Workbench" beats Control-Room default)
+
+- **Pitch math (judge weights 30/25/25/20):** pitch coach subagent scores this pivot at 2.70/3.00 weighted vs Control-Room 2.28. Win comes from Comp Adv 20% (cloud literally voids investigative work for legal reasons) and Practical 25% (named customer category every judge has heard of) without sacrificing Tech Opt 30% (95% of code is reused — same retrieval, same harness, same metrics).
+- **Build math (24h on M3 Pro 18GB):** Plan agent subagent verified that fork-Datashare-itself path is a trap (ES + Tika + CoreNLP JVMs OOM on 18GB; multi-repo fork in 24h impossible). The "third path" sidesteps this: keep our own stack, use AnythingLLM only as desktop shell, *cite* Datashare as legitimacy reference in pitch slide 2 instead of forking it.
+- **Pre-work salvage:** all 11 DR + 4 syntheses → appendix slide "same architecture, multiple verticals" (Panama Papers / Plant Control Room / Therapist Notes). Mining/O&G pitch seed → backup live demo if drop-folder demo fails. Benchmark harness reused 100% with corpus swap. Regulatory moat sentences reskinned from ATEX/NIOSH to GDPR Art. 9 / EU Whistleblower Directive 2019/1937.
+- **What kills it:** if AnythingLLM phones home in airplane mode and we can't block it via Little Snitch by T+4h → fallback to Open WebUI (T+4h-T+6h budget) → last resort Streamlit custom (eats 8h of build time, hurts Creative 25% but preserves AC3/AC4).
 
 ## Interfaces
 

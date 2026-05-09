@@ -67,6 +67,9 @@ All tasks below reference `T = brief-reveal-time`.
 
 _(agents: add new tasks here as they're discovered, with a one-line rationale)_
 
+- [x] `done` — [codex] 2026-05-09 12:27 CEST — Ran CODEX-Brief-1 validation for tentative **Control-Room Incident Copilot** pick.
+  - Artifact: [research/syntheses/codex-brief-validation-2026-05-09.md](research/syntheses/codex-brief-validation-2026-05-09.md).
+
 ## Cost budget notes
 
 - **Cheap runtime tasks** (default, Gemini): ideation, crew critiques, bulk text ops.

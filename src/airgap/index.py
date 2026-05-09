@@ -61,6 +61,21 @@ HAZARD_KEYWORDS: dict[str, list[str]] = {
     "first_aid":    ["first aid", "rinse", "irrigate", "ems"],
 }
 
+# Investigation-pivot extension (added 2026-05-09): entity-tag categories
+# for the investigation-corpus (Enron + synthetic leak / audit docs). Tags
+# write into the same `hazard_tags` column for backward compat — the column
+# is best understood as a generic "tags" string.
+ENTITY_KEYWORDS: dict[str, list[str]] = {
+    "spe":         ["raptor", "ljm", "chewco", "special purpose entity", "off-balance-sheet"],
+    "executive":   ["kenneth lay", "ken lay", "jeffrey skilling", "jeff skilling",
+                    "fastow", "watkins", "derrick"],
+    "money":       ["$", "million dollars", "wire transfer", "settlement", "payment"],
+    "accounting":  ["mark-to-market", "mark to market", "consolidation", "eitf",
+                    "gaap", "trial balance", "general ledger"],
+    "regulatory":  ["sec ", "ferc", "10-q", "10-k", "proxy", "disclosure", "subpoena"],
+    "privilege":   ["privileged", "attorney-client", "work product", "do not forward"],
+}
+
 CHUNK_MAX_CHARS = 1600
 CHUNK_OVERLAP = 200
 
@@ -84,6 +99,7 @@ def _slugify(s: str) -> str:
 def _hazard_tags_for(text: str) -> str:
     low = text.lower()
     found = [tag for tag, kws in HAZARD_KEYWORDS.items() if any(k in low for k in kws)]
+    found += [tag for tag, kws in ENTITY_KEYWORDS.items() if any(k in low for k in kws)]
     return ",".join(found)
 
 
@@ -197,6 +213,69 @@ def parse_markdown(path: Path, doc_id: str) -> list[Chunk]:
     return chunks
 
 
+def parse_email(path: Path, doc_id: str) -> list[Chunk]:
+    """Parse a single RFC822 / MIME email file (Enron-style maildir item).
+
+    Body becomes one Chunk; key headers (From/To/Date/Subject) become the
+    section_path + anchor metadata so retrieval surfaces who-said-what-when
+    in citations. Robust to broken multipart and weird encodings — always
+    falls back to raw payload bytes decoded as utf-8 with errors='ignore'.
+    """
+    try:
+        import email
+        from email import policy
+    except ImportError:
+        return []
+    try:
+        raw = path.read_bytes()
+        msg = email.message_from_bytes(raw, policy=policy.default)
+    except Exception:
+        return []
+
+    body = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() == "text/plain":
+                try:
+                    body = part.get_content()
+                except Exception:
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        body = payload.decode("utf-8", errors="ignore")
+                break
+    else:
+        try:
+            body = msg.get_content()
+        except Exception:
+            payload = msg.get_payload(decode=True)
+            if payload:
+                body = payload.decode("utf-8", errors="ignore")
+            else:
+                body = msg.get_payload() or ""
+
+    if not isinstance(body, str):
+        body = str(body or "")
+    body = body.strip()
+    if not body or len(body) < 20:
+        return []
+
+    sender = (msg.get("From") or "").strip()
+    recipient = (msg.get("To") or "").strip()
+    subject = (msg.get("Subject") or "").strip()
+    date = (msg.get("Date") or "").strip()
+    section = f"{sender} -> {recipient[:80]} | {date[:25]} | {subject[:80]}"
+    anchor = _slugify(f"{sender}_{date[:10]}_{subject[:40]}")
+
+    chunks: list[Chunk] = []
+    for sub in chunk_text(body):
+        chunks.append(Chunk(
+            doc_id=doc_id, page=1,
+            section_path=section, anchor=anchor,
+            text=sub, hazard_tags=_hazard_tags_for(sub),
+        ))
+    return chunks
+
+
 def parse_any(path: Path, doc_id: str) -> list[Chunk]:
     suf = path.suffix.lower()
     if suf in {".html", ".htm"}:
@@ -205,6 +284,9 @@ def parse_any(path: Path, doc_id: str) -> list[Chunk]:
         return parse_pdf(path, doc_id)
     if suf in {".md", ".markdown", ".txt"}:
         return parse_markdown(path, doc_id)
+    # Enron mailbox files have no extension OR end in trailing dot (e.g. "1.")
+    if not suf or path.name.rstrip(".").isdigit():
+        return parse_email(path, doc_id)
     return []
 
 

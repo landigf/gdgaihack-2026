@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
-# Fetches the public-domain safety corpora listed in
-# benchmarks/datasets/incident-copilot/manifest.json into the gitignored
-# sources/ subtree on this machine. Idempotent: re-running re-fetches
-# only what's missing.
+# Fetches the public-domain corpora listed in
+#   benchmarks/datasets/incident-copilot/manifest.json
+#   benchmarks/datasets/investigation-corpus/manifest.json
+# into the gitignored sources/ subtree on this machine. Idempotent:
+# re-running re-fetches only what's missing.
 #
-# Run BEFORE going to airplane mode. Total download ~50 MB.
+# Run BEFORE going to airplane mode.
+#   - incident-copilot corpus: ~50 MB (always fetched)
+#   - investigation-corpus (Enron CMU subset): ~423 MB compressed,
+#     opt-in via FETCH_INVESTIGATION=1 env var (large, slow on weak networks)
 #
 # Usage:
-#   bash scripts/download-datasets.sh
+#   bash scripts/download-datasets.sh                    # incident only (default)
+#   FETCH_INVESTIGATION=1 bash scripts/download-datasets.sh   # both corpora
 #
 # Honest license posture:
-#   - All sources are US/EU government public domain EXCEPT
+#   - Incident-copilot sources are US/EU government public domain EXCEPT
 #     redcross_first_aid which is copyrighted; we fetch under
 #     hackathon fair-use only and gitignore the bytes.
+#   - Investigation-corpus Enron data is in the public domain (FERC release,
+#     cleaned and republished by William Cohen at CMU).
 #   - manifest.json + this fetcher are committed; fetched bytes are not.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CORPUS="$REPO_ROOT/benchmarks/datasets/incident-copilot/sources"
+INV_CORPUS="$REPO_ROOT/benchmarks/datasets/investigation-corpus/sources"
 UA="PoliSa-AirgapIncidentCopilot/0.1 (GDG-AI-HACK-2026; +https://github.com/landigf/gdgaihack-2026)"
 
 mkdir -p "$CORPUS"
@@ -140,11 +148,97 @@ fetch "https://www.cdc.gov/niosh/topics/firstaid/" \
       "CDC NIOSH first-aid topic" || true
 
 echo
-echo "== summary =="
+echo "== incident-copilot summary =="
 find "$CORPUS" -type f | sort | while read -r f; do
   printf "  %s  %s\n" "$(du -h "$f" | cut -f1)" "${f#$REPO_ROOT/}"
 done
 TOTAL=$(du -sh "$CORPUS" 2>/dev/null | cut -f1 || echo "0")
-echo "== total: $TOTAL =="
+echo "== incident-copilot total: $TOTAL =="
+
+# ----------------------------------------------------------------------
+# Investigation corpus (Sovereign Investigation Workbench pivot)
+# Opt-in via FETCH_INVESTIGATION=1. Large download (~423 MB compressed).
+# ----------------------------------------------------------------------
+if [[ "${FETCH_INVESTIGATION:-0}" = "1" ]]; then
+  echo
+  echo "== fetching investigation corpus into $INV_CORPUS =="
+  mkdir -p "$INV_CORPUS/enron"
+
+  ENRON_TARBALL="$INV_CORPUS/enron_mail_20150507.tar.gz"
+  ENRON_URL="https://www.cs.cmu.edu/~./enron/enron_mail_20150507.tar.gz"
+
+  if [[ -s "$ENRON_TARBALL" ]]; then
+    echo "  -- skip Enron tarball (already fetched: $(du -h "$ENRON_TARBALL" | cut -f1))"
+  else
+    echo "  -> downloading Enron Email Dataset from CMU (~423 MB, may take a while)"
+    if curl -fSL -A "$UA" --retry 3 --retry-delay 5 --max-time 1800 \
+         -o "$ENRON_TARBALL" "$ENRON_URL"; then
+      echo "     ok ($(du -h "$ENRON_TARBALL" | cut -f1))"
+    else
+      echo "  !! Enron tarball fetch failed; investigation corpus unavailable."
+      echo "     Try manually: curl -O '$ENRON_URL'"
+      rm -f "$ENRON_TARBALL"
+    fi
+  fi
+
+  # Selective extract: only the 3 mailboxes used by investigation-copilot.yaml.
+  # Note: Sherron Watkins is NOT in the CMU 150-employee subset; we use
+  # James Derrick (General Counsel) as the closest in-dataset analog for
+  # whistleblower-style legal correspondence.
+  # --strip-components=1 removes the leading "maildir/" component so files
+  # land cleanly at $INV_CORPUS/enron/<who>/...
+  if [[ -s "$ENRON_TARBALL" ]]; then
+    for who in lay-k skilling-j derrick-j; do
+      target="$INV_CORPUS/enron/$who"
+      if [[ -d "$target" && -n "$(ls -A "$target" 2>/dev/null)" ]]; then
+        echo "  -- skip extract $who (already present: $(du -sh "$target" 2>/dev/null | cut -f1))"
+        continue
+      fi
+      echo "  -> extracting maildir/$who/ ..."
+      if tar -xzf "$ENRON_TARBALL" -C "$INV_CORPUS/enron" \
+          --strip-components=1 \
+          "maildir/$who" 2>/dev/null; then
+        if [[ -d "$target" ]]; then
+          echo "     ok ($(du -sh "$target" 2>/dev/null | cut -f1))"
+        else
+          echo "     !! extract finished but $target missing — check tarball structure"
+        fi
+      else
+        echo "     !! tar extract failed for $who"
+      fi
+    done
+  fi
+
+  # Generate synthetic leak-style markdown memos + CSV audit anomalies.
+  # Uses pure-Python stdlib so no extra deps. PDFs/XLSX are stretch goals.
+  GEN_SCRIPT="$REPO_ROOT/scripts/generate-synthetic-leak-docs.py"
+  if [[ -x "$GEN_SCRIPT" || -f "$GEN_SCRIPT" ]]; then
+    echo "  -> generating synthetic leak memos + audit anomalies"
+    /opt/homebrew/bin/python3.12 "$GEN_SCRIPT" \
+        --out-dir "$REPO_ROOT/benchmarks/datasets/investigation-corpus" \
+        || echo "  !! synthetic doc generator failed; the demo will still run on Enron alone"
+  else
+    echo "  -- synthetic doc generator not yet present at $GEN_SCRIPT (T+120 task)"
+  fi
+
+  echo
+  echo "== investigation-corpus summary =="
+  if [[ -d "$INV_CORPUS" ]]; then
+    find "$INV_CORPUS" -type d -maxdepth 4 | sort | while read -r d; do
+      n=$(find "$d" -maxdepth 1 -type f | wc -l | tr -d ' ')
+      sz=$(du -sh "$d" 2>/dev/null | cut -f1)
+      printf "  %s  %s files  %s\n" "$sz" "$n" "${d#$REPO_ROOT/}"
+    done
+    INV_TOTAL=$(du -sh "$INV_CORPUS" 2>/dev/null | cut -f1 || echo "0")
+    echo "== investigation-corpus total: $INV_TOTAL =="
+  fi
+fi
+
 echo
-echo "Next step: python3 -m src.airgap.index --db benchmarks/datasets/incident-copilot/app.db"
+echo "Next steps:"
+echo "  /opt/homebrew/bin/python3.12 -m src.airgap.index --db benchmarks/datasets/incident-copilot/app.db"
+if [[ "${FETCH_INVESTIGATION:-0}" = "1" ]]; then
+  echo "  /opt/homebrew/bin/python3.12 -m src.airgap.index \\"
+  echo "      --manifest benchmarks/datasets/investigation-corpus/manifest.json \\"
+  echo "      --db benchmarks/datasets/investigation-corpus/app.db"
+fi

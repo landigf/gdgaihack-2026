@@ -230,3 +230,43 @@ The brief publishes 4 *aspirational* case studies. The brief is explicit: *"thes
 **Pre-work reuse:** Medium — corpus reusable for safety-procedure RAG; need to add MITRE ATT&CK for ICS + NERC-CIP excerpts. **Build risk in 24h:** High — 3 agents + agent-to-agent + Open Interpreter is the largest scope. **Differentiator:** the brief's Case Study 1 LITERALLY describes this pattern; "we're shipping the case study they published" is a memorable pitch line.
 
 **Why it's not the default pick:** highest scope, highest 24h build risk, requires a new corpus subset. Choose only if the team huddle decides the multi-agent narrative is more compelling than the regulatory-moat narrative.
+
+---
+
+## Pre-huddle expansion (2026-05-09 brainstorm session)
+
+> Triggered by user re-framing: *"non l'ovvio camera+sensori+LLM, ma dove il cloud genuinamente fallisce — cost/latency/privacy/availability — costruito hardware-first attorno a EdgeXpert con OSS testato"*. Full session in [`~/.claude/plans/aiutami-a-fare-brainstorming-generic-boole.md`](../../../../../.claude/plans/aiutami-a-fare-brainstorming-generic-boole.md).
+
+### MSI explicit positioning (verbatim from msi.com material)
+
+EdgeXpert verticals MSI names: Fin-Tech (HFT sim, fraud, risk), Healthcare, Manufacturing (visual SOPs), Robotics, Smart cities, **Translation (STT+TTT+TTS pipeline on-prem)**, Legal (contracts, regulatory docs), Education/Research. MSI's own pitch line for AI Artist: *"7× faster than cloud-based processing"*. Useful as analogy in our pitch.
+
+### 7 fresh candidates surfaced (N1-N7)
+
+Quick heatmap on cloud-failure axes (Cost / Lat / Priv / Avail) + continuous-volume:
+
+| # | Candidate | Strongest cloud-fail axis | OSS jackpot |
+|---|---|---|---|
+| **N1** | **Pandora Newsroom** (investigative journalism workbench) | Privacy AAA (sources die for less) + Cost A | **ICIJ Datashare** (literal Panama Papers tool) |
+| N2 | Audit Field Box (Big4 portable workstation) | Privacy AAA (NDA + SOX/PCAOB) + TAM $200B | Apache Tika + Benford-py + Open Interpreter |
+| **N3** | **Live Translator Booth** (UN/EU/conference) | Lat AAA + Cost AAA (10h audio/day) | Whisper-Streaming + faster-whisper + NLLB-200 + Piper/Kokoro |
+| N4 | Public Defender E-Discovery | Cost AAA (50TB/case) + Privacy AAA | Stack reusable, no specific OSS |
+| N5 | Trading Desk Quant Notebook | Privacy AAA (strategies = IP) — MSI cites Fin-Tech | Open Interpreter |
+| N6 | Patent Prosecution Workstation | Privacy AAA (cloud query = prior disclosure) | USPTO/EPO bulk + retrieval stack |
+| N7 | Therapist Note Buddy (clinical SOAP) | Privacy AAA (HIPAA + Italian DPA) | whisper.cpp + DSM corpus |
+
+### Stress-test verdict (2 subagents in disagreement = strong signal)
+
+- **Plan agent (24h feasibility):** `Mix > C > B`. Datashare fork = OOM on 18GB + multi-repo Java/Vue 24h trap. Recommends **Mix** (Control-Room + AnythingLLM/Open WebUI shell).
+- **Pitch coach (judge weights 30/25/25/20):** weighted scores A 2.28 / Mix 2.40 / C 2.30 / **B 2.70**. Bets €1000 on **B**. Argument: pre-work reduces *build* risk, not *pitch* score; team picks A out of comfort.
+
+### Synthesized "third path" — RECOMMENDED for T+90 huddle
+
+> **Sovereign Investigation Workbench** = pitch arc of B + technical scope of Mix.
+> Don't fork Datashare; *cite* it in pitch slide 2 as legitimacy reference. Use AnythingLLM as desktop shell. Keep 95% of existing code — only swap corpus + system prompt + UI shell.
+
+Locked details (chosen-idea section + acceptance criteria + 4 numbers for the final slide) in [02-specification.md](02-specification.md) §"Chosen idea" + §"Solution shape" + §"Acceptance criteria" + §"Pivot rationale".
+
+**Effort estimate:** ~23h tech-pair + pitch-pair work, fits 24h budget if started at T+60. First 4h are MCP-shell-acceptance + airplane-mode-audit + corpus-swap-smoke-test + custom-MCP-server. If AnythingLLM fails airplane-mode by T+4h → fallback Open WebUI; if both fail → fallback Streamlit (eats 8h).
+
+**What's saved from pre-work:** 11 DR + 4 syntheses (appendix multi-vertical slide), Pitch Seed C mining/O&G (backup live demo), benchmark harness (100% reused with corpus swap), regulatory moat sentences (reskinned ATEX/NIOSH → GDPR Art. 9 / EU Whistleblower Directive 2019/1937).

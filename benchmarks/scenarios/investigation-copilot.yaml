@@ -1,0 +1,216 @@
+# benchmarks/scenarios/investigation-copilot.yaml
+#
+# Sovereign Investigation Workbench — drop-folder of leak-style emails / memos
+# / spreadsheets, AI on-device surfaces entity graph, contradictions, timelines,
+# money flows, and audit findings. Anchors on the public-domain CMU Enron Email
+# Dataset (FERC release, 500k+ messages) plus PoliSa-generated synthetic leak
+# PDFs and audit XLSX. All runs in airplane mode.
+#
+# Scenarios are designed so the same hybrid retrieval stack that powers
+# `incident-copilot.yaml` (FTS5 + sqlite-vec + RRF + citation-bound JSON
+# contract) needs ZERO code changes — only the corpus + system prompt swap.
+#
+# Schema mirrors `incident-copilot.yaml`:
+#   - critical_steps[] with weights (powers cited_checklist_completeness)
+#   - forbidden_claims (powers hallucination_rate via negative checks)
+#   - numeric_facts (powers fact-extraction validation)
+#   - gold citation anchors per step (powers citation_correctness)
+#
+# Per [02-specification.md](../../doc/specs/cut-the-cord/02-specification.md)
+# §"Acceptance criteria" target: cited_checklist_completeness >= 0.65 with
+# gemma3:4b on M3 Pro 18GB.
+
+name: investigation-copilot
+description: |
+  Drop-folder investigation copilot for source-protected, privileged, or
+  regulated documents. Six scaffold scenarios cover money-flow surfacing,
+  whistleblower corroboration, executive contradictions, timeline
+  construction, redaction detection, and audit findings draft. Corpus is
+  Enron public-domain emails + PoliSa synthetic leak PDFs / audit XLSX.
+
+schema_version: "1.0"
+runs_per_item: 3
+
+# ----------------------------------------------------------------------
+# Systems under test — same ablation ladder as incident-copilot.
+# ----------------------------------------------------------------------
+systems_to_run:
+  - baseline_v0    # flat chunks + top-k vector + free-form answer
+  - ours_v1        # + section-aware chunking
+  - ours_v2        # + metadata filter (entity_tags pre-filter)
+  - ours_v3        # + citation-bound JSON contract
+  - ours_v4        # + abstain-on-weak-evidence (INSUFFICIENT_EVIDENCE)
+
+metrics:
+  primary: cited_checklist_completeness
+  secondary:
+    - p95_time_to_first_cited_step_ms
+    - zero_egress_pass
+    - hallucination_rate
+    - decode_tokens_per_sec
+    - peak_pss_mb
+    - latency_p50_ms
+    - latency_p95_ms
+
+corpus_manifest: benchmarks/datasets/investigation-corpus/manifest.json
+
+# ----------------------------------------------------------------------
+# CORE scenarios — must run for Saturday demo
+# Anchored on documented Enron facts so the corpus is plausible and the
+# expected critical_steps are verifiable against published reporting.
+# ----------------------------------------------------------------------
+scenarios:
+
+  - scenario_id: i01_money_flow_surfacing.en
+    title: "Surface unusual money flows in a folder of emails + ledger XLSX"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Find every email or ledger entry that references a payment over $1 million between Enron and any of its Special Purpose Entities (Raptor, LJM, Chewco)."
+      - "List unusual money flows above $1M between Enron and its SPEs, with citations."
+    docs:
+      - doc_id: enron_lay_kenneth_sent
+      - doc_id: enron_skilling_jeffrey_sent
+      - doc_id: synthetic_audit_xlsx
+    expected_answer_shape: { type: cited_list, max_items: 8, citation_per_item: true }
+    critical_steps:
+      - { step_id: name_spe, text_paraphrases: ["Raptor", "LJM", "Chewco", "special purpose entity"], weight: 0.25, gold_citation_anchor: "enron_lay_kenneth#spe_mention" }
+      - { step_id: dollar_amount, text_paraphrases: ["$1 million", "$1M", "1,000,000"], weight: 0.20, gold_citation_anchor: "enron_skilling_jeffrey#dollar_threshold" }
+      - { step_id: counterparty_named, text_paraphrases: ["counterparty", "between Enron and"], weight: 0.20, gold_citation_anchor: "synthetic_audit_xlsx#anomaly_row" }
+      - { step_id: source_quoted, text_paraphrases: ["per the email dated", "ledger entry shows"], weight: 0.20, gold_citation_anchor: "enron_lay_kenneth#email_date" }
+      - { step_id: abstain_if_unsure, text_paraphrases: ["INSUFFICIENT_EVIDENCE", "no clear evidence found"], weight: 0.15, gold_citation_anchor: null }
+    forbidden_claims:
+      - "this is fraud"           # legal conclusion, not for the AI
+      - "indictable offense"      # legal conclusion
+      - "Enron committed"         # accusatory framing
+    notes_for_manual_review: |
+      The AI must SURFACE evidence, not adjudicate. Watch for accusatory
+      language slipping in. Every claim must cite a chunk_id; if no chunk
+      supports the claim, the AI must abstain.
+
+  - scenario_id: i02_whistleblower_corroboration.en
+    title: "Cross-reference Sherron Watkins memo against executive emails"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Sherron Watkins wrote a memo warning of accounting irregularities. Find emails from Lay or Skilling that corroborate or contradict her concerns."
+      - "Build a list of executive emails that touch the same topics as Watkins's whistleblower memo."
+    docs:
+      - doc_id: enron_derrick_james_sent
+      - doc_id: enron_lay_kenneth_sent
+      - doc_id: enron_skilling_jeffrey_sent
+    expected_answer_shape: { type: cited_list, max_items: 6, citation_per_item: true }
+    critical_steps:
+      - { step_id: identify_watkins_topics, text_paraphrases: ["accounting irregularity", "mark-to-market", "Raptor", "off-balance-sheet"], weight: 0.25, gold_citation_anchor: "enron_watkins_sherron#concerns_section" }
+      - { step_id: corroborating_executive_email, text_paraphrases: ["Lay wrote", "Skilling acknowledged", "consistent with"], weight: 0.30, gold_citation_anchor: "enron_lay_kenneth#corroboration" }
+      - { step_id: contradicting_executive_email, text_paraphrases: ["Lay denied", "Skilling disputed", "inconsistent with"], weight: 0.25, gold_citation_anchor: "enron_skilling_jeffrey#denial" }
+      - { step_id: chronology_anchor, text_paraphrases: ["before the Watkins memo", "after the Watkins memo", "dated"], weight: 0.20, gold_citation_anchor: "enron_watkins_sherron#date" }
+    forbidden_claims:
+      - "Watkins was right"          # editorializing
+      - "Lay knew"                   # mind-reading
+    notes_for_manual_review: |
+      Watch for the AI making mind-reading claims about what executives
+      "knew". The AI surfaces what executives WROTE; humans interpret intent.
+
+  - scenario_id: i03_executive_contradictions.en
+    title: "Find self-contradictions in Skilling's communications about Q3 outlook"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Find every email where Jeffrey Skilling makes a statement about Enron's Q3 financial outlook that contradicts another statement he made within 30 days."
+      - "Surface contradictions in Skilling's own communications about quarterly results."
+    docs:
+      - doc_id: enron_skilling_jeffrey_sent
+    expected_answer_shape: { type: cited_pairs, max_pairs: 4, citation_per_side: true }
+    critical_steps:
+      - { step_id: pair_format, text_paraphrases: ["statement A vs statement B", "on date X he said... on date Y he said..."], weight: 0.30, gold_citation_anchor: "enron_skilling_jeffrey#statement_pair" }
+      - { step_id: contradiction_specific, text_paraphrases: ["contradicts", "inconsistent", "directly opposite"], weight: 0.30, gold_citation_anchor: null }
+      - { step_id: time_window_30d, text_paraphrases: ["within 30 days", "less than a month apart", "same quarter"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: cite_both_sides, text_paraphrases: ["[S1]... [S2]...", "citing both emails"], weight: 0.20, gold_citation_anchor: null }
+    forbidden_claims:
+      - "Skilling lied"              # legal conclusion
+      - "fraudulent statement"       # legal conclusion
+    notes_for_manual_review: |
+      Contradiction != fraud. The AI surfaces inconsistency; the human and
+      the regulator decide intent. Pairs must cite both sides.
+
+  - scenario_id: i04_timeline_construction.en
+    title: "Build a chronological timeline of communications about the Raptor SPE"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Build a chronological timeline of every email in this folder that mentions Raptor, with date, sender, one-line summary, and a citation."
+      - "Reconstruct the Raptor timeline from the corpus."
+    docs:
+      - doc_id: enron_lay_kenneth_sent
+      - doc_id: enron_skilling_jeffrey_sent
+      - doc_id: enron_derrick_james_sent
+    expected_answer_shape: { type: timeline, max_entries: 12, citation_per_entry: true }
+    critical_steps:
+      - { step_id: chronological_order, text_paraphrases: ["sorted by date", "earliest to latest"], weight: 0.30, gold_citation_anchor: null }
+      - { step_id: each_entry_has_date, text_paraphrases: ["YYYY-MM-DD", "dated"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: each_entry_has_sender, text_paraphrases: ["from Lay", "from Skilling", "from Watkins"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: each_entry_one_line_summary, text_paraphrases: ["short summary", "one-line description"], weight: 0.15, gold_citation_anchor: null }
+      - { step_id: each_entry_cited, text_paraphrases: ["[S1]", "[S2]", "[S3]"], weight: 0.15, gold_citation_anchor: null }
+    forbidden_claims:
+      - "the timeline proves"        # editorializing
+    numeric_facts: { min_entries_for_demo: 5 }
+
+  - scenario_id: i05_redaction_detection.en
+    title: "Flag PDFs with redactions and infer what's behind them"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Find every PDF in this folder that contains a redaction or blacked-out section. For each, infer the most likely category of redacted content (financial figure, person name, organization, date)."
+      - "List redacted PDFs and infer what's hidden."
+    docs:
+      - doc_id: synthetic_leak_pdfs
+    expected_answer_shape: { type: cited_list, max_items: 6, citation_per_item: true }
+    critical_steps:
+      - { step_id: identify_redaction, text_paraphrases: ["redacted", "blacked out", "[REDACTED]"], weight: 0.30, gold_citation_anchor: "synthetic_leak_pdfs#redaction_marker" }
+      - { step_id: surrounding_context, text_paraphrases: ["context before", "context after"], weight: 0.25, gold_citation_anchor: "synthetic_leak_pdfs#redaction_context" }
+      - { step_id: infer_category, text_paraphrases: ["likely a person name", "likely a financial figure"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: confidence_caveat, text_paraphrases: ["low confidence", "speculation", "not verified"], weight: 0.25, gold_citation_anchor: null }
+    forbidden_claims:
+      - "the redacted name is"       # don't claim certainty
+      - "definitely refers to"       # overclaim
+    notes_for_manual_review: |
+      The AI must INFER + CAVEAT, not GUESS + ASSERT. Confidence language
+      is a critical step; an inference without "low confidence" wording
+      fails the step.
+
+  - scenario_id: i06_audit_findings_draft.en
+    title: "Draft a SOX/PCAOB-style findings memo from anomaly XLSX"
+    tier: core
+    locale: en
+    mode_defaults: { mode: text_e2e, warm_start: true, airplane_mode: true }
+    user_utterances:
+      - "Draft a 5-paragraph audit findings memo based on the anomalies surfaced in the audit XLSX. Cite each finding to its row in the spreadsheet."
+      - "Generate audit findings narrative from the anomaly worksheet."
+    docs:
+      - doc_id: synthetic_audit_xlsx
+    expected_answer_shape: { type: structured_memo, sections: 5, citation_per_finding: true }
+    critical_steps:
+      - { step_id: executive_summary, text_paraphrases: ["executive summary", "summary"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: anomaly_listed, text_paraphrases: ["anomaly", "exception", "outlier"], weight: 0.30, gold_citation_anchor: "synthetic_audit_xlsx#anomaly_row" }
+      - { step_id: row_citation, text_paraphrases: ["row 12", "row 47", "Sheet 2 row"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: materiality_qualified, text_paraphrases: ["material", "below threshold", "above tolerance"], weight: 0.20, gold_citation_anchor: null }
+      - { step_id: recommendation, text_paraphrases: ["recommend further testing", "request additional documentation"], weight: 0.10, gold_citation_anchor: null }
+    forbidden_claims:
+      - "fraud detected"             # legal conclusion
+      - "management is responsible"  # accusatory; auditor frames carefully
+    notes_for_manual_review: |
+      SOX/PCAOB findings memos use careful language. The AI surfaces
+      anomalies and recommends procedures, not conclusions.
+
+# ----------------------------------------------------------------------
+# STRETCH scenarios (optional; build only if T+12h checkpoint allows)
+# ----------------------------------------------------------------------
+# - i07: multi-language corpus (Italian + English emails about same topic)
+# - i08: deposition cross-reference (synthetic deposition PDF vs Enron emails)
+# - i09: privilege detection (flag emails marked "attorney-client privileged")
