@@ -1,130 +1,238 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stats } from "@react-three/drei";
-import GreenhouseRack, { type Tray } from "../3d/GreenhouseRack";
-import { stageName, type PlantStage } from "../3d/PlantStages";
+import GreenhouseRack, { type Shelf, type PotState } from "../3d/GreenhouseRack";
+import { stageName, type PlantStage, type PlantSpecies } from "../3d/PlantStages";
+import type { PotColor } from "../3d/Pot";
+import { tauri } from "../../tauri";
+
+type Props = {
+  onClose: () => void;
+};
+
+type Citation = {
+  id: string;
+  path: string;
+  filename: string;
+  chunk_index: number;
+};
 
 type HoustonReply = {
   verdict: string;
   narration: string;
   tone: "ready" | "growing" | "early" | "alert";
-  citations: string[];
+  citations: Citation[];
   elapsed_ms: number;
   used_llm: boolean;
 };
 
-async function callHouston(trays: Tray[], selectedTrayId: number): Promise<HoustonReply> {
+async function openCitation(c: Citation): Promise<void> {
+  if (!c.path) {
+    // Placeholder citation (corpus not indexed). Chip is rendered disabled,
+    // but log defensively in case a click slips through.
+    console.log("[citation] no path on", c.id);
+    return;
+  }
+  try {
+    await tauri.openFile(c.path);
+  } catch (err) {
+    // Browser dev mode (no Tauri runtime) — degrade to console.
+    console.log("[citation] tauri.openFile unavailable; would open:", c.path, err);
+  }
+}
+
+// Build a fake "tray" payload for the existing Houston endpoint, scoped to a single pot.
+async function callHoustonForPot(pot: PotState, shelf: Shelf): Promise<HoustonReply> {
+  const trayLike = {
+    id: parseInt(pot.id.split(".pot")[1] ?? "1", 10) + shelf.id * 10,
+    species: pot.species,
+    label: `Shelf ${shelf.id} pot ${pot.id.split(".pot")[1]} ${shelf.speciesLabel}`,
+    stage: pot.stage,
+    ndvi: pot.ndvi,
+    ec: pot.ec,
+    ph: pot.ph,
+    ppfd: pot.ppfd,
+    moisture: pot.moisture,
+    days_to_harvest: pot.daysToHarvest,
+  };
   const resp = await fetch("http://127.0.0.1:8765/ares/houston/greenhouse", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      trays: trays.map((t) => ({
-        id: t.id,
-        species: t.species,
-        label: t.label,
-        stage: t.stage,
-        ndvi: t.ndvi,
-        ec: t.ec,
-        ph: t.ph,
-        ppfd: t.ppfd,
-        moisture: t.moisture,
-        days_to_harvest: t.daysToHarvest,
-      })),
-      selected_tray_id: selectedTrayId,
+      trays: [trayLike],
+      selected_tray_id: trayLike.id,
     }),
   });
   if (!resp.ok) throw new Error(`houston ${resp.status}`);
   return (await resp.json()) as HoustonReply;
 }
 
-type Props = {
-  onClose: () => void;
-};
+// ---------------------------------------------------------------------------
+// Initial shelf seed — 4 species × 4 pots each
+// Stages staggered within shelf to look like rolling planting cycles
+// ---------------------------------------------------------------------------
 
-const INITIAL_TRAYS: Tray[] = [
+function makePot(
+  shelfId: number,
+  potIndex: number,
+  species: PlantSpecies,
+  stage: PlantStage,
+  potColor: PotColor,
+  ndvi: number,
+  ec: number,
+  ph: number,
+  ppfd: number,
+  moisture: number,
+  daysToHarvest: number
+): PotState {
+  return {
+    id: `shelf${shelfId}.pot${potIndex}`,
+    species,
+    speciesLabel: speciesDisplay(species),
+    potColor,
+    stage,
+    progressInStage: 0.4,
+    ndvi,
+    ec,
+    ph,
+    ppfd,
+    moisture,
+    daysToHarvest,
+  };
+}
+
+function speciesDisplay(s: PlantSpecies): string {
+  return s === "lettuce"
+    ? "Outredgeous lettuce"
+    : s === "mizuna"
+      ? "Mizuna mustard"
+      : s === "pepper"
+        ? "Hatch chile pepper"
+        : "Red Robin tomato";
+}
+
+const INITIAL_SHELVES: Shelf[] = [
+  // Shelf 1 — Lettuce, rolling cycle 1→4
   {
     id: 1,
     species: "lettuce",
-    label: "Outredgeous lettuce",
-    stage: 2,
-    progressInStage: 0.4,
-    ndvi: 0.62,
-    ec: 1.6,
-    ph: 6.1,
-    ppfd: 280,
-    moisture: 0.58,
-    daysToHarvest: 6,
+    speciesLabel: "Outredgeous lettuce",
+    pots: [
+      makePot(1, 1, "lettuce", 1, "ceramic", 0.42, 1.5, 6.1, 285, 0.6, 25),
+      makePot(1, 2, "lettuce", 2, "terracotta", 0.55, 1.6, 6.0, 290, 0.58, 20),
+      makePot(1, 3, "lettuce", 3, "white", 0.66, 1.7, 6.2, 295, 0.59, 14),
+      makePot(1, 4, "lettuce", 4, "darkGrey", 0.74, 1.8, 6.0, 300, 0.61, 8),
+    ],
   },
+  // Shelf 2 — Mizuna, mostly mature, ONE READY (the WOW pot)
   {
     id: 2,
     species: "mizuna",
-    label: "Mizuna mustard",
-    stage: 5,
-    progressInStage: 1.0,
-    ndvi: 0.81,
-    ec: 1.9,
-    ph: 6.3,
-    ppfd: 295,
-    moisture: 0.6,
-    daysToHarvest: 0,
+    speciesLabel: "Mizuna mustard",
+    pots: [
+      makePot(2, 1, "mizuna", 4, "white", 0.74, 1.8, 6.2, 295, 0.6, 4),
+      makePot(2, 2, "mizuna", 5, "ceramic", 0.81, 1.9, 6.3, 295, 0.6, 0), // READY
+      makePot(2, 3, "mizuna", 4, "cardboard", 0.76, 1.8, 6.2, 290, 0.58, 3),
+      makePot(2, 4, "mizuna", 5, "ceramic", 0.79, 1.9, 6.3, 298, 0.61, 0), // READY
+    ],
   },
+  // Shelf 3 — Pepper, slow long cycle
   {
     id: 3,
     species: "pepper",
-    label: "Hatch chile pepper 'Española'",
-    stage: 2,
-    progressInStage: 0.6,
-    ndvi: 0.55,
-    ec: 1.7,
-    ph: 6.4,
-    ppfd: 310,
-    moisture: 0.52,
-    daysToHarvest: 95,
+    speciesLabel: "Hatch chile pepper",
+    pots: [
+      makePot(3, 1, "pepper", 1, "cardboard", 0.45, 1.5, 6.4, 305, 0.55, 130),
+      makePot(3, 2, "pepper", 2, "ceramic", 0.55, 1.7, 6.4, 310, 0.55, 110),
+      makePot(3, 3, "pepper", 2, "terracotta", 0.58, 1.7, 6.3, 308, 0.54, 100),
+      makePot(3, 4, "pepper", 3, "white", 0.65, 1.8, 6.2, 312, 0.56, 80),
+    ],
   },
+  // Shelf 4 — Tomato, mid cycle, some red fruits visible
   {
     id: 4,
     species: "tomato",
-    label: "Red Robin dwarf tomato",
-    stage: 3,
-    progressInStage: 0.3,
-    ndvi: 0.7,
-    ec: 1.8,
-    ph: 6.0,
-    ppfd: 305,
-    moisture: 0.55,
-    daysToHarvest: 24,
+    speciesLabel: "Red Robin tomato",
+    pots: [
+      makePot(4, 1, "tomato", 2, "ceramic", 0.58, 1.7, 6.0, 305, 0.55, 60),
+      makePot(4, 2, "tomato", 3, "white", 0.7, 1.8, 6.1, 308, 0.56, 30),
+      makePot(4, 3, "tomato", 4, "cardboard", 0.78, 1.8, 6.0, 310, 0.58, 14),
+      makePot(4, 4, "tomato", 3, "ceramic", 0.68, 1.7, 6.1, 305, 0.55, 36),
+    ],
   },
 ];
 
-// Compress NASA Veggie/APH timing 100x for the demo: lettuce ~28 demo-seconds total
+// Pick a "hero" pot — the user-visible default selection
+const HERO_POT_ID = "shelf2.pot2"; // first READY mizuna
+
 const STAGE_DURATIONS_S: Record<number, number> = {
-  0: 3, // germination
-  1: 5, // seedling
-  2: 8, // vegetative
-  3: 6, // flowering
-  4: 6, // fruiting
+  0: 3,
+  1: 5,
+  2: 8,
+  3: 6,
+  4: 6,
 };
 
 export default function GreenhouseDetail({ onClose }: Props) {
-  const [trays, setTrays] = useState<Tray[]>(INITIAL_TRAYS);
-  const [selectedTrayId, setSelectedTrayId] = useState<number | null>(2);
+  const [shelves, setShelves] = useState<Shelf[]>(INITIAL_SHELVES);
+  const [selectedPotId, setSelectedPotId] = useState<string>(HERO_POT_ID);
   const [houstonReply, setHoustonReply] = useState<HoustonReply | null>(null);
   const [houstonBusy, setHoustonBusy] = useState(false);
   const houstonInflight = useRef<AbortController | null>(null);
   const lastFetchKey = useRef<string>("");
 
-  // Auto-select tray 2 (mizuna READY) for the WOW beat
+  // Sensor noise + tray-1 lettuce (shelf 1 pot 4) auto-grows for visible motion
   useEffect(() => {
-    setSelectedTrayId(2);
+    const tick = setInterval(() => {
+      setShelves((prev) =>
+        prev.map((shelf) => ({
+          ...shelf,
+          pots: shelf.pots.map((pot) => {
+            // The "growing star": shelf 1 pot 4 (lettuce stage 4 → 5 over the demo)
+            if (pot.id === "shelf1.pot4") {
+              const dur = STAGE_DURATIONS_S[pot.stage] ?? 6;
+              const dt = 0.5 / dur;
+              let p = pot.progressInStage + dt;
+              let s = pot.stage;
+              if (p >= 1 && pot.stage < 5) {
+                s = (pot.stage + 1) as PlantStage;
+                p = 0;
+              }
+              return {
+                ...pot,
+                stage: s,
+                progressInStage: Math.min(1, p),
+                ndvi: clamp(0.4 + s * 0.09 + Math.random() * 0.02, 0, 1),
+                daysToHarvest: Math.max(0, 12 - s * 3 - Math.floor(p * 3)),
+              };
+            }
+            // Others: sensor noise only
+            return {
+              ...pot,
+              ndvi: clamp(pot.ndvi + (Math.random() - 0.5) * 0.008, 0.2, 0.95),
+              moisture: clamp(pot.moisture + (Math.random() - 0.5) * 0.008, 0.3, 0.85),
+              ppfd: Math.round(clamp(pot.ppfd + (Math.random() - 0.5) * 4, 200, 350)),
+            };
+          }),
+        }))
+      );
+    }, 500);
+    return () => clearInterval(tick);
   }, []);
 
-  // Call Houston whenever selection or stage changes (debounced)
+  // Look up the selected pot + its shelf
+  const { selectedPot, selectedShelf } = useMemo(() => {
+    for (const sh of shelves) {
+      const pot = sh.pots.find((p) => p.id === selectedPotId);
+      if (pot) return { selectedPot: pot, selectedShelf: sh };
+    }
+    return { selectedPot: null as PotState | null, selectedShelf: null as Shelf | null };
+  }, [shelves, selectedPotId]);
+
+  // Call Houston whenever selection or stage changes
   useEffect(() => {
-    if (selectedTrayId == null) return;
-    const sel = trays.find((t) => t.id === selectedTrayId);
-    if (!sel) return;
-    // Re-fetch only when stage changes (or selection changes), not on every sensor noise tick
-    const key = `${selectedTrayId}:${sel.stage}`;
+    if (!selectedPot || !selectedShelf) return;
+    const key = `${selectedPot.id}:${selectedPot.stage}`;
     if (key === lastFetchKey.current) return;
     lastFetchKey.current = key;
 
@@ -134,7 +242,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
     const timer = setTimeout(async () => {
       setHoustonBusy(true);
       try {
-        const reply = await callHouston(trays, selectedTrayId);
+        const reply = await callHoustonForPot(selectedPot, selectedShelf);
         if (!ctl.signal.aborted) setHoustonReply(reply);
       } catch {
         if (!ctl.signal.aborted) setHoustonReply(null);
@@ -146,90 +254,38 @@ export default function GreenhouseDetail({ onClose }: Props) {
       clearTimeout(timer);
       ctl.abort();
     };
-  }, [selectedTrayId, trays]);
+  }, [selectedPot, selectedShelf]);
 
-  // Lettuce auto-advances stages over the demo for visible motion
-  useEffect(() => {
-    let cancelled = false;
-    const tick = setInterval(() => {
-      if (cancelled) return;
-      setTrays((prev) =>
-        prev.map((t) => {
-          if (t.id !== 1) {
-            // mild sensor noise on others
-            return {
-              ...t,
-              ndvi: clamp(t.ndvi + (Math.random() - 0.5) * 0.01, 0, 1),
-              moisture: clamp(t.moisture + (Math.random() - 0.5) * 0.01, 0, 1),
-              ppfd: Math.round(clamp(t.ppfd + (Math.random() - 0.5) * 4, 200, 350)),
-            };
-          }
-          // Tray 1 grows
-          const dur = STAGE_DURATIONS_S[t.stage] ?? 6;
-          const dt = 0.5 / dur;
-          let newProgress = t.progressInStage + dt;
-          let newStage = t.stage;
-          if (newProgress >= 1 && t.stage < 5) {
-            newStage = (t.stage + 1) as PlantStage;
-            newProgress = 0;
-          }
-          return {
-            ...t,
-            stage: newStage,
-            progressInStage: Math.min(1, newProgress),
-            ndvi: clamp(0.4 + newStage * 0.09 + Math.random() * 0.02, 0, 1),
-            ec: 1.5 + newStage * 0.1 + Math.random() * 0.05,
-            ph: clamp(6.0 + Math.sin(Date.now() / 20000) * 0.15, 5.5, 7.0),
-            ppfd: Math.round(280 + newStage * 4 + Math.random() * 6),
-            moisture: clamp(0.55 + Math.sin(Date.now() / 15000) * 0.05, 0.2, 0.85),
-            daysToHarvest: Math.max(0, 28 - newStage * 5 - Math.floor(newProgress * 5)),
-          };
-        })
-      );
-    }, 500);
-    return () => {
-      cancelled = true;
-      clearInterval(tick);
-    };
-  }, []);
-
-  const selected = useMemo(
-    () => trays.find((t) => t.id === selectedTrayId) || null,
-    [trays, selectedTrayId]
-  );
-
-  // Local fallback narration if Houston endpoint hasn't returned yet
   const fallbackNarration = useMemo(() => {
-    if (!selected) return null;
-    if (selected.stage === 5) {
+    if (!selectedPot) return null;
+    if (selectedPot.stage === 5) {
       return {
-        verdict: "READY FOR HARVEST",
-        narration: `Tray ${selected.id} ${selected.label} at stage 5/5. Recommend harvest now. Cite Veggie §3.4 [S2].`,
+        verdict: "HARVEST NOW",
+        narration: `${selectedPot.speciesLabel} at stage 5/5. Recommend harvest now. Cite Veggie §3.4 [S2].`,
         tone: "ready" as const,
       };
     }
-    if (selected.stage >= 3) {
+    if (selectedPot.stage >= 3) {
       return {
         verdict: "FLOWERING / FRUITING",
-        narration: `${selected.label} entering reproductive stage. Maintain PPFD ≥280 μmol/m²/s. Cite Veggie §3.2 [S2].`,
+        narration: `${selectedPot.speciesLabel} entering reproductive stage. Maintain PPFD ≥280 μmol/m²/s. Cite Veggie §3.2 [S2].`,
         tone: "growing" as const,
       };
     }
-    if (selected.stage >= 1) {
+    if (selectedPot.stage >= 1) {
       return {
         verdict: "VEGETATIVE",
-        narration: `${selected.label} growing nominally. ETA harvest ${selected.daysToHarvest} sols. Cite APH PH-04 [S3].`,
+        narration: `${selectedPot.speciesLabel} growing nominally. ETA harvest ${selectedPot.daysToHarvest} sols. Cite APH PH-04 [S3].`,
         tone: "growing" as const,
       };
     }
     return {
       verdict: "GERMINATION",
-      narration: `${selected.label} in germination. Maintain substrate moisture >50%. Cite APH PH-04 [S3].`,
+      narration: `${selectedPot.speciesLabel} in germination. Maintain substrate moisture >50%. Cite APH PH-04 [S3].`,
       tone: "early" as const,
     };
-  }, [selected]);
+  }, [selectedPot]);
 
-  // Display Houston output (LLM if available, fallback otherwise)
   const narration = houstonReply
     ? {
         verdict: houstonReply.verdict,
@@ -279,7 +335,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
             GREENHOUSE
           </span>
           <span className="text-xs uppercase tracking-widest" style={{ color: "#94a3b8" }}>
-            Bioregenerative Plant Habitat · 4 trays
+            Bioregenerative Plant Habitat · 4 shelves · 16 pots
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono" style={{ color: "#94a3b8" }}>
@@ -287,30 +343,30 @@ export default function GreenhouseDetail({ onClose }: Props) {
         </div>
       </header>
 
-      {/* 3D Canvas (left/center) */}
+      {/* 3D Canvas */}
       <div className="absolute top-14 left-0 right-[400px] bottom-0">
         <Canvas
           shadows
           dpr={[1, 2]}
           gl={{ antialias: true, powerPreference: "high-performance" }}
-          camera={{ position: [3.5, 1.6, 3.5], fov: 35 }}
+          camera={{ position: [3.6, 1.7, 3.6], fov: 35 }}
         >
           <color attach="background" args={["#000"]} />
           <ambientLight intensity={0.35} color="#ddd" />
           <directionalLight
             position={[3, 6, 3]}
-            intensity={1.2}
+            intensity={1.3}
             castShadow
             color="#fff"
             shadow-mapSize-width={1024}
             shadow-mapSize-height={1024}
           />
-          {/* purple grow-light glow from above */}
-          <pointLight position={[0, 2.2, 0]} intensity={0.6} color="#a78bfa" />
+          {/* purple grow-light glow from above each shelf */}
+          <pointLight position={[0, 2.4, 0]} intensity={0.7} color="#a78bfa" />
           <GreenhouseRack
-            trays={trays}
-            selectedTrayId={selectedTrayId}
-            onSelectTray={setSelectedTrayId}
+            shelves={shelves}
+            selectedPotId={selectedPotId}
+            onSelectPot={setSelectedPotId}
           />
           <OrbitControls
             makeDefault
@@ -320,7 +376,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
             minPolarAngle={Math.PI / 8}
             maxPolarAngle={Math.PI / 2.1}
           />
-          <Stats />
+          {import.meta.env.DEV && <Stats />}
         </Canvas>
       </div>
 
@@ -333,23 +389,23 @@ export default function GreenhouseDetail({ onClose }: Props) {
           backdropFilter: "blur(8px)",
         }}
       >
-        {selected ? (
+        {selectedPot && selectedShelf ? (
           <>
             <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#10b981" }}>
-              Tray {selected.id}
+              Shelf {selectedShelf.id} · pot {selectedPot.id.split(".pot")[1]}
             </div>
             <h2
               className="text-lg font-semibold mb-1"
-              style={{ color: selected.stage === 5 ? "#10b981" : "#fafafa" }}
+              style={{ color: selectedPot.stage === 5 ? "#10b981" : "#fafafa" }}
             >
-              {selected.label}
+              {selectedPot.speciesLabel}
             </h2>
             <div className="text-xs font-mono mb-4" style={{ color: "#94a3b8" }}>
-              Stage {selected.stage}/5 · {stageName(selected.stage)}
-              {selected.stage < 5 && (
-                <span> · ETA harvest {selected.daysToHarvest} sols</span>
+              Stage {selectedPot.stage}/5 · {stageName(selectedPot.stage)}
+              {selectedPot.stage < 5 && (
+                <span> · ETA harvest {selectedPot.daysToHarvest} sols</span>
               )}
-              {selected.stage === 5 && (
+              {selectedPot.stage === 5 && (
                 <span style={{ color: "#10b981" }}> · READY NOW</span>
               )}
             </div>
@@ -361,8 +417,8 @@ export default function GreenhouseDetail({ onClose }: Props) {
               </div>
               <div className="flex items-center gap-1">
                 {["Germ", "Seed", "Veg", "Flower", "Fruit", "Ready"].map((label, i) => {
-                  const reached = i <= selected.stage;
-                  const current = i === selected.stage;
+                  const reached = i <= selectedPot.stage;
+                  const current = i === selectedPot.stage;
                   return (
                     <div
                       key={label}
@@ -372,7 +428,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
                         fontSize: 9,
                         background: reached
                           ? current
-                            ? selected.stage === 5
+                            ? selectedPot.stage === 5
                               ? "#10b981"
                               : "#22d3ee"
                             : "rgba(34,211,238,0.18)"
@@ -390,12 +446,12 @@ export default function GreenhouseDetail({ onClose }: Props) {
                   );
                 })}
               </div>
-              {selected.stage < 5 && (
+              {selectedPot.stage < 5 && (
                 <div className="mt-1.5 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
                   <div
                     className="h-1 rounded-full"
                     style={{
-                      width: `${selected.progressInStage * 100}%`,
+                      width: `${selectedPot.progressInStage * 100}%`,
                       background: "#22d3ee",
                       transition: "width 0.5s linear",
                     }}
@@ -410,11 +466,11 @@ export default function GreenhouseDetail({ onClose }: Props) {
                 Live sensors (cameras + spectral + capacitive)
               </div>
               <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                <Metric label="NDVI" value={selected.ndvi.toFixed(2)} target=">0.65" ok={selected.ndvi > 0.65} />
-                <Metric label="EC" value={`${selected.ec.toFixed(1)} mS/cm`} target="1.5–2.0" ok={selected.ec >= 1.5 && selected.ec <= 2.0} />
-                <Metric label="pH" value={selected.ph.toFixed(1)} target="5.8–6.5" ok={selected.ph >= 5.8 && selected.ph <= 6.5} />
-                <Metric label="PPFD" value={`${selected.ppfd} μmol/m²/s`} target="≥280" ok={selected.ppfd >= 280} />
-                <Metric label="Moisture" value={`${(selected.moisture * 100).toFixed(0)}%`} target="50–70%" ok={selected.moisture >= 0.5 && selected.moisture <= 0.7} />
+                <Metric label="NDVI" value={selectedPot.ndvi.toFixed(2)} target=">0.65" ok={selectedPot.ndvi > 0.65} />
+                <Metric label="EC" value={`${selectedPot.ec.toFixed(1)} mS/cm`} target="1.5–2.0" ok={selectedPot.ec >= 1.5 && selectedPot.ec <= 2.0} />
+                <Metric label="pH" value={selectedPot.ph.toFixed(1)} target="5.8–6.5" ok={selectedPot.ph >= 5.8 && selectedPot.ph <= 6.5} />
+                <Metric label="PPFD" value={`${selectedPot.ppfd} μmol/m²/s`} target="≥280" ok={selectedPot.ppfd >= 280} />
+                <Metric label="Moisture" value={`${(selectedPot.moisture * 100).toFixed(0)}%`} target="50–70%" ok={selectedPot.moisture >= 0.5 && selectedPot.moisture <= 0.7} />
                 <Metric label="Chamber CO₂" value="812 ppm" target="800–1200" ok={true} />
               </div>
             </div>
@@ -458,55 +514,97 @@ export default function GreenhouseDetail({ onClose }: Props) {
                 <div className="text-[11px] font-mono mb-1.5" style={{ color: "#fafafa", fontWeight: 600 }}>
                   {narration.verdict}
                 </div>
-                <div className="text-xs leading-relaxed" style={{ color: "#cbd5e1" }}>
+                <div className="text-xs leading-relaxed mb-2" style={{ color: "#cbd5e1" }}>
                   {narration.text}
                 </div>
+                {houstonReply?.citations && houstonReply.citations.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {houstonReply.citations.map((c) => {
+                      const clickable = !!c.path;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => openCitation(c)}
+                          disabled={!clickable}
+                          title={
+                            clickable
+                              ? `Open ${c.filename} (chunk ${c.chunk_index})`
+                              : "no source path (corpus not indexed)"
+                          }
+                          className="px-2 py-1 rounded text-[10px] font-mono"
+                          style={{
+                            background: clickable
+                              ? "rgba(34,211,238,0.14)"
+                              : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${clickable ? "#22d3ee66" : "rgba(255,255,255,0.1)"}`,
+                            color: clickable ? "#22d3ee" : "#64748b",
+                            cursor: clickable ? "pointer" : "not-allowed",
+                            maxWidth: 220,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          [{c.id}] {c.filename || "—"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Citation */}
             <div className="text-[10px] font-mono opacity-70" style={{ color: "#94a3b8" }}>
               Citations resolve to NASA Veggie / APH PH-04 manuals (offline corpus, indexed by Rover Core).
             </div>
           </>
         ) : (
           <div className="text-sm" style={{ color: "#64748b" }}>
-            Click a tray on the rack to inspect.
+            Click a pot on the rack to inspect.
           </div>
         )}
 
-        {/* Tray quick-switch */}
+        {/* Pot quick-switch grouped by shelf */}
         <div className="mt-6 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "#94a3b8" }}>
-            All trays
+            All pots
           </div>
-          <div className="space-y-1.5">
-            {trays.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setSelectedTrayId(t.id)}
-                className="w-full text-left px-3 py-2 rounded-md text-xs font-mono"
-                style={{
-                  background:
-                    t.id === selectedTrayId
-                      ? "rgba(34,211,238,0.18)"
-                      : "rgba(255,255,255,0.03)",
-                  border: t.id === selectedTrayId ? "1px solid #22d3ee" : "1px solid rgba(255,255,255,0.08)",
-                  color: t.id === selectedTrayId ? "#fafafa" : "#cbd5e1",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span>Tray {t.id} · {t.label}</span>
-                  <span
-                    style={{
-                      color: t.stage === 5 ? "#10b981" : "#94a3b8",
-                      fontWeight: t.stage === 5 ? 700 : 400,
-                    }}
-                  >
-                    {t.stage}/5{t.stage === 5 ? " ●" : ""}
-                  </span>
+          <div className="space-y-3">
+            {shelves.map((sh) => (
+              <div key={sh.id}>
+                <div className="text-[10px] mb-1 font-mono" style={{ color: "#94a3b8" }}>
+                  Shelf {sh.id} · {sh.speciesLabel}
                 </div>
-              </button>
+                <div className="grid grid-cols-4 gap-1">
+                  {sh.pots.map((p) => {
+                    const isSel = p.id === selectedPotId;
+                    const isReady = p.stage === 5;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPotId(p.id)}
+                        title={`${p.speciesLabel} stage ${p.stage}/5${isReady ? " — READY" : ""}`}
+                        className="text-[10px] font-mono py-1.5 rounded"
+                        style={{
+                          background: isSel
+                            ? "rgba(34,211,238,0.22)"
+                            : isReady
+                              ? "rgba(16,185,129,0.18)"
+                              : "rgba(255,255,255,0.04)",
+                          border: isSel
+                            ? "1px solid #22d3ee"
+                            : isReady
+                              ? "1px solid #10b981"
+                              : "1px solid rgba(255,255,255,0.08)",
+                          color: isSel ? "#fafafa" : isReady ? "#86efac" : "#cbd5e1",
+                        }}
+                      >
+                        #{p.id.split(".pot")[1]} · {p.stage}/5{isReady ? " ●" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </div>
