@@ -49,3 +49,46 @@ export const Loader = ({ size = 16, className, ...rest }: IconProps) => (
     <path d="M21 12a9 9 0 1 1-6.2-8.55" />
   </svg>
 );
+
+/** Custom Rover mark — diamond compass needle inside a soft ring. */
+export const Compass = ({ size = 22, className, ...rest }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    className={className}
+    {...rest}
+  >
+    <defs>
+      <linearGradient id="rover-mark-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="var(--accent-2)" />
+        <stop offset="100%" stopColor="var(--accent)" />
+      </linearGradient>
+    </defs>
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      fill="url(#rover-mark-grad)"
+      opacity="0.18"
+    />
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="url(#rover-mark-grad)"
+      strokeWidth="1.4"
+    />
+    <path
+      d="M12 5.5 L14.5 12 L12 18.5 L9.5 12 Z"
+      fill="url(#rover-mark-grad)"
+    />
+    <circle cx="12" cy="12" r="1.2" fill="var(--bg)" />
+  </svg>
+);
+
+export const X = svg("M18 6L6 18M6 6l12 12");
+export const Sun = svg("M12 3v2M12 19v2M5 12H3M21 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z");
+export const Moon = svg("M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z");
+export const Filter = svg("M3 5h18M6 12h12M10 19h4");

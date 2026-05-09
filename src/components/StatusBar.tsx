@@ -19,12 +19,12 @@ export default function StatusBar({
     };
   }, []);
 
-  const dot =
+  const dotColor =
     status === "ready"
       ? "bg-success"
       : status === "error"
       ? "bg-danger"
-      : "bg-warning animate-pulse";
+      : "bg-warning";
 
   const label =
     status === "ready"
@@ -34,9 +34,16 @@ export default function StatusBar({
       : "Starting AI engine…";
 
   return (
-    <footer className="h-7 px-4 text-xs text-muted flex items-center justify-between gap-4 bg-black/5 dark:bg-white/5">
+    <footer className="h-7 px-4 text-[11px] text-muted/85 flex items-center justify-between gap-4 bg-black/4 dark:bg-white/4 backdrop-blur-md shrink-0">
       <span className="flex items-center gap-2">
-        <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
+        <span className="relative inline-flex">
+          <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+          {status !== "ready" && (
+            <span
+              className={`absolute inset-0 w-2 h-2 rounded-full ${dotColor} opacity-60 animate-ping`}
+            />
+          )}
+        </span>
         <span>{label}</span>
         {indexedRoot && (
           <>

@@ -5,6 +5,7 @@ import { tauri } from "./tauri";
 import Toolbar from "./components/Toolbar";
 import Sidebar, { type QuickItem } from "./components/Sidebar";
 import Breadcrumbs from "./components/Breadcrumbs";
+import HeroHeader from "./components/HeroHeader";
 import BrowseList from "./components/BrowseList";
 import SearchHits from "./components/SearchHits";
 import DetailPanel from "./components/DetailPanel";
@@ -30,6 +31,7 @@ export default function App() {
   const [query, setQuery] = useState<string>("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
+  const [searchElapsed, setSearchElapsed] = useState<number | undefined>(undefined);
 
   const [indexedRoot, setIndexedRoot] = useState<string | null>(null);
   const [indexedFiles, setIndexedFiles] = useState<number | null>(null);
@@ -133,8 +135,8 @@ export default function App() {
     try {
       const r = await api.search(q, 12);
       setHits(r.hits);
+      setSearchElapsed(r.elapsed_ms);
       setSelection(r.hits[0] ? { kind: "hit", hit: r.hits[0] } : null);
-      setInfo(`${r.hits.length} matches in ${r.elapsed_ms} ms`);
     } catch (e) {
       setInfo(`Search error: ${(e as Error).message}`);
     } finally {
@@ -146,6 +148,7 @@ export default function App() {
     setHits([]);
     setInfo("");
     setSelection(null);
+    setSearchElapsed(undefined);
   }
 
   async function indexFolder(target: string) {
@@ -190,6 +193,8 @@ export default function App() {
   ];
 
   const canIndexCurrent = !!path;
+  const folderName = path === home ? "Home" : path.split("/").pop() || path;
+  const isCurrentIndexed = !!indexedRoot && (indexedRoot === path || path.startsWith(indexedRoot + "/"));
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -210,6 +215,7 @@ export default function App() {
             ? `Search ${indexedFiles ?? ""} indexed files…`
             : "Index a folder to enable search"
         }
+        indexBusy={indexBusy}
       />
 
       <div className="flex-1 flex min-h-0">
@@ -226,22 +232,39 @@ export default function App() {
         />
 
         <main className="flex-1 flex flex-col min-w-0 main-surface">
-          {/* Breadcrumb row — no border, just whitespace */}
-          <div className="h-12 px-5 flex items-center gap-3">
+          {/* Slim breadcrumb row */}
+          <div className="h-10 px-6 flex items-center gap-3">
             <Breadcrumbs path={path} home={home} onNavigate={(p) => navigateTo(p)} />
             {query && (
               <button
                 onClick={clearSearch}
-                className="ml-auto text-xs px-3 py-1.5 rounded-lg btn-secondary"
+                className="ml-auto btn btn-secondary !h-7 !px-2.5 !text-xs"
               >
                 ← Back to folder
               </button>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-5">
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {/* Hero header for the active view */}
+            {query ? (
+              <HeroHeader
+                mode="search"
+                query={query}
+                hitsCount={hits.length}
+                elapsedMs={searchElapsed}
+              />
+            ) : (
+              <HeroHeader
+                mode="browse"
+                folderName={folderName}
+                itemsCount={entries.length}
+                isIndexed={isCurrentIndexed}
+              />
+            )}
+
             {browseError && !query && (
-              <div className="mb-3 text-sm text-danger bg-danger/8 rounded-lg px-3 py-2">
+              <div className="mb-3 text-sm text-danger bg-danger/10 rounded-xl px-3 py-2 shadow-soft">
                 {browseError}
               </div>
             )}
