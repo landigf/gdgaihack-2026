@@ -9,7 +9,8 @@
 | Event: GDG AI HACK 2026, Randstad Box, Milan, 8–10 May 2026. | [gdgaihack.com](https://gdgaihack.com/) | High |
 | 160 participants, ~40 teams, teams of up to 4. | gdgaihack.com | High |
 | €15K+ prize pool. Current prizes page lists the MSI Cut the Cord S-tier prize as a **PRO Productivity Bundle**: PRO DP10 A14MG mini PC, Modern AM242TP AiO, PRO MP2412 monitor, PRO MP242L monitor. | [gdgaihack.com/prizes](https://gdgaihack.com/prizes) | High |
-| Evaluation axes: Innovation · Technical Execution · Real-World Impact · Presentation. | gdgaihack.com/challenges | High |
+| ⚠ Pre-kickoff assumption: equal-axes Innovation · Tech Execution · Real-World Impact · Presentation. **REPLACED 2026-05-09 by the actual brief weights below.** | gdgaihack.com/challenges (now superseded) | n/a |
+| **Actual judging weights** (from kickoff brief): Technical Optimization **30%** · Practical Utility **25%** · Creative On-Device Use **25%** · Competitive Advantage **20%**. | [gdgaihack.com/guidebook/tracks/msi](https://gdgaihack.com/guidebook/tracks/msi) — see [02-specification.md](02-specification.md) §"Judging criteria" | **High (verbatim)** |
 | Three sponsor tracks: Braynr (EdTech), Luxonis (Spatial AI), **MSI (On-Device AI)**. | gdgaihack.com/challenges | High |
 | Track briefs are revealed at kickoff (2026-05-09), not before. | gdgaihack.com/challenges | High |
 | "Cut the Cord" = marketing name for the MSI On-Device AI track (metaphor: no cable, no cloud). | inferred, homepage marketing copy | **Medium — confirm at kickoff** |
@@ -19,11 +20,15 @@
 | M5Stack side hardware/prize includes Core2 v1.1, AtomS3R-CAM, and Grove-compatible sensors; limited hardware may be borrowable during the event. | [gdgaihack.com/prizes](https://gdgaihack.com/prizes), [gdgaihack.com](https://gdgaihack.com/) | Medium |
 | Exact MSI demo hardware is unknown. MSI Stealth 16 AI+ class hardware exists with Intel Core Ultra 9 386H up to 50 NPU TOPS and RTX 5080 Laptop GPU 1334 AI TOPS, but it is **not confirmed** as event demo/prize hardware. | [MSI spec sheet](https://storage-asset.msi.com/specSheet/us/nb/Stealth%2016%20AI%2B%20B3WI-039US.pdf) | Low until kickoff |
 
-## Working thesis
+## Working thesis (sharpened 2026-05-09 against actual brief)
 
-> The judges on the MSI track are looking for a product whose **value depends on running locally** — privacy, latency, offline, sovereignty, or cost — not a product that merely *can* run locally.
+> The brief weights **Technical Optimization 30%** highest. Judges reward MEASURED on-device performance — model selection, quantization, memory management, inference speed, hardware-specific tuning. **The benchmark slide carries 30% of the score; the regulatory-moat slide carries only 20%.** Reframe pitch beats accordingly (see [PITCH_PLAN.md](PITCH_PLAN.md) beat allocation post-2026-05-09).
 
-Corollary: if someone can demo our idea with a cloud API + 100ms of network, we lose the track. The "cord" must be essential to the problem.
+> Brief constraint #1 (verbatim): *"The AI cannot be an isolated terminal chatbot."* — must integrate with OS / desktop apps / filesystem. A pure Streamlit web UI is read by judges as an isolated chatbot. **Score Creative On-Device 25% by shipping MCP server + file-system tools + at minimum one OS-level integration**.
+
+> Brief constraint #2 (verbatim): *"If we enable airplane mode right before your demo, does your AI still work?"* — same as before, no change. Zero-egress proof remains essential.
+
+Corollary: if someone can demo our idea with a cloud API + 100ms of network, we lose Competitive Advantage 20% AND probably get disqualified. The "cord" must be essential to the problem.
 
 ## Pivot rules (kickoff day)
 

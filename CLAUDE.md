@@ -11,23 +11,47 @@ Team PoliSa is running track **"Cut the Cord"** (on-device AI, MSI sponsor). Bri
 → **Pitch rehearsal card: [doc/specs/cut-the-cord/PITCH_REHEARSAL_CARD.md](doc/specs/cut-the-cord/PITCH_REHEARSAL_CARD.md)**
 → **Kickoff pivot pipeline: [pipelines/cut-the-cord/pivot-on-brief.yaml](pipelines/cut-the-cord/pivot-on-brief.yaml)**
 
-## State of the repo (2026-05-06)
+## State of the repo (2026-05-09 post-brief)
 
-**Pre-kickoff prep is done.** Three tools were orchestrated in parallel: Codex scout (verified GDG facts via web — MSI prize is **PRO Productivity Bundle** not Stealth 16 AI+; Foundry Local went GA on 2026-04-09); 11 ChatGPT Deep Research streams; 3 Claude synthesis subagents. **Total ~4,600 lines of research + working code shipped to `setup/cut-the-cord-scaffold` branch.**
+**Brief revealed at kickoff Saturday 11:00.** Verbatim brief locked into [02-specification.md](doc/specs/cut-the-cord/02-specification.md). Plan that drives the next 24h: `~/.claude/plans/at-the-end-we-ll-lucky-zebra.md`.
 
-What's working today:
-- **Models pulled (8 total):** gemma3:4b · gemma3n:e4b · phi4-mini · qwen2.5-coder:3b/7b · **qwen3:4b** · **embeddinggemma** · **nomic-embed-text** (last 3 added 2026-05-06; `embeddinggemma` is the keystone — RAG was impossible without it)
-- **Corpus indexed:** 98 chunks across 7 docs (NIOSH chlorine + ammonia + index, OSHA LOTO + EAP + Confined Spaces, CDC heat + Stop the Bleed, 2 synthetic SOPs) → `benchmarks/datasets/incident-copilot/app.db`
-- **Working harness:** `python3 -m benchmarks.harness.run --scenario benchmarks/scenarios/incident-copilot.yaml --systems baseline_v0,ours_v4` — produces real numbers in [`benchmarks/results/latest.md`](benchmarks/results/latest.md). Latest run: ours_v4 = 0.117 mean Cited Checklist Completeness, 13.5s p50; chlorine scenario shows 2× lift over baseline (0.20 → 0.40).
-- **Three pitch seeds drafted** (EMS / Wildland-SAR / Mining-O&G) in [PITCH_PLAN.md](doc/specs/cut-the-cord/PITCH_PLAN.md).
-- **Hackathon mode** is active in [.claude/settings.json](.claude/settings.json) — no permission prompts.
+### Big deltas vs pre-kickoff assumptions
 
-What's still open:
-- Idea lock decision (gated on Saturday brief reveal — see [POST_BRIEF_PLAYBOOK.md](doc/specs/cut-the-cord/POST_BRIEF_PLAYBOOK.md) §"Decision tree")
-- MSI hardware specifics (5 candidate models per DR-04)
-- Some corpus URLs blocked (Red Cross, ERG 2024 PDF, CDC heat alt pages); synthetic SOPs cover the gap
+1. **Judging weights are NOT equal axes.** Actual: Tech Optimization 30% · Practical Utility 25% · Creative On-Device 25% · Competitive Advantage 20%. Pitch beats re-allocated in [PITCH_PLAN.md](doc/specs/cut-the-cord/PITCH_PLAN.md).
+2. **OS / desktop / files integration is MANDATORY.** Brief: *"the AI cannot be an isolated terminal chatbot"*. A pure Streamlit web UI risks disqualifier. **MCP server + filesystem tools** are the keystone for Creative On-Device 25%.
+3. **Brief explicitly names models we hadn't pulled:** Gemma 3, gpt-oss-20b, MedGemma, Devstral Small 2, Llama 3.1, Phi-4, Mistral Small. `scripts/download-models.sh` extended; pulls happen on-demand per-vertical.
+4. **Form factor pivots from wearable to control-room desktop.** Same dangerous-jobs anchor; EdgeXpert sits on the operator's desk, not in their pocket. Pitch Seed B (Wildland-SAR) is OUT (no laptop in a wildland fire). Seeds A (EMS dispatch) and C (Mining/O&G control room) survive.
 
-**Important macOS-Python gotcha:** stdlib `python3` (python.org build) does NOT support `enable_load_extension`, which sqlite-vec needs. Use `/opt/homebrew/bin/python3.12` (or any brew Python) for the indexer + harness. The `scripts/airgap.sh` wrapper handles this; or run brew python directly: `/opt/homebrew/bin/python3.12 -m benchmarks.harness.run ...`.
+### Vertical decision: STILL OPEN
+
+Locked at T+90min team huddle. Four candidates re-scored on actual weights in [01-brainstorm.md](doc/specs/cut-the-cord/01-brainstorm.md) §"Brief-conditional re-scoring (2026-05-09)":
+
+| # | Candidate | Weighted /3.00 | Recommended? |
+|---|---|---:|---|
+| 1 | Control-Room Copilot | 3.00 | **Yes (default)** — max pre-work reuse |
+| 2 | Enterprise Doc Copilot | 2.50 | If team disconnects from dangerous-jobs anchor |
+| 3 | MedGemma Clinic Copilot | 2.75 | Brief NAMES MedGemma; strong fallback |
+| 4 | Devstral Coding Navigator | 2.55 | Highest 24h build risk, full corpus rebuild |
+
+### What still works from pre-kickoff prep
+
+- 98-chunk corpus indexed at `benchmarks/datasets/incident-copilot/app.db`
+- Hybrid retrieval stack at [src/airgap/](src/airgap/)
+- Benchmark harness at [benchmarks/harness/](benchmarks/harness/) — Tech Opt 30% means this matters MORE, not less
+- 11 DR reports + 4 syntheses in [doc/specs/cut-the-cord/research/](doc/specs/cut-the-cord/research/)
+- Regulatory-moat sentences in [TRACK_INTEL.md](doc/specs/cut-the-cord/TRACK_INTEL.md) — still useful but only worth 20% now
+- 3 pitch seeds (Seed B retired; A and C survive with desk-form-factor edits)
+
+### Still to do (from post-brief plan)
+
+- 4 fresh DRs (12-15) targeting MCP / gpt-oss-20b / MedGemma+Devstral / industrial-safety VLM
+- Codex tasks: brief-sync synthesis, MCP server (`src/airgap/mcp_server.py`), models-tier-fit memo
+- Phase B feasibility probes + team huddle at T+90
+- Phase C build (depends on lock): scenarios, desktop UI shell, multimodal pipeline
+
+**Important macOS-Python gotcha (still in effect):** stdlib `python3` (python.org build) does NOT support `enable_load_extension`, which sqlite-vec needs. Use `/opt/homebrew/bin/python3.12` (or any brew Python) for the indexer + harness.
+
+**Standing rule from user (2026-05-09):** ALWAYS `git fetch && git pull` at the start of every session in this repo. Multi-teammate collaboration through GitHub during the hackathon. Saved as feedback memory.
 
 ## How to use ClaudeFlow here (read this first)
 

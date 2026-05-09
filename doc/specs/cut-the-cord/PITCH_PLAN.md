@@ -3,19 +3,40 @@
 > Owned by **pitch-pair** (H3 + H4). Reviewed by tech-pair at every milestone.
 > The pitch is the deliverable that multiplies everything else. Two people on it for two full days is the *right* allocation, not an over-allocation.
 
-## Structure (3 min / 180 seconds)
+## Structure (3 min / 180 seconds) — re-weighted 2026-05-09 against actual brief weights
 
-| # | Beat | Duration | Who owns | What the judge leaves with |
-|---|---|---|---|---|
-| 1 | **Hook — the cord they can't cut today** | 20s | H3 | A concrete person in a concrete situation where cloud fails them. |
-| 2 | **Problem — quantified** | 25s | H3 | One number. "X million workers can't use cloud AI because of [regulation / connectivity / privacy]." |
-| 3 | **Solution — one sentence** | 15s | H3 | "We run [the thing] entirely on the device, with [measurable property]." |
-| 4 | **Live demo — airplane mode on stage** | 60s | H1 (operator) + H3 (narrator) | They believed it. They saw it work with Wi-Fi visibly off. |
-| 5 | **Benchmark — our moat** | 30s | H3 | One slide, three bars: cloud vs naive-local vs ours. Ours wins on the axis that matters for the use case. |
-| 6 | **Why PoliSa can ship this** | 15s | H4 | Team credibility + sponsor-fit beat. |
-| 7 | **Close + ask** | 15s | H3 | A crisp one-liner they'll repeat to each other afterwards. |
+> Brief weights are **30% Tech Optimization · 25% Practical Utility · 25% Creative On-Device · 20% Competitive Advantage** (verbatim in [02-specification.md](02-specification.md)). Old equal-axes assumption is dead. **Tech Optimization 30% is the largest single weight**, which forces the **Benchmark beat to expand from 30s to 40s** and the **Competitive Advantage beat to trim** (it's only 20% — keep it tight).
 
-Total: 180s. Buffer: 0. We rehearse to 170s to absorb stage friction.
+| # | Beat | Duration | Owner | Brief axis it scores | What the judge leaves with |
+|---|---|---|---|---|---|
+| 1 | **Hook — the cord they can't cut today** | 20s | H3 | Practical Utility 25% | A concrete person in a concrete moment where cloud fails them. |
+| 2 | **Problem — quantified** | 20s | H3 | Practical Utility 25% + Comp Adv 20% | One number. "X million workers can't use cloud AI because of [regulation / connectivity / privacy]." |
+| 3 | **Solution — one sentence** | 15s | H3 | Creative On-Device 25% | "On-device LLM + MCP server + RAG over local files. Zero packets leaving." |
+| 4 | **Live demo — airplane mode on stage** | 55s | H1 (operator) + H3 (narrator) | Tech Opt 30% + Creative On-Device 25% | They believed it. Wi-Fi visibly off. The model thought through a real task and produced a cited result with OS-level integration on stage. |
+| 5 | **Benchmark — our moat (EXPANDED)** | 40s | H3 | **Tech Opt 30% (highest single weight)** | One slide, **three numbers** quoted directly from `benchmarks/results/latest.md`: Cited Checklist Completeness, p50 end-to-end ms, peak RSS MB. Plus the **quantization story**: "we tested gemma3:4b vs qwen3:4b vs gpt-oss-20b at Q4_K_M on this exact hardware; the choice we shipped was X tokens/sec, Y MB peak, Z%-better completeness." |
+| 6 | **Why PoliSa + sponsor fit** | 15s | H4 | Comp Adv 20% | Team credibility + the EdgeXpert hardware story (this is the tier we tested; this is why local matters here). |
+| 7 | **Close + ask** | 15s | H3 | Practical Utility 25% | A crisp one-liner they'll repeat to each other afterwards. |
+
+Total: 180s. Buffer: 0. We rehearse to **170s** to absorb stage friction.
+
+**What changed from the pre-kickoff allocation:**
+- Beat 2 (Problem) trimmed from 25s → 20s (Practical + Comp Adv together, no need to spend a whole 25s).
+- Beat 4 (Demo) trimmed from 60s → 55s (the harness-numbers slide steals 10s; keep the demo tight).
+- Beat 5 (Benchmark) **expanded from 30s → 40s** because Tech Optimization is 30% of the score, the single largest axis. The benchmark slide MUST cover both *what* we shipped and *what we tested against* (quantization + model-selection comparison).
+- Beat 6 (Why PoliSa) re-aimed at Comp Adv 20% — keep it tight; don't over-spend on a 20% axis.
+
+## How to score during rehearsal
+
+After every rehearsal #2 onwards, score the run on the brief's actual weights:
+
+| Axis | Weight | What to listen for |
+|---|---:|---|
+| Tech Opt | 30% | Did Beat 5 quote ≥3 specific numbers from `latest.md`? Did the operator say "we picked X over Y because [measured number]"? |
+| Practical Utility | 25% | Did the Hook name ONE specific person in ONE specific moment? Could a judge repeat it back? |
+| Creative On-Device | 25% | During the Demo, did the LLM read a file or call a tool that PROVES it's not an isolated chatbot? Did the operator point at the MCP audit log on screen? |
+| Comp Advantage | 20% | Did the Problem beat give ONE quoted regulation or ONE quoted enforcement case? |
+
+If any axis gets 0 in rehearsal, the corresponding beat needs a rewrite, not just more practice.
 
 ## The hook template
 

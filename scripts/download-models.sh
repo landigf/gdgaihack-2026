@@ -17,10 +17,20 @@ models=(
   qwen3:4b            # Apache-2.0 reasoning brain (DR-06: best small-reasoner combo)
   embeddinggemma      # on-device-RAG embeddings (DR-06: makes RAG actually possible)
   nomic-embed-text    # backup embedder, Apache-2.0 (DR-05 LlamaIndex audit pattern)
+  # Brief-named specialized models added 2026-05-09 after kickoff brief:
+  # the brief explicitly cites these as "examples" of the model stack judges expect.
+  # Each pull is large; the script tolerates ":not-found" so a missing tag won't
+  # break setup on machines that can't fit the bigger models. Verify exact tags
+  # against ollama.com/library before kickoff (CODEX-Models task).
+  medgemma:4b         # specialized medical model (brief example) — for Candidate 3 (Clinic Copilot)
+  devstral:24b        # specialized coding model (brief example) — for Candidate 4 (Coding Navigator)
+  mistral-small:24b   # generalist alt to gemma3 in the 8-14B Comfortable tier (brief example)
+  # gpt-oss-20b      # brief example for Minimum tier; not yet on Ollama (verify tag at kickoff)
   # Uncomment below if your machine has headroom:
   # qwen2.5-coder:14b
   # gemma3:12b
   # qwen2.5vl:7b      # vision LLM — only if committing to safety-auditor stretch
+  # llama3.1:70b      # Ideal-tier 64+ GB host only
 )
 
 # Idempotent: skip re-pull if already present

@@ -68,12 +68,15 @@ Synthesis C's #1 anti-pattern: **mid-demo narration filler.** The single most co
 
 ---
 
-## The 4 things you don't say (synthesis B §"do not say")
+## The 7 things you don't say (synthesis B §"do not say" + brief-2026-05-09 additions)
 
 1. ❌ "AI medic" / "autonomous triage" / "AI doctor" — wrong claim surface (FDA + EU AI Act).
 2. ❌ "100% accurate" / "zero false positives" / "guaranteed detection" — FTC has challenged this language.
 3. ❌ "Replaces dispatchers / supervisors / responders" — say *"decision support with human oversight"*.
 4. ❌ "We use AI" / "revolutionary AI safety platform" / "in the future" — leads with the cliché.
+5. ❌ **"Just like ChatGPT" / "an offline chatbot"** — the brief explicitly says *"the AI cannot be an isolated terminal chatbot"*. If the judge reads our system as a chatbot, we lose Creative On-Device 25%. Say instead: *"an OS-integrated copilot — reads files, calls local tools via MCP, writes back into the worker's system of record."*
+6. ❌ **"With internet it'd be faster"** — nope. The brief reads this as an admission. Say instead: *"Faster and safer offline because there's no round-trip and no chain of custody."*
+7. ❌ **"We can also fall back to the cloud if the local model fails"** — disqualifier per the brief's "no hybrid fallbacks". Say instead: *"If the local model fails, we degrade to a smaller local model — never to the network."*
 
 ## The 3 things you always say (synthesis B §"always say")
 

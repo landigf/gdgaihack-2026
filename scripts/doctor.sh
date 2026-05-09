@@ -48,8 +48,21 @@ if [[ -f .env.local ]]; then
 else warn ".env.local missing (cp .env.example .env.local)"; fi
 
 # Models we care about (mandatory: chat models + at least one embedder)
+# Tier markers help spotting the brief-specialized models added 2026-05-09:
+#   *      = mandatory for any vertical
+#   (med)  = required only if Candidate 3 (Clinic) locks
+#   (code) = required only if Candidate 4 (Coding Navigator) locks
+#   (alt)  = optional alternate generalist
 if command -v ollama >/dev/null 2>&1; then
-  want=(qwen2.5-coder:3b qwen2.5-coder:7b gemma3:4b gemma3n:e4b phi4-mini qwen3:4b embeddinggemma nomic-embed-text)
+  want=(
+    qwen2.5-coder:3b qwen2.5-coder:7b
+    gemma3:4b gemma3n:e4b
+    phi4-mini
+    qwen3:4b
+    embeddinggemma nomic-embed-text
+    # brief-named specialized models — warn-only; missing one is OK before T+90 lock
+    medgemma:4b devstral:24b mistral-small:24b
+  )
   have=$(ollama list 2>/dev/null | awk 'NR>1 {print $1}')
   match() {
     local m="$1"

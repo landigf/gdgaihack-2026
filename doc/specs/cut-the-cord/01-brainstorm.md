@@ -151,3 +151,50 @@ See [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses
 - Autonomous decision-maker in safety-critical work ("AI medic", "autonomous triage"). Wrong claim surface; collapses under FDA + EU AI Act framing.
 - "ChatGPT but offline" framing. Anchor to a *moment of risk* with a *cited corpus*.
 - Saying "we work for firefighters" while pitching to a buyer who isn't a firefighter. Firefighters are lighthouse; utilities/oil-&-gas are wedge buyers.
+
+---
+
+## Brief-conditional re-scoring (2026-05-09 — kickoff brief revealed)
+
+> The actual brief weights are **30/25/25/20**, not equal axes (see [02-specification.md](02-specification.md) §"Judging criteria"). Below is each candidate re-scored on those weights. **No decision yet** — locked at T+90min team huddle (see [POST_BRIEF_PLAYBOOK.md](POST_BRIEF_PLAYBOOK.md) §"Phase B"). The pre-kickoff scorecard above (Why/Demo/Feasibility/Moat) stays for historical reference; this is the operative scorecard going forward.
+
+### Constraint reminder (brief-mandatory)
+
+- Zero cloud AI at demo time. Airplane-mode test live.
+- "AI cannot be an isolated terminal chatbot" — must integrate with OS / desktop apps / filesystem.
+- Single physical machine, all inference on-device.
+- Brief explicitly endorses MCP, multi-agent orchestration, computer-use agents.
+
+### Four candidates rescored on actual weights (0-3 per axis × weight)
+
+| # | Candidate | Tech Opt 30% | Practical 25% | Creative On-Device 25% | Competitive Adv 20% | Weighted total /3.00 | Pre-work reuse | Build risk in 24h |
+|---|---|---:|---:|---:|---:|---:|---|---|
+| **1** | **Control-Room Copilot** (chemical plant / mining / oil-&-gas operator's desk; EdgeXpert at the workstation) | 3 | 3 | 3 | 3 | **3.00** | **Maximum** — corpus, harness, regulatory moats, Pump Room B SOP, Seed C all reusable | **Lowest** — code already exists, just relocate the device |
+| 2 | Enterprise Doc Copilot (HR / Legal / Finance offline) | 3 | 3 | 2 | 2 | **2.50** | Medium — harness reusable, corpus rebuilt | Medium — corpus rebuild + new pitch |
+| 3 | MedGemma Clinic Copilot | 3 | 2 | 3 | 3 | **2.75** | Medium — HIPAA moats reusable, corpus mostly rebuilt | Medium-high — clinical scenarios need careful claim surface |
+| 4 | Devstral Coding Navigator (Idea 3 sharpened) | 3 | 2 | 3 | 2 | **2.55** | Low — abandon corpus + scenarios | High — full rebuild |
+
+### Why Control-Room scores 3.00/3.00
+
+- **Tech Opt (30%):** the harness already produces benchmarks; we have a real lift signal on chlorine (0.20 → 0.40); we can layer in quantization comparisons (Gemma 3:4b vs gpt-oss-20b vs Phi-4) on existing scenarios.
+- **Practical (25%):** the buyer (HSE director, plant manager) and user (control-room operator) are real, named, regulated. NIOSH + OSHA + ATEX corpus is public domain.
+- **Creative On-Device (25%):** MCP server + RAG + vision (PPE camera) + voice (incident intake) + multi-agent (reasoner + coder for OSHA-form auto-fill) hits every framework the brief endorses.
+- **Competitive Advantage (20%):** ATEX zone forbids consumer phones; cloud literally illegal in MSHA Part 75 underground comms; HIPAA bars cloud for paramedic ePHI. Three pitch-ready quoted lines already drafted.
+
+### Why we don't drop the other three yet
+
+- **Enterprise Doc Copilot:** strongest brief-fit for "private by default" framing; if the team doesn't connect to the dangerous-jobs anchor emotionally, this is the safe pivot.
+- **MedGemma Clinic:** the brief NAMES MedGemma. If the team huddle converges on a clinical demo, this is a solid fallback (HIPAA moats already drafted).
+- **Devstral Coding Navigator:** scores well on Creative On-Device (multi-agent over a real repo is unambiguous "creative"). Highest 24h build risk because we'd rebuild corpus from scratch.
+
+### Form-factor pivot (mandatory, all candidates)
+
+The pre-work assumed a **wearable-on-the-worker** form factor. The brief mandates **OS / desktop / filesystem integration**. **All four candidates pivot to a desktop / mini-PC form factor** (EdgeXpert on a desk, our own M3 Pro as fallback). The demo theatre changes from "operator speaks into wearable" to "operator interacts with EdgeXpert at their workstation". Pitch Seed B (Wildland-SAR) is **OUT** because there's no laptop in a wildland fire. Seeds A (EMS dispatch desk) and C (mining/O&G control room) survive with light edits.
+
+### Decision criteria for the T+90 huddle
+
+1. Which candidate's primary scenario can the existing harness produce a non-mock CCC ≥ 0.30 on within a 30-minute spike?
+2. Which candidate's pitch can the pitch-pair clock at ≤170 seconds without burning rehearsal credit on copy?
+3. Which candidate makes the EdgeXpert form factor unambiguously the hero of the demo (not the fallback)?
+4. Which candidate's "isolated chatbot" disqualifier defense is strongest? (i.e. which one has a forcing function for OS / file integration that a judge can SEE on stage in 60 seconds?)
+5. Which candidate's failure mode at T+18h is the least catastrophic? (Control-Room: fall back to text-only RAG; Enterprise: fall back to a different doc set; Clinic: fall back to non-clinical phrasing; Coding: fall back to read-only Q&A.)
