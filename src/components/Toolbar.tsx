@@ -17,6 +17,8 @@ type Props = {
   indexBusy: boolean;
 };
 
+const NO_DRAG = { "data-tauri-drag-region": "false" } as Record<string, string>;
+
 export default function Toolbar({
   canBack,
   canForward,
@@ -69,6 +71,7 @@ export default function Toolbar({
   ) {
     return (
       <button
+        {...NO_DRAG}
         onClick={onClick}
         disabled={!enabled}
         title={label}
@@ -85,14 +88,11 @@ export default function Toolbar({
       data-tauri-drag-region
       className="toolbar-surface h-14 px-3 flex items-center gap-3 select-none shrink-0"
     >
-      {/* Spacer for traffic lights */}
+      {/* Spacer for traffic lights — empty drag area */}
       <div className="w-16 shrink-0" />
 
-      {/* Logo + wordmark */}
-      <div
-        className="flex items-center gap-2 pr-1"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      {/* Logo + wordmark — drag works here (not interactive) */}
+      <div className="flex items-center gap-2 pr-1 pointer-events-none">
         <Compass size={22} />
         <span className="font-display text-[15px] font-semibold tracking-tight text-text">
           Rover
@@ -100,28 +100,23 @@ export default function Toolbar({
       </div>
 
       {/* Navigation cluster */}
-      <div
-        className="flex items-center bg-black/5 dark:bg-white/5 rounded-lg p-0.5"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex items-center bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
         {navBtn("Back", ArrowLeft, onBack, canBack)}
         {navBtn("Forward", ArrowRight, onForward, canForward)}
         <span className="w-px h-4 bg-black/10 dark:bg-white/10 mx-0.5" />
         {navBtn("Up to parent folder", ArrowUp, onUp, canUp)}
       </div>
 
-      {/* Spacer */}
+      {/* Spacer — empty drag area */}
       <div className="flex-1" />
 
       {/* Search bar */}
-      <div
-        className="relative w-[360px] shrink-0"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="relative w-[360px] shrink-0">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
           {searchBusy ? <Loader size={14} /> : <Search size={14} />}
         </span>
         <input
+          {...NO_DRAG}
           ref={inputRef}
           type="search"
           value={draft}
@@ -135,6 +130,7 @@ export default function Toolbar({
         />
         {draft ? (
           <button
+            {...NO_DRAG}
             onClick={() => {
               setDraft("");
               onClearSearch();
