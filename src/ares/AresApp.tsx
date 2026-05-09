@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import MarsBase, { type BuildingId } from "./3d/MarsBase";
 import GreenhouseDetail from "./views/GreenhouseDetail";
 import InventoryDetail from "./views/InventoryDetail";
+import RepairAssist from "./components/RepairAssist";
 import VoicePTT, { type TraySnapshot } from "./components/VoicePTT";
 import MarsLatencyChip from "./components/MarsLatencyChip";
 import PerfFooter from "./components/PerfFooter";
@@ -178,6 +179,11 @@ export default function AresApp() {
           Tray snapshot lets Houston ground spoken answers in real per-tray
           data (PR #7 forward-port). */}
       <VoicePTT trays={VOICE_TRAY_SNAPSHOT} selectedTrayId={2} />
+
+      {/* Houston Repair Assist — Houston layered on Rover Core RAG: free-text
+          fault → NASA-cited diagnose + on-base inventory cross-check + 3-5
+          step procedure (optional spoken). Killer Practical-Utility 25% beat. */}
+      <RepairAssist />
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div

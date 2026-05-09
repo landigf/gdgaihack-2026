@@ -25,6 +25,7 @@ from ares.prompts import (
     HOUSTON_PREFIX,
     greenhouse_system,
     procedure_system,
+    repair_system,
     survival_system,
 )
 from ares.voice import (
@@ -132,6 +133,31 @@ class SurvivalResponse(BaseModel):
     citations: list[Citation] = Field(default_factory=list)
     elapsed_ms: int
     used_llm: bool
+
+
+class RepairRequest(BaseModel):
+    """Operator describes a fault. Houston Repair returns a grounded plan
+    that cross-references NASA manuals (via Rover Core RAG) and the on-base
+    spare-parts inventory."""
+
+    fault: str = Field(..., min_length=4, max_length=600)
+    inventory: InventoryState | None = None
+    sensors: HabitatSensorState | None = None
+    speak: bool = True
+
+
+class RepairResponse(BaseModel):
+    diagnosis: str
+    severity: Literal["ok", "watch", "critical"]
+    parts_needed: list[str] = Field(default_factory=list)
+    parts_missing: list[str] = Field(default_factory=list)
+    steps: list[str] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)
+    elapsed_ms: int
+    used_llm: bool
+    rover_search_ms: int = 0
+    reply_wav_b64: str | None = None
+    powered_by: str = "rover-core-rag+houston-repair"
 
 
 # ---------------------------------------------------------------------------
@@ -1163,4 +1189,153 @@ async def houston_survival(req: SurvivalRequest, state=Depends(_get_state)):
         citations=citations,
         elapsed_ms=int((time.time() - t0) * 1000),
         used_llm=used_llm,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Repair persona — Houston delegates retrieval to the Rover Core RAG
+# substrate (same Retriever the /search endpoint uses), then layers a
+# habitat-aware diagnose+procedure call on top. This is the architectural
+# beat: Houston is a specialized agent on top of the Rover Core RAG.
+# ---------------------------------------------------------------------------
+
+
+def _build_repair_prompt(req: RepairRequest, chunk_block: str) -> str:
+    inv_block = (
+        json.dumps(req.inventory.model_dump(), separators=(",", ":"))
+        if req.inventory
+        else "{}"
+    )
+    sen_block = (
+        json.dumps(req.sensors.model_dump(), separators=(",", ":"))
+        if req.sensors
+        else "{}"
+    )
+    return (
+        f"FAULT (operator-reported):\n{req.fault.strip()}\n\n"
+        f"INVENTORY (current Mars-base spare-parts envelope, JSON):\n{inv_block}\n\n"
+        f"SENSORS (habitat readings if relevant, JSON):\n{sen_block}\n\n"
+        f"CONTEXT (cite ONLY these IDs):\n{chunk_block or '(no chunks indexed)'}\n\n"
+        "Output the JSON now."
+    )
+
+
+_REPAIR_FALLBACK_STEPS = [
+    "1. Isolate the failing subsystem from shared bus per NASA-STD-3001 §6 [S1].",
+    "2. Don PPE and stage replacement parts at the work site.",
+    "3. Replace the suspect component, torque per spec.",
+    "4. Re-pressurize / re-energize and verify nominal readings for 5 minutes.",
+    "5. Log the incident to crew journal and flag the missing part for resupply.",
+]
+
+
+@router.post("/houston/repair", response_model=RepairResponse)
+async def houston_repair(req: RepairRequest, state=Depends(_get_state)):
+    """Operator describes a fault → Houston Repair returns a grounded
+    diagnose + parts list + 3-5 step procedure. The retrieval substrate
+    is the same FAISS index Rover Core's /search uses (powered_by tag in
+    the response). Optional TTS via macOS `say`."""
+    import base64
+
+    t0 = time.time()
+
+    # 1) RAG via Rover Core retriever — same substrate as /search.
+    citation_pool: list[Citation] = []
+    chunk_block = ""
+    rover_t0 = time.time()
+    try:
+        retriever = Retriever(state.embedder, state.store)
+        # Query is the fault text directly — short and operator-grounded.
+        hits = await retriever.search(req.fault, k=4)
+    except Exception:
+        hits = []
+    rover_search_ms = int((time.time() - rover_t0) * 1000)
+
+    if hits:
+        parts: list[str] = []
+        for i, h in enumerate(hits[:3]):
+            cid = f"S{i + 1}"
+            text = (h.get("chunk_text") or "")[:600]
+            parts.append(
+                f"[{cid}] {h['filename']} chunk {h['chunk_index']}\n{text}"
+            )
+            citation_pool.append(
+                Citation(
+                    id=cid,
+                    path=h["path"],
+                    filename=h["filename"],
+                    chunk_index=h["chunk_index"],
+                )
+            )
+        chunk_block = "\n\n".join(parts)
+
+    # 2) LLM call — repair persona shares HOUSTON_PREFIX for KV-cache reuse.
+    user_prompt = _build_repair_prompt(req, chunk_block)
+    raw = ""
+    used_llm = False
+    try:
+        raw = await state.generator.generate(user_prompt, system=repair_system())
+        used_llm = True
+    except Exception:
+        used_llm = False
+
+    parsed = _parse_houston_json(raw) if used_llm else None
+
+    # 3) Defensive defaults + validation
+    if parsed:
+        diagnosis = str(parsed.get("diagnosis") or "").strip()
+        severity = parsed.get("severity") or "watch"
+        parts_needed = [str(p) for p in (parsed.get("parts_needed") or []) if p]
+        parts_missing = [str(p) for p in (parsed.get("parts_missing") or []) if p]
+        steps_raw = parsed.get("steps") or []
+        steps = [str(s).strip() for s in steps_raw if str(s).strip()]
+    else:
+        diagnosis = (
+            f"Fallback advisory — corpus retrieval ran ({len(hits)} hits) but the "
+            "LLM did not return parseable JSON. Treat the steps below as a "
+            "generic isolate-replace-verify template per NASA-STD-3001 [S1]."
+        )
+        severity = "watch"
+        parts_needed = []
+        parts_missing = []
+        steps = list(_REPAIR_FALLBACK_STEPS)
+
+    if severity not in ("ok", "watch", "critical"):
+        severity = "watch"
+
+    # 4) Resolve [S_n] citations across diagnosis + steps
+    cited_text = " ".join([diagnosis] + steps)
+    ids_in_text = sorted(set(re.findall(r"\[(S\d+)\]", cited_text)))
+    if citation_pool:
+        pool_by_id = {c.id: c for c in citation_pool}
+        citations = [pool_by_id[cid] for cid in ids_in_text if cid in pool_by_id]
+    else:
+        if not ids_in_text:
+            ids_in_text = ["S1"]
+        citations = [Citation(id=cid) for cid in ids_in_text]
+
+    # 5) Optional TTS — speak the diagnosis + first step (concise for demo)
+    wav_b = b""
+    if req.speak:
+        spoken = diagnosis
+        if steps:
+            spoken = f"{diagnosis} First step: {steps[0]}"
+        # Strip [S_n] tags before TTS so the operator hears clean prose.
+        spoken_clean = re.sub(r"\s*\[S\d+\]", "", spoken).strip()
+        try:
+            wav_b, _ = await synthesize(spoken_clean[:500])
+        except VoiceUnavailable:
+            wav_b = b""
+
+    return RepairResponse(
+        diagnosis=diagnosis[:600],
+        severity=severity,  # type: ignore[arg-type]
+        parts_needed=parts_needed[:8],
+        parts_missing=parts_missing[:8],
+        steps=steps[:6],
+        citations=citations,
+        elapsed_ms=int((time.time() - t0) * 1000),
+        used_llm=used_llm,
+        rover_search_ms=rover_search_ms,
+        reply_wav_b64=base64.b64encode(wav_b).decode("ascii") if wav_b else None,
     )
