@@ -384,9 +384,64 @@ When you add MLX, voice, or the tile cache, none of them introduce network calls
 
 ---
 
+## 8.5 · Status of the unified-branch attempt (2026-05-10 ~01:50 CEST)
+
+We tried to merge `origin/mvp-finder` into a fresh `feat/rover-final` branch
+to ship a single demo branch with the new Rover Finder UI **plus** the Mars /
+Houston stack. Ran `git merge-tree` first to scope the work — only **4 files**
+conflict:
+
+| File | Conflict type | Notes |
+|---|---|---|
+| `README.md` | content | both branches added pitch sections |
+| `backend/main.py` | content | mvp-finder added Note-Writer / Filename-Proposer personas + file-explorer ops; we added `/ares` router + tile cache + perf module |
+| `backend/mlx_client.py` | add/add | mvp-finder ported ours but **rewrote the streaming signature** (`AsyncIterator[str]` instead of our `AsyncIterator[tuple[str, bool]]`) |
+| `backend/ollama_client.py` | content | same divergent stream signature |
+
+**Decision: aborted the merge for the demo cycle.** Resolving the streaming
+signature mismatch correctly requires touching every consumer
+(`/houston/greenhouse/stream`, `GreenhouseDetail.tsx` `ReadableStream`) under
+deadline pressure. The blast radius is bigger than the demo benefit — the
+on-stage pre-show STT search beat works on the existing Rover Finder
+already, and our demo runs on `/ares` which doesn't depend on the new UI.
+
+`feat/houston-rag` head `c9c22a4` (Repair persona + light plots) stays the
+demo branch. `mvp-finder` stays its own polished branch. After the deadline,
+the merge is a clean 1-2 hour job using one of these strategies:
+
+**Strategy A — keep mvp-finder's UI, port the Houston backend on top**
+(recommended):
+1. Branch off `mvp-finder` as `feat/rover-final-v2`
+2. Cherry-pick `feat/houston-rag` commits that only touch new paths:
+   `backend/ares/`, `backend/cache/`, `src/ares/`, `mars-corpus/.gitignore`,
+   `scripts/download-mars-corpus.sh`, `benchmarks/houston/`,
+   `doc/PRESENTATION_SCRIPT.md`, `doc/SLIDES_KEYWORDS_WHATSAPP.txt`,
+   `doc/SUBMISSION.md`, `doc/TECHNICAL_WRITEUP.{md,pdf}`,
+   `doc/plots-whatsapp/`. Those don't touch any mvp-finder file.
+3. Resolve `backend/main.py` by hand: combine the `_build_generator`
+   factory + `app.include_router(ares_router)` + tile cache init from us,
+   on top of mvp-finder's `main.py` shape.
+4. For `backend/mlx_client.py` and `ollama_client.py`: pick whichever
+   stream signature both consumers (mvp-finder's `/summarize/stream` and
+   our `/houston/greenhouse/stream`) can adapt to. Our tuple form
+   `(text, done)` is more informative; mvp-finder's plain `str` form is
+   simpler but needs an end-of-stream sentinel. Pick one and adapt the
+   single divergent consumer.
+
+**Strategy B — port our wins into mvp-finder** (faster but higher coupling):
+follow `Phase 1 → 5` in §5 of this same doc. That's what the original
+handoff was designed for. Each phase is < 1 h.
+
+Either strategy lands the same final form. We did not pick one for you
+because the two backend client files diverged enough that it's a real
+design call. Pick the stream signature that lets both `/summarize/stream`
+and `/houston/greenhouse/stream` coexist with one client.
+
+---
+
 ## 9 · Questions / handoff loop
 
-If anything in this doc is unclear, the source of truth is the running code on `feat/houston-rag` head `62f5f43`. The technical writeup (`doc/TECHNICAL_WRITEUP.md` and the rendered `TECHNICAL_WRITEUP.pdf` in the repo) has every measured number with the exact command to reproduce it.
+If anything in this doc is unclear, the source of truth is the running code on `feat/houston-rag` head `c9c22a4` (Repair persona + light plots). The technical writeup (`doc/TECHNICAL_WRITEUP.md` and the rendered `TECHNICAL_WRITEUP.pdf` in the repo) has every measured number with the exact command to reproduce it.
 
 The Houston team is going to sleep right after the GDG submission. Pickup is async via Git: just open a PR against `feat/houston-rag` if you want to backport collaboratively, or fork the relevant files into `mvp-finder` directly.
 
