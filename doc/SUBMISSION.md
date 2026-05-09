@@ -14,8 +14,12 @@ Rover Houston
 ## Elevator pitch (≤ 600 chars)
 
 ```
-Rover Houston is a 100% on-device AI Habitat Controller for a Mars base, running on a single MacBook M3 Pro 18 GB. We didn't choose offline — Mars chose for us: 78 million km from the closest data center, 14-day comms blackouts every 26 months. Two agents share one Ollama process via a byte-identical system prefix (KV-cache reuse, measured). RAG over 30 NASA public-domain manuals. Voice loop with whisper.cpp + macOS say (1.8s warm). Click greenhouse → live plant rack → Houston cites Veggie §3.4 → real PDF opens in Preview. Zero packets out, airplane-mode verified.
+Rover Houston is a 100% on-device AI Habitat Controller for a Mars base, running on a single MacBook M3 Pro 18 GB. We didn't choose offline — Mars chose for us: 78 million km from the closest data center, 14-day comms blackouts every 26 months. Multi-agent A2A sharing one Ollama process via byte-identical prefix (KV-cache reuse, measured). RAG over 30 NASA manuals. Streaming MLX, first token under 2 seconds. Voice loop: whisper.cpp + macOS say. Click greenhouse → Houston cites Veggie §3.4 → NASA PDF opens. Zero packets out, airplane-mode verified.
 ```
+
+(Updated 2026-05-10 ~02:30 CEST: parallel session shipped streaming MLX,
+cold TTFT 1 786 ms with RAG context. Pitch now quotes streaming +
+"first token under 2 seconds" instead of the static 8.1 s warm number.)
 
 ## Slide deck URL
 
