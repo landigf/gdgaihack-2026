@@ -40,6 +40,7 @@ export type ModelInfo = {
 export type ConfigResponse = {
   gen: ModelInfo;
   embed: ModelInfo;
+  backend: "ollama" | "mlx";
 };
 
 export type ClipboardOp = "copy" | "cut";

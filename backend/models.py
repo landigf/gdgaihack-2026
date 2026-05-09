@@ -55,3 +55,4 @@ class ModelInfo(BaseModel):
 class ConfigResponse(BaseModel):
     gen: ModelInfo
     embed: ModelInfo
+    backend: str = "ollama"  # 'ollama' or 'mlx' — drives status-bar suffix

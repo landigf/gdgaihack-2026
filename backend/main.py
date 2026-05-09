@@ -1,4 +1,5 @@
 import time
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -49,15 +50,46 @@ class AppState:
 
 
 _state: AppState | None = None
+_active_backend: str = "ollama"  # exposed via /config
+
+
+def _build_generator(embedder: OllamaClient) -> tuple[object, str]:
+    """Pick the LLM generation backend based on LLM_BACKEND env var.
+
+    'mlx'    — force MLX-LM in-process; raise if not installed/available.
+    'ollama' — force the existing Ollama HTTP path (default fallback).
+    'auto'   — try MLX, fall back to Ollama on any import / load failure.
+
+    Returns (generator, backend_label). The label is surfaced through
+    /config so the UI can show 'gemma4 · 8.0B (mlx)' vs '(ollama)'.
+    """
+    pref = (os.environ.get("LLM_BACKEND") or "auto").lower()
+    if pref in ("mlx", "auto"):
+        try:
+            from mlx_client import MLXClient  # type: ignore
+
+            mlx = MLXClient()
+            return mlx, "mlx"
+        except Exception as e:
+            if pref == "mlx":
+                raise RuntimeError(f"LLM_BACKEND=mlx but MLX unavailable: {e}")
+            print(
+                f"[houston] MLX unavailable, falling back to Ollama: "
+                f"{type(e).__name__}: {e}"
+            )
+    return embedder, "ollama"
 
 
 def get_app_state() -> AppState:
-    global _state
+    global _state, _active_backend
     if _state is None:
-        client = OllamaClient()
+        embedder = OllamaClient()
+        generator, _active_backend = _build_generator(embedder)
         store = VectorStore(dim=EMBED_DIM, index_path=INDEX_PATH, meta_path=META_PATH)
         store.load()
-        _state = AppState(embedder=client, generator=client, store=store, dim=EMBED_DIM)
+        _state = AppState(
+            embedder=embedder, generator=generator, store=store, dim=EMBED_DIM
+        )
     return _state
 
 
@@ -108,11 +140,19 @@ async def _ollama_model_info(name: str) -> ModelInfo:
 
 @app.get("/config", response_model=ConfigResponse)
 async def get_config():
-    gen, embed = await asyncio.gather(
-        _ollama_model_info(GEN_MODEL),
-        _ollama_model_info(EMBED_MODEL),
-    )
-    return ConfigResponse(gen=gen, embed=embed)
+    # Make sure get_app_state has run so _active_backend reflects what
+    # /generate actually uses, not what the env says nominally.
+    state = get_app_state()
+    if _active_backend == "mlx":
+        # MLX model name is whatever MLXClient was instantiated with.
+        gen_name = getattr(state.generator, "model_name", GEN_MODEL)
+        # MLX models don't expose params/quant via /api/show — surface
+        # the name only; the renderer formats it.
+        gen = ModelInfo(name=gen_name)
+    else:
+        gen = await _ollama_model_info(GEN_MODEL)
+    embed = await _ollama_model_info(EMBED_MODEL)
+    return ConfigResponse(gen=gen, embed=embed, backend=_active_backend)
 
 
 @app.get("/state", response_model=IndexState)

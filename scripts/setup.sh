@@ -26,9 +26,22 @@ python3 -m venv .venv
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# Pre-pull the MLX generation model on Apple Silicon so the first
+# /summarize call doesn't pay download latency. Skipped silently on
+# Intel/Linux (mlx isn't installed there).
+if python3 -c "import mlx_lm" 2>/dev/null; then
+    echo "==> Pre-loading MLX model (Qwen2.5-3B-4bit, ~1.7 GB)"
+    python3 -c "from mlx_lm import load; load('mlx-community/Qwen2.5-3B-Instruct-4bit')" || \
+      echo "(non-fatal: MLX preload failed; will load on first call)"
+fi
+
 echo "==> Node deps"
 cd "$ROOT"
 npm install
 
 echo
 echo "==> Done. Run: npm run tauri:dev"
+echo "    By default the LLM backend is 'auto' — uses MLX on Apple Silicon"
+echo "    (faster) and Ollama elsewhere. Force one with:"
+echo "      LLM_BACKEND=mlx    npm run tauri:dev    # require MLX"
+echo "      LLM_BACKEND=ollama npm run tauri:dev    # force Ollama"

@@ -208,7 +208,9 @@ export default function App() {
           const parts = [m.params, withQuant ? m.quant : null].filter(Boolean);
           return parts.length ? `${cleanName} · ${parts.join(" · ")}` : cleanName;
         };
-        setModelGen(fmt(c.gen, true));
+        // Suffix the gen line with the active backend (mlx / ollama) so the
+        // user can tell at a glance which path /summarize is using.
+        setModelGen(`${fmt(c.gen, true)} · ${c.backend}`);
         setModelEmbed(fmt(c.embed, true));
       } catch {
         setModelGen("models unavailable");
