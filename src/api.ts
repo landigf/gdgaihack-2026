@@ -1,7 +1,9 @@
 import type {
   ConfigResponse,
+  FilenameResponse,
   IndexResponse,
   IndexState,
+  NoteResponse,
   SearchResponse,
   SummarizeResponse,
 } from "./types";
@@ -106,4 +108,16 @@ export const api = {
   summarize: (path: string) => post<SummarizeResponse>("/summarize", { path }),
   summarizeStream: (path: string, cb: StreamCallbacks) =>
     streamSSE("/summarize/stream", { path }, cb),
+  // Multi-agent personas — share the byte-identical Houston prefix with
+  // /summarize so chained calls hit the model's KV cache.
+  note: (path: string, summary?: string) =>
+    post<NoteResponse>(
+      "/note",
+      { path, summary: summary ?? null },
+      5 * 60_000
+    ),
+  noteStream: (path: string, summary: string | undefined, cb: StreamCallbacks) =>
+    streamSSE("/note/stream", { path, summary: summary ?? null }, cb),
+  filename: (path: string, summary?: string) =>
+    post<FilenameResponse>("/filename", { path, summary: summary ?? null }),
 };

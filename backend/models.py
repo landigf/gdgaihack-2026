@@ -38,6 +38,26 @@ class SummarizeResponse(BaseModel):
     elapsed_ms: int
 
 
+class NoteRequest(BaseModel):
+    path: str
+    summary: str | None = None  # if absent, the backend will summarize first
+
+
+class NoteResponse(BaseModel):
+    note: str
+    elapsed_ms: int
+
+
+class FilenameRequest(BaseModel):
+    path: str
+    summary: str | None = None
+
+
+class FilenameResponse(BaseModel):
+    filename: str
+    elapsed_ms: int
+
+
 class IndexState(BaseModel):
     indexed: bool
     root: str | None = None

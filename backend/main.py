@@ -25,10 +25,14 @@ from config import (
 )
 from models import (
     ConfigResponse,
+    FilenameRequest,
+    FilenameResponse,
     IndexRequest,
     IndexResponse,
     IndexState,
     ModelInfo,
+    NoteRequest,
+    NoteResponse,
     SearchRequest,
     SearchResponse,
     SummarizeRequest,
@@ -39,6 +43,11 @@ from store import VectorStore
 from indexer import Indexer
 from retriever import Retriever
 from parsing import parse_file
+from prompts import (
+    filename_proposer_system,
+    note_writer_system,
+    summarizer_system,
+)
 
 
 @dataclass
@@ -191,14 +200,23 @@ async def search(req: SearchRequest, state: AppState = Depends(get_app_state)):
 
 
 def _build_summary_prompt(text: str) -> str:
+    return f"Summarize this document.\n\n---\n{text}\n---"
+
+
+def _build_note_prompt(text: str, summary: str) -> str:
     return (
-        "Summarize the following document in 5-8 bullet points, "
-        "in the same language as the source. Output markdown.\n\n"
-        f"---\n{text}\n---"
+        f"Source document:\n---\n{text}\n---\n\n"
+        f"Existing bullet summary:\n{summary}\n\n"
+        f"Write the standalone note now."
     )
 
 
-SUMMARY_SYSTEM = "You are a precise document summarizer. Be concise."
+def _build_filename_prompt(text: str, summary: str | None) -> str:
+    summary_block = f"\n\nSummary:\n{summary}" if summary else ""
+    return (
+        f"Source document (first 2000 chars):\n---\n{text[:2000]}\n---"
+        f"{summary_block}\n\nFilename:"
+    )
 
 
 def _read_for_summary(path: str) -> str:
@@ -217,7 +235,7 @@ async def summarize(req: SummarizeRequest, state: AppState = Depends(get_app_sta
     text = _read_for_summary(req.path)
     summary = await state.generator.generate(
         _build_summary_prompt(text),
-        system=SUMMARY_SYSTEM,
+        system=summarizer_system(),
     )
     return SummarizeResponse(
         summary=summary, elapsed_ms=int((time.time() - t0) * 1000)
@@ -232,9 +250,6 @@ async def summarize_stream(
 
     Each event is `data: {"delta": "..."}\\n\\n`; the stream ends with
     `data: [DONE]\\n\\n`. Errors land as `data: {"error": "..."}\\n\\n`.
-    The renderer rebuilds the cumulative summary client-side; this lets
-    the bullet list appear word-by-word instead of waiting for the
-    full response (~5 s warm) before showing anything.
     """
     text = _read_for_summary(req.path)
 
@@ -242,7 +257,7 @@ async def summarize_stream(
         try:
             async for delta in state.generator.generate_stream(
                 _build_summary_prompt(text),
-                system=SUMMARY_SYSTEM,
+                system=summarizer_system(),
             ):
                 yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
@@ -254,6 +269,86 @@ async def summarize_stream(
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable any reverse-proxy buffering
+            "X-Accel-Buffering": "no",
         },
+    )
+
+
+@app.post("/note", response_model=NoteResponse)
+async def write_note(req: NoteRequest, state: AppState = Depends(get_app_state)):
+    """Generate a richer markdown note, given an optional pre-computed summary.
+
+    If `summary` is omitted, the backend summarizes first internally so the
+    same persona prefix is reused (KV-cache hit on the second call).
+    """
+    t0 = time.time()
+    text = _read_for_summary(req.path)
+    summary = req.summary
+    if not summary:
+        summary = await state.generator.generate(
+            _build_summary_prompt(text),
+            system=summarizer_system(),
+        )
+    note = await state.generator.generate(
+        _build_note_prompt(text, summary),
+        system=note_writer_system(),
+    )
+    return NoteResponse(note=note, elapsed_ms=int((time.time() - t0) * 1000))
+
+
+@app.post("/note/stream")
+async def write_note_stream(
+    req: NoteRequest, state: AppState = Depends(get_app_state)
+):
+    """Streaming variant of /note. Same SSE contract as /summarize/stream."""
+    text = _read_for_summary(req.path)
+    summary = req.summary or await state.generator.generate(
+        _build_summary_prompt(text),
+        system=summarizer_system(),
+    )
+
+    async def event_gen():
+        try:
+            async for delta in state.generator.generate_stream(
+                _build_note_prompt(text, summary),
+                system=note_writer_system(),
+            ):
+                yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:  # noqa: BLE001
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/filename", response_model=FilenameResponse)
+async def propose_filename(
+    req: FilenameRequest, state: AppState = Depends(get_app_state)
+):
+    """Suggest a single descriptive filename based on document content.
+
+    Useful for `Q3_rev2_final.pdf` → `acme-q3-2026-budget-revision.pdf`.
+    """
+    t0 = time.time()
+    text = _read_for_summary(req.path)
+    raw = await state.generator.generate(
+        _build_filename_prompt(text, req.summary),
+        system=filename_proposer_system(),
+    )
+    # The model occasionally adds quotes / newlines / a sentence — strip
+    # everything but the first non-empty kebab-case-ish line.
+    candidate = ""
+    for line in raw.splitlines():
+        line = line.strip().strip("`\"' ")
+        if line:
+            candidate = line
+            break
+    # Truncate at first whitespace if the model added explanation.
+    candidate = candidate.split()[0] if candidate else ""
+    return FilenameResponse(
+        filename=candidate, elapsed_ms=int((time.time() - t0) * 1000)
     )

@@ -110,12 +110,18 @@ export default function DetailPanel({
   const [aiState, setAiState] = useState<"idle" | "thinking" | "done">("idle");
   const [summary, setSummary] = useState<string>("");
   const [summaryMeta, setSummaryMeta] = useState<string>("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [proposedName, setProposedName] = useState<string>("");
+  const [proposedBusy, setProposedBusy] = useState(false);
 
   // Reset summary on selection change
   useEffect(() => {
     setAiState("idle");
     setSummary("");
     setSummaryMeta("");
+    setProposedName("");
+    setProposedBusy(false);
+    setSavingNote(false);
   }, [
     selection?.kind,
     selection?.kind === "entry" ? selection.entry.path : selection?.kind === "hit" ? selection.hit.path : "",
@@ -189,15 +195,66 @@ export default function DetailPanel({
   }
   async function saveNote() {
     if (!file || !summary) return;
+    setSavingNote(true);
     try {
+      // Hand the existing summary to the note-writer persona — same
+      // HOUSTON_PREFIX as the summarizer means the LLM hits its KV cache
+      // and the second call costs less than a cold one would.
+      const noteResp = await api.note(file.path, summary);
       const folderPath = file.path.replace(/\/[^/]+$/, "");
       const r = await tauri.createNote(
         folderPath,
-        `summary-of-${file.filename}`,
-        `# Summary of ${file.filename}\n\n_Source: ${file.path}_\n\n${summary}\n`
+        `note-${file.filename}`,
+        noteResp.note
       );
-      onToast(<>Saved as <b>{r.path.split("/").pop()}</b></>);
-    } catch (e) { onToast(<>{(e as Error).message}</>); }
+      onToast(
+        <>
+          Saved as <b>{r.path.split("/").pop()}</b> ·{" "}
+          <span className="mono">{(noteResp.elapsed_ms / 1000).toFixed(1)}s</span>
+        </>
+      );
+    } catch (e) {
+      onToast(<>{(e as Error).message}</>);
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
+  async function proposeFilename() {
+    if (!file) return;
+    setProposedBusy(true);
+    setProposedName("");
+    try {
+      const r = await api.filename(file.path, summary || undefined);
+      if (r.filename) {
+        setProposedName(r.filename);
+      } else {
+        onToast(<>The model returned an empty filename.</>);
+      }
+    } catch (e) {
+      onToast(<>{(e as Error).message}</>);
+    } finally {
+      setProposedBusy(false);
+    }
+  }
+
+  function proposedFullName(): string {
+    if (!file || !proposedName) return "";
+    const dot = file.filename.lastIndexOf(".");
+    const ext = dot >= 0 ? file.filename.slice(dot) : "";
+    return proposedName + ext;
+  }
+
+  async function applyProposedName() {
+    if (!file || !proposedName) return;
+    const newName = proposedFullName();
+    try {
+      await tauri.renamePath(file.path, newName);
+      onToast(<>Renamed to <b>{newName}</b></>);
+      setProposedName("");
+    } catch (e) {
+      onToast(<>Rename failed: {(e as Error).message}</>);
+    }
   }
 
   const bullets = summary ? parseBullets(summary) : [];
@@ -266,9 +323,67 @@ export default function DetailPanel({
                   <Spark /> Summarize with AI
                 </button>
               )}
+              <button
+                className="btn"
+                onClick={proposeFilename}
+                disabled={proposedBusy}
+                style={{ gridColumn: "1 / -1" }}
+                title="Use the filename-proposer persona to suggest a better name based on the file's contents"
+              >
+                <Spark />
+                {proposedBusy ? "Thinking…" : "Suggest a better filename"}
+              </button>
             </>
           )}
         </div>
+        {proposedName && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: 10,
+              borderRadius: 8,
+              background: "var(--ai-wash)",
+              border: "1px solid var(--ai)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ color: "var(--muted)", fontSize: 11 }}>
+              Proposed filename
+            </div>
+            <code
+              className="mono"
+              style={{
+                color: "var(--ink)",
+                fontSize: 12,
+                wordBreak: "break-all",
+                background: "var(--surface)",
+                padding: "4px 6px",
+                borderRadius: 4,
+              }}
+            >
+              {proposedFullName()}
+            </code>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                className="btn primary"
+                onClick={applyProposedName}
+                style={{ flex: 1, height: 26, fontSize: 12 }}
+              >
+                Apply rename
+              </button>
+              <button
+                className="btn"
+                onClick={() => setProposedName("")}
+                style={{ height: 26, fontSize: 12 }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {(aiState !== "idle" || isHit) && (
@@ -319,9 +434,12 @@ export default function DetailPanel({
                 <button
                   className="btn ai-ghost"
                   onClick={saveNote}
+                  disabled={savingNote}
                   style={{ marginTop: 12, height: 28, fontSize: 12 }}
+                  title="Hand the summary to the note-writer persona for polished prose, then save it next to the source file"
                 >
-                  <NoteIcon /> Save summary as note
+                  <NoteIcon />
+                  {savingNote ? "Writing polished note…" : "Save as polished note"}
                 </button>
               )}
             </div>

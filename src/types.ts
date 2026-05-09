@@ -13,6 +13,8 @@ export type IndexResponse = {
   elapsed_ms: number;
 };
 export type SummarizeResponse = { summary: string; elapsed_ms: number };
+export type NoteResponse = { note: string; elapsed_ms: number };
+export type FilenameResponse = { filename: string; elapsed_ms: number };
 
 export type DirEntry = {
   name: string;
