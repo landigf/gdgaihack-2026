@@ -8,7 +8,7 @@ META_PATH = DATA_DIR / "metadata.json"
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
-GEN_MODEL = os.getenv("GEN_MODEL", "qwen3:4b")
+GEN_MODEL = os.getenv("GEN_MODEL", "gemma3:4b")
 EMBED_DIM = 768
 
 CHUNK_TOKENS = 512

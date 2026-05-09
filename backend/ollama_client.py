@@ -26,12 +26,27 @@ class OllamaClient:
         return [await self.embed(t) for t in texts]
 
     async def generate(self, prompt: str, system: str | None = None) -> str:
-        payload: dict = {"model": self.gen_model, "prompt": prompt, "stream": False}
+        payload: dict = {
+            "model": self.gen_model,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": "30m",
+            "options": {
+                "temperature": 0.3,
+                "top_p": 0.9,
+                "num_predict": 384,
+                "num_ctx": 4096,
+            },
+        }
+        if self.gen_model.startswith("qwen3"):
+            payload["think"] = False
+            payload["prompt"] = f"{prompt}\n\n/no_think"
         if system:
             payload["system"] = system
         r = await self._client.post(f"{self.host}/api/generate", json=payload)
         r.raise_for_status()
-        return r.json()["response"]
+        data = r.json()
+        return (data.get("response") or data.get("thinking") or "").strip()
 
     async def aclose(self) -> None:
         await self._client.aclose()

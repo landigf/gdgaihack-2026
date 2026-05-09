@@ -108,8 +108,12 @@ logs/
 
 # ---------- Tauri ----------
 src-tauri/target/
-src-tauri/gen/schemas/
+src-tauri/gen/
+tsconfig.tsbuildinfo
 # Cargo.lock IS committed for binary crates (Rover is a bin)
+!src-tauri/Cargo.lock
+!src-tauri/icons/
+!src-tauri/icons/**
 
 # ---------- Models / heavy artifacts (Ollama lives in ~/.ollama) ----------
 *.gguf
