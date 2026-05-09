@@ -91,6 +91,9 @@ logs/
 *~
 .history/
 
+# ---------- Claude Code harness internals ----------
+.claude/
+
 # ---------- macOS ----------
 .DS_Store
 .AppleDouble
