@@ -1,0 +1,130 @@
+name: Build macOS .app
+
+on:
+  push:
+    branches: [main, mvp-finder]
+  workflow_dispatch:
+
+# Allow only one concurrent build per branch — newer push cancels older runs.
+concurrency:
+  group: build-mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-mac:
+    name: .app + .dmg (Apple Silicon)
+    runs-on: macos-14
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Rust stable (aarch64-apple-darwin)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Cache Cargo registry + git
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache Cargo target dir
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target/
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # tauri.conf.json bundles ../backend/ recursively as a Resource. We
+      # build a venv inside backend/ here so the .app ships ready to run
+      # on a Mac with a similar Python install path.
+      # NOTE on portability: a Python venv created on the GitHub runner
+      # contains absolute paths to the runner's Python interpreter
+      # (/Users/runner/hostedtoolcache/...), so the bundled venv only
+      # works on machines where that exact path is reachable. For
+      # portable distribution, build locally on the demo machine instead.
+      - name: Create Python venv inside backend/ (bundled into .app)
+        run: |
+          cd backend
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          # Strip caches to slim the bundle.
+          find . -type d -name "__pycache__" -prune -exec rm -rf {} + || true
+          rm -rf .pytest_cache data tests || true
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Build Tauri (.app + .dmg)
+        run: npm run tauri build -- --bundles app,dmg
+        env:
+          # No code signing for hackathon builds.
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          # Reduce log noise on green runs.
+          CI: true
+
+      - name: Zip the .app for upload
+        run: |
+          cd src-tauri/target/release/bundle/macos
+          zip -ryq Rover.app.zip Rover.app
+          ls -lh Rover.app.zip
+
+      - name: Upload Rover.app (zipped)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rover-app-${{ github.sha }}
+          path: src-tauri/target/release/bundle/macos/Rover.app.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Rover.dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rover-dmg-${{ github.sha }}
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "## Build outputs" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh src-tauri/target/release/bundle/macos/ 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
+          ls -lh src-tauri/target/release/bundle/dmg/   2>/dev/null >> "$GITHUB_STEP_SUMMARY" || true
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifacts uploaded:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Rover-app-${{ github.sha }}** (zipped Rover.app)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Rover-dmg-${{ github.sha }}** (Rover_*.dmg)" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "Download them from the **Artifacts** section at the bottom of this run." >> "$GITHUB_STEP_SUMMARY"
