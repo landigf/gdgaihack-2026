@@ -181,7 +181,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
   const houstonInflight = useRef<AbortController | null>(null);
   const lastFetchKey = useRef<string>("");
 
-  // Sensor noise + tray-1 lettuce (shelf 1 pot 4) auto-grows for visible motion
+  // Sensor noise + shelf-1 lettuce pot 4 auto-grows for visible motion during the demo
   useEffect(() => {
     const tick = setInterval(() => {
       setShelves((prev) =>
@@ -229,7 +229,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
     return { selectedPot: null as PotState | null, selectedShelf: null as Shelf | null };
   }, [shelves, selectedPotId]);
 
-  // Call Houston whenever selection or stage changes
+  // Call Houston whenever selection or stage changes (debounced)
   useEffect(() => {
     if (!selectedPot || !selectedShelf) return;
     const key = `${selectedPot.id}:${selectedPot.stage}`;
@@ -256,6 +256,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
     };
   }, [selectedPot, selectedShelf]);
 
+  // Local fallback narration if Houston endpoint hasn't returned yet
   const fallbackNarration = useMemo(() => {
     if (!selectedPot) return null;
     if (selectedPot.stage === 5) {

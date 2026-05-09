@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import type { Mesh } from "three";
+import type { BufferGeometry, Mesh, MeshStandardMaterial } from "three";
 import AlertRing from "../AlertRing";
 
 type Props = {
@@ -12,15 +12,19 @@ type Props = {
 
 export default function BuildingGreenhouse({ position, ready, onClick }: Props) {
   const [hover, setHover] = useState(false);
-  const domeRef = useRef<Mesh>(null);
+  const domeRef = useRef<Mesh<BufferGeometry, MeshStandardMaterial>>(null);
   const accent = ready ? "#10b981" : hover ? "#fbbf24" : "#22d3ee";
 
   useFrame((state) => {
     if (!domeRef.current) return;
     const t = state.clock.elapsedTime;
     const intensity = ready ? 0.4 + Math.sin(t * 2.5) * 0.25 : 0.15;
-    (domeRef.current.material as any).emissiveIntensity = intensity;
+    domeRef.current.material.emissiveIntensity = intensity;
   });
+
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
 
   return (
     <group

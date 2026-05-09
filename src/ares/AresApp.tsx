@@ -72,7 +72,7 @@ export default function AresApp() {
           </div>
           <button
             onClick={() => {
-              window.location.hash = "";
+              history.replaceState(null, "", "./");
               window.location.reload();
             }}
             className="text-xs px-3 py-1.5 rounded-md"
@@ -152,12 +152,13 @@ export default function AresApp() {
           greenhouseReady={greenhouseReady}
           ch4FillPct={ch4FillPct}
           onSelectBuilding={(id) => setSelected(id)}
-          showStats
+          showStats={import.meta.env.DEV}
         />
       </div>
 
       {/* Floating PTT placeholder (next phase: real voice) */}
       <button
+        aria-label="Push to talk to Houston"
         className="absolute bottom-6 left-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
         style={{
           background: "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
@@ -168,6 +169,18 @@ export default function AresApp() {
         }}
         onMouseDown={() => setHabitatAlert(true)}
         onMouseUp={() => setHabitatAlert(false)}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.code === "Space") {
+            e.preventDefault();
+            setHabitatAlert(true);
+          }
+        }}
+        onKeyUp={(e) => {
+          if (e.key === " " || e.code === "Space") {
+            e.preventDefault();
+            setHabitatAlert(false);
+          }
+        }}
       >
         <span>🎙</span> HOLD TO TALK TO HOUSTON (mock)
       </button>

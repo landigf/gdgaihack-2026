@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AlertRing from "../AlertRing";
 
 type Props = {
@@ -10,6 +10,10 @@ type Props = {
 export default function BuildingHabitat({ position, alert, onClick }: Props) {
   const [hover, setHover] = useState(false);
   const accent = alert ? "#ef4444" : hover ? "#fbbf24" : "#cbd5e1";
+
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
 
   return (
     <group
