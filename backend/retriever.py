@@ -9,7 +9,7 @@ class Retriever:
     async def search(self, query: str, k: int = 8) -> list[dict]:
         if not query.strip():
             return []
-        q = await self.embedder.embed(query)
+        q = await self.embedder.embed(f"search_query: {query}")
         return [
             {
                 "path": m["path"],

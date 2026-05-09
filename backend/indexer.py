@@ -29,7 +29,10 @@ class Indexer:
             chunks = chunk_text(text, max_tokens=CHUNK_TOKENS, overlap=CHUNK_OVERLAP)
             if not chunks:
                 continue
-            vecs = await self.embedder.embed_batch(chunks)
+            # nomic-embed-text needs task-specific prefixes for usable quality.
+            # Filename signal helps disambiguate cross-lingual queries.
+            prefixed = [f"search_document: {f.name} — {c}" for c in chunks]
+            vecs = await self.embedder.embed_batch(prefixed)
             for i, (c, v) in enumerate(zip(chunks, vecs)):
                 all_vecs.append(v)
                 all_meta.append(

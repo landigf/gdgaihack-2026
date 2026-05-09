@@ -5,8 +5,18 @@ from main import app, get_app_state, AppState
 from store import VectorStore
 
 
+def _strip_task_prefix(s: str) -> str:
+    for p in ("search_document:", "search_query:"):
+        if s.startswith(p):
+            s = s[len(p) :].lstrip()
+    if " — " in s[:120]:
+        s = s.split(" — ", 1)[1]
+    return s
+
+
 class FakeEmbedder:
     async def embed(self, text: str):
+        text = _strip_task_prefix(text)
         h = abs(hash(text[:20])) % 1000
         v = [0.0] * 8
         v[h % 8] = 1.0
