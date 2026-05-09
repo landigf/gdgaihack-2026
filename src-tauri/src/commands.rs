@@ -1,0 +1,151 @@
+use chrono::Local;
+use serde::Serialize;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use tauri::AppHandle;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_shell::ShellExt;
+
+use crate::sidecar::SIDECAR_PORT;
+
+#[derive(Serialize)]
+pub struct CreatedNote {
+    pub path: String,
+}
+
+#[derive(Serialize)]
+pub struct MoveResult {
+    #[serde(rename = "newPath")]
+    pub new_path: String,
+}
+
+#[tauri::command]
+pub async fn backend_url() -> String {
+    format!("http://127.0.0.1:{SIDECAR_PORT}")
+}
+
+#[tauri::command]
+pub async fn pick_folder(app: AppHandle) -> Option<String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_title("Select a folder to index")
+        .pick_folder(move |p| {
+            let _ = tx.send(p.map(|fp| fp.to_string()));
+        });
+    rx.await.ok().flatten()
+}
+
+#[tauri::command]
+pub fn reveal_in_finder(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err(format!("path not found: {path}"));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-R", &path])
+            .status()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let target = p.parent().unwrap_or(p);
+        Command::new("xdg-open")
+            .arg(target)
+            .status()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .args(["/select,", &path])
+            .status()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn open_file(app: AppHandle, path: String) -> Result<(), String> {
+    app.shell().open(path, None).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_note(folder: String, title: String, body: String) -> Result<CreatedNote, String> {
+    let safe: String = title
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('_')
+        .to_string();
+    let safe = if safe.is_empty() {
+        "note".into()
+    } else {
+        safe
+    };
+    let stamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
+    let mut out: PathBuf = PathBuf::from(&folder);
+    out.push(format!("{safe}-{stamp}.md"));
+    fs::write(&out, body).map_err(|e| format!("write failed: {e}"))?;
+    Ok(CreatedNote {
+        path: out.to_string_lossy().into_owned(),
+    })
+}
+
+#[tauri::command]
+pub async fn confirm_move(app: AppHandle, src: String, dst: String) -> bool {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let src_name = Path::new(&src)
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let detail = format!(
+        "From:\n{}\n\nTo:\n{}",
+        Path::new(&src)
+            .parent()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        dst
+    );
+    app.dialog()
+        .message(detail)
+        .title(format!("Move {src_name}?"))
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Move".into(),
+            "Cancel".into(),
+        ))
+        .show(move |answered| {
+            let _ = tx.send(answered);
+        });
+    rx.await.unwrap_or(false)
+}
+
+#[tauri::command]
+pub fn move_file(src: String, dst: String) -> Result<MoveResult, String> {
+    let src_p = Path::new(&src);
+    let dst_p = Path::new(&dst);
+    if !src_p.exists() {
+        return Err(format!("source missing: {src}"));
+    }
+    if !dst_p.is_dir() {
+        return Err(format!("destination not a folder: {dst}"));
+    }
+    let target = dst_p.join(src_p.file_name().ok_or("invalid source name")?);
+    if target.exists() {
+        return Err(format!("target already exists: {}", target.display()));
+    }
+    fs::rename(src_p, &target).map_err(|e| format!("rename failed: {e}"))?;
+    Ok(MoveResult {
+        new_path: target.to_string_lossy().into_owned(),
+    })
+}
