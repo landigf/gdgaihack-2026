@@ -668,6 +668,17 @@ async def voice_health():
         return {"ok": False, "reason": str(e)}
 
 
+@router.get("/perf")
+async def perf():
+    """Live system + Houston perf metrics for the side rail footer + the
+    technical writeup benchmark plots. Numbers are real, sampled via psutil
+    + osx-cpu-temp (best-effort). No ANE pinning yet — flagged in writeup.
+    """
+    from ares import perf as _perf
+
+    return _perf.sample()
+
+
 @router.post("/houston/survival", response_model=SurvivalResponse)
 async def houston_survival(req: SurvivalRequest, state=Depends(_get_state)):
     """Houston narrates a habitat / ECLSS survival tip, citing real chunks

@@ -347,6 +347,24 @@ export default function GreenhouseDetail({ onClose }: Props) {
         </div>
       </header>
 
+      {/* M8 — time-compression honesty banner */}
+      <div
+        className="absolute z-20 px-3 py-1.5 rounded-md font-mono text-[10px]"
+        style={{
+          left: "50%",
+          top: 60,
+          transform: "translateX(-50%)",
+          background: "rgba(168,85,247,0.18)",
+          border: "1px solid rgba(168,85,247,0.5)",
+          color: "#c4b5fd",
+          letterSpacing: 1,
+          fontWeight: 600,
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        DEMO MODE · plant cycles accelerated 100× (real lettuce harvest = 28 sols, here = 28 s)
+      </div>
+
       {/* 3D Canvas */}
       <div className="absolute top-14 left-0 right-[400px] bottom-0">
         <Canvas

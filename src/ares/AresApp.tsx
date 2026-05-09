@@ -3,6 +3,8 @@ import MarsBase, { type BuildingId } from "./3d/MarsBase";
 import GreenhouseDetail from "./views/GreenhouseDetail";
 import InventoryDetail from "./views/InventoryDetail";
 import VoicePTT from "./components/VoicePTT";
+import MarsLatencyChip from "./components/MarsLatencyChip";
+import PerfFooter from "./components/PerfFooter";
 
 const SOL_NUMBER = 423;
 
@@ -60,7 +62,8 @@ export default function AresApp() {
             Mars Habitat · Sol {SOL_NUMBER}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <MarsLatencyChip />
           <div
             className="px-3 py-1.5 rounded-md font-mono text-xs flex items-center gap-2"
             style={{
@@ -142,8 +145,8 @@ export default function AresApp() {
           </div>
         </div>
 
-        <div className="mt-auto pt-3 text-[10px] tracking-wider opacity-60" style={{ color: "#94a3b8" }}>
-          BUILD: ares-mars · cut-the-cord · 0 packets out
+        <div className="mt-auto pt-3">
+          <PerfFooter />
         </div>
       </aside>
 
