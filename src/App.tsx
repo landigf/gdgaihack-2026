@@ -6,17 +6,24 @@ import {
   type ReactNode,
 } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { DirEntry, SearchHit, Selection } from "./types";
+import type {
+  Clipboard,
+  ClipboardOp,
+  DirEntry,
+  SearchHit,
+  Selection,
+} from "./types";
 import { api } from "./api";
 import { tauri } from "./tauri";
 import Toolbar from "./components/Toolbar";
 import Sidebar, { type QuickItem } from "./components/Sidebar";
 import Breadcrumbs from "./components/Breadcrumbs";
-import BrowseList from "./components/BrowseList";
+import BrowseList, { type SelectMode } from "./components/BrowseList";
 import SearchHits from "./components/SearchHits";
 import DetailPanel from "./components/DetailPanel";
 import StatusBar from "./components/StatusBar";
 import WelcomeOverlay from "./components/WelcomeOverlay";
+import ContextMenu, { type MenuItem } from "./components/ContextMenu";
 
 type HistoryState = { stack: string[]; index: number };
 type EngineState = "ready" | "starting" | "installing" | "error";
@@ -56,6 +63,17 @@ export default function App() {
   const [toast, setToastNode] = useState<ReactNode | null>(null);
   const toastTimer = useRef<number | null>(null);
 
+  // File-explorer state: multi-select, clipboard, inline rename, context menu
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [primaryPath, setPrimaryPath] = useState<string | null>(null);
+  const [clipboard, setClipboard] = useState<Clipboard>(null);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    items: MenuItem[];
+  } | null>(null);
+
   const flashToast = useCallback((node: ReactNode) => {
     setToastNode(node);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -69,6 +87,10 @@ export default function App() {
         setPath(target);
         setEntries(list);
         setSelection(null);
+        setSelectedPaths(new Set());
+        setPrimaryPath(null);
+        setRenamingPath(null);
+        setCtxMenu(null);
         setBrowseError("");
         if (pushHistory) {
           setHistory((h) => {
@@ -82,6 +104,22 @@ export default function App() {
     },
     []
   );
+
+  // Re-list the current dir in place — used after file ops succeed. Prunes
+  // selectedPaths of entries that no longer exist; keeps anything that does.
+  const refreshCurrent = useCallback(async () => {
+    if (!path) return;
+    try {
+      const list = await tauri.listDir(path);
+      setEntries(list);
+      setSelectedPaths(
+        (prev) =>
+          new Set([...prev].filter((p) => list.some((e) => e.path === p)))
+      );
+    } catch (e) {
+      setBrowseError((e as Error).message);
+    }
+  }, [path]);
 
   // Engine state: drive from /health polling (ground truth), with the
   // Rust 'sidecar-status' event as a fast initial signal. Without the
@@ -265,19 +303,373 @@ export default function App() {
     }
   }
 
-  // Global keyboard shortcuts
+  // ---- Multi-select selection logic ----------------------------------------
+  function selectRow(entry: DirEntry, mode: SelectMode) {
+    setPrimaryPath(entry.path);
+    setSelection({ kind: "entry", entry });
+    if (mode === "single") {
+      setSelectedPaths(new Set([entry.path]));
+      return;
+    }
+    if (mode === "toggle") {
+      setSelectedPaths((prev) => {
+        const next = new Set(prev);
+        if (next.has(entry.path)) next.delete(entry.path);
+        else next.add(entry.path);
+        return next;
+      });
+      return;
+    }
+    // range
+    if (!primaryPath) {
+      setSelectedPaths(new Set([entry.path]));
+      return;
+    }
+    const i1 = entries.findIndex((e) => e.path === primaryPath);
+    const i2 = entries.findIndex((e) => e.path === entry.path);
+    if (i1 < 0 || i2 < 0) {
+      setSelectedPaths(new Set([entry.path]));
+      return;
+    }
+    const [lo, hi] = i1 <= i2 ? [i1, i2] : [i2, i1];
+    setSelectedPaths(new Set(entries.slice(lo, hi + 1).map((e) => e.path)));
+  }
+
+  // ---- File ops --------------------------------------------------------------
+  async function doRename(entry: DirEntry, newName: string) {
+    try {
+      const ne = await tauri.renamePath(entry.path, newName);
+      setRenamingPath(null);
+      flashToast(<>Renamed to <b>{ne.name}</b></>);
+      await refreshCurrent();
+      setPrimaryPath(ne.path);
+      setSelectedPaths(new Set([ne.path]));
+      setSelection({ kind: "entry", entry: ne });
+    } catch (e) {
+      setRenamingPath(null);
+      flashToast(<>Rename failed: {(e as Error).message}</>);
+    }
+  }
+
+  async function doMoveToTrash(paths: string[]) {
+    if (paths.length === 0) return;
+    try {
+      const n = await tauri.moveToTrash(paths);
+      flashToast(
+        <>
+          Moved <b>{n}</b> {n === 1 ? "item" : "items"} to Trash
+        </>
+      );
+      setSelectedPaths(new Set());
+      setPrimaryPath(null);
+      setSelection(null);
+      await refreshCurrent();
+    } catch (e) {
+      flashToast(<>Trash failed: {(e as Error).message}</>);
+    }
+  }
+
+  function copySelectionToClipboard(op: ClipboardOp, override?: string[]) {
+    const targets = override ?? [...selectedPaths];
+    if (targets.length === 0) return;
+    setClipboard({ paths: targets, op });
+    flashToast(
+      <>
+        {op === "copy" ? "Copied" : "Cut"} <b>{targets.length}</b>{" "}
+        {targets.length === 1 ? "item" : "items"}
+      </>
+    );
+  }
+
+  async function pasteHere() {
+    if (!clipboard || !path) return;
+    let success = 0;
+    let firstError: string | null = null;
+    for (const src of clipboard.paths) {
+      // Don't paste into self.
+      if (src === path) continue;
+      try {
+        if (clipboard.op === "copy") await tauri.copyPath(src, path, null);
+        else await tauri.movePath(src, path);
+        success++;
+      } catch (e) {
+        if (!firstError) firstError = (e as Error).message;
+      }
+    }
+    if (success > 0) {
+      flashToast(
+        <>
+          {clipboard.op === "copy" ? "Copied" : "Moved"} <b>{success}</b> here
+        </>
+      );
+    }
+    if (firstError) flashToast(<>Paste error: {firstError}</>);
+    if (clipboard.op === "cut") setClipboard(null);
+    await refreshCurrent();
+  }
+
+  async function doNewFolder() {
+    if (!path) return;
+    let name = "untitled folder";
+    let attempt = 1;
+    while (entries.some((e) => e.name === name)) {
+      attempt++;
+      name = `untitled folder ${attempt}`;
+    }
+    try {
+      const ne = await tauri.createFolder(path, name);
+      await refreshCurrent();
+      setPrimaryPath(ne.path);
+      setSelectedPaths(new Set([ne.path]));
+      setSelection({ kind: "entry", entry: ne });
+      setRenamingPath(ne.path);
+    } catch (e) {
+      flashToast(<>New folder failed: {(e as Error).message}</>);
+    }
+  }
+
+  async function dropOntoFolder(srcPaths: string[], targetPath: string) {
+    if (srcPaths.length === 0 || !targetPath) return;
+    let success = 0;
+    let firstError: string | null = null;
+    for (const src of srcPaths) {
+      // Don't move into self or descendant
+      if (src === targetPath) continue;
+      if (targetPath.startsWith(src + "/")) continue;
+      try {
+        await tauri.movePath(src, targetPath);
+        success++;
+      } catch (e) {
+        if (!firstError) firstError = (e as Error).message;
+      }
+    }
+    if (success > 0) {
+      const tgtName = targetPath.split("/").filter(Boolean).pop() ?? targetPath;
+      flashToast(
+        <>
+          Moved <b>{success}</b> to {tgtName}
+        </>
+      );
+    }
+    if (firstError) flashToast(<>Move error: {firstError}</>);
+    setSelectedPaths(new Set());
+    setPrimaryPath(null);
+    setSelection(null);
+    await refreshCurrent();
+  }
+
+  function getDragPathsFor(entry: DirEntry): string[] {
+    if (selectedPaths.has(entry.path) && selectedPaths.size > 1) {
+      return [...selectedPaths];
+    }
+    return [entry.path];
+  }
+
+  // ---- Context menus --------------------------------------------------------
+  function buildEntryContextMenu(entry: DirEntry, targets: string[]): MenuItem[] {
+    const single = targets.length === 1;
+    const isFolder = entry.is_dir;
+    return [
+      {
+        kind: "item",
+        label: isFolder && single ? "Open Folder" : "Open",
+        shortcut: "↵",
+        onClick: () => onOpenEntry(entry),
+        disabled: !single,
+      },
+      {
+        kind: "item",
+        label: "Show in Finder",
+        onClick: () => tauri.revealInFinder(entry.path),
+        disabled: !single,
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Cut",
+        shortcut: "⌘X",
+        onClick: () => copySelectionToClipboard("cut", targets),
+      },
+      {
+        kind: "item",
+        label: "Copy",
+        shortcut: "⌘C",
+        onClick: () => copySelectionToClipboard("copy", targets),
+      },
+      {
+        kind: "item",
+        label: "Paste",
+        shortcut: "⌘V",
+        onClick: () => pasteHere(),
+        disabled: !clipboard,
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Rename",
+        shortcut: "↩",
+        onClick: () => setRenamingPath(entry.path),
+        disabled: !single,
+      },
+      {
+        kind: "item",
+        label: "New Folder Here",
+        shortcut: "⇧⌘N",
+        onClick: () => doNewFolder(),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: targets.length > 1 ? `Move ${targets.length} items to Trash` : "Move to Trash",
+        shortcut: "⌫",
+        danger: true,
+        onClick: () => doMoveToTrash(targets),
+      },
+    ];
+  }
+
+  function buildEmptyContextMenu(): MenuItem[] {
+    return [
+      {
+        kind: "item",
+        label: "New Folder",
+        shortcut: "⇧⌘N",
+        onClick: () => doNewFolder(),
+        disabled: !path,
+      },
+      {
+        kind: "item",
+        label: "Paste",
+        shortcut: "⌘V",
+        onClick: () => pasteHere(),
+        disabled: !clipboard || !path,
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Show Folder in Finder",
+        onClick: () => path && tauri.revealInFinder(path),
+        disabled: !path,
+      },
+    ];
+  }
+
+  function onContextMenuRow(entry: DirEntry, x: number, y: number) {
+    let targets = [...selectedPaths];
+    if (!selectedPaths.has(entry.path)) {
+      targets = [entry.path];
+      setPrimaryPath(entry.path);
+      setSelectedPaths(new Set([entry.path]));
+      setSelection({ kind: "entry", entry });
+    }
+    setCtxMenu({ x, y, items: buildEntryContextMenu(entry, targets) });
+  }
+
+  function onContextMenuEmpty(x: number, y: number) {
+    setCtxMenu({ x, y, items: buildEmptyContextMenu() });
+  }
+
+  // ---- Global keyboard shortcuts -------------------------------------------
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const inEditableField =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement | null)?.isContentEditable;
+
       const isMac = navigator.platform.toLowerCase().includes("mac");
       const meta = isMac ? e.metaKey : e.ctrlKey;
-      if (meta && e.key === "[") { e.preventDefault(); goBack(); }
-      if (meta && e.key === "]") { e.preventDefault(); goForward(); }
-      if (meta && e.key === "ArrowUp") { e.preventDefault(); goUp(); }
+
+      // Navigation shortcuts always work.
+      if (meta && e.key === "[") {
+        e.preventDefault();
+        goBack();
+        return;
+      }
+      if (meta && e.key === "]") {
+        e.preventDefault();
+        goForward();
+        return;
+      }
+      if (meta && e.key === "ArrowUp") {
+        e.preventDefault();
+        goUp();
+        return;
+      }
+
+      // File ops only when not in a text input and not searching.
+      if (inEditableField) return;
+      if (debouncedQuery) return;
+
+      if (meta && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        setSelectedPaths(new Set(entries.map((en) => en.path)));
+        return;
+      }
+      if (meta && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        doNewFolder();
+        return;
+      }
+      if (meta && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        copySelectionToClipboard("copy");
+        return;
+      }
+      if (meta && e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        copySelectionToClipboard("cut");
+        return;
+      }
+      if (meta && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        pasteHere();
+        return;
+      }
+      if (
+        (e.key === "Backspace" || e.key === "Delete") &&
+        (e.metaKey || e.ctrlKey) &&
+        selectedPaths.size > 0
+      ) {
+        e.preventDefault();
+        doMoveToTrash([...selectedPaths]);
+        return;
+      }
+      if (e.key === "Enter" && primaryPath && !renamingPath) {
+        e.preventDefault();
+        // Enter on selected entry → rename. (Double-click still opens.)
+        setRenamingPath(primaryPath);
+        return;
+      }
+      if (e.key === "Escape") {
+        if (renamingPath) {
+          setRenamingPath(null);
+        } else if (ctxMenu) {
+          setCtxMenu(null);
+        } else if (selectedPaths.size > 0) {
+          setSelectedPaths(new Set());
+          setPrimaryPath(null);
+          setSelection(null);
+        }
+        return;
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history.index, history.stack, path]);
+  }, [
+    history.index,
+    history.stack,
+    path,
+    entries,
+    selectedPaths,
+    primaryPath,
+    renamingPath,
+    clipboard,
+    debouncedQuery,
+    ctxMenu,
+  ]);
 
   function clearSearch() {
     setQuery("");
@@ -350,10 +742,16 @@ export default function App() {
     centerStatus = `${hits.length} match${hits.length === 1 ? "" : "es"}${
       searchElapsed !== null ? ` · ${searchElapsed} ms` : ""
     }`;
-  else
+  else {
+    const selN = selectedPaths.size;
     centerStatus = `${itemsCount} item${itemsCount === 1 ? "" : "s"}${
-      selection ? ", 1 selected" : ""
+      selN > 0 ? `, ${selN} selected` : ""
+    }${
+      clipboard
+        ? ` · ${clipboard.paths.length} ${clipboard.op === "cut" ? "cut" : "copied"}`
+        : ""
     }`;
+  }
 
   return (
     <div className="window">
@@ -383,6 +781,7 @@ export default function App() {
           indexProgress={0}
           onIndex={() => path && indexFolder(path)}
           canIndex={!!path}
+          onDropOnFavorite={dropOntoFolder}
         />
 
         <main className="main">
@@ -427,9 +826,20 @@ export default function App() {
           {!isSearching && !browseError && (
             <BrowseList
               entries={entries}
-              selected={selection?.kind === "entry" ? selection.entry : null}
-              onSelect={(e) => setSelection({ kind: "entry", entry: e })}
+              selectedPaths={selectedPaths}
+              primaryPath={primaryPath}
+              clipboard={clipboard}
+              renamingPath={renamingPath}
+              onSelect={selectRow}
               onOpen={onOpenEntry}
+              onContextMenu={onContextMenuRow}
+              onContextMenuOnEmpty={onContextMenuEmpty}
+              onRenameSubmit={doRename}
+              onRenameCancel={() => setRenamingPath(null)}
+              onDropOnFolder={(srcPaths, target) =>
+                dropOntoFolder(srcPaths, target.path)
+              }
+              getDragPathsFor={getDragPathsFor}
             />
           )}
 
@@ -473,6 +883,15 @@ export default function App() {
         <div className="toast-wrap">
           <div className="toast">{toast}</div>
         </div>
+      )}
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </div>
   );

@@ -25,10 +25,10 @@ export default function WelcomeOverlay({
       }}
     >
       <div className="welcome">
-        <span className="badge"><Spark /> Welcome to Rover</span>
+        <span className="badge"><Spark /> Welcome to Houston</span>
         <h1>Find any document by what it says, not what it's called.</h1>
         <p className="lede">
-          Rover indexes folders on your Mac and uses a small AI — running
+          Houston indexes folders on your Mac and uses a small AI — running
           entirely on this machine — to make every document searchable by meaning.
         </p>
 
@@ -108,7 +108,7 @@ export default function WelcomeOverlay({
               Skip for now
             </button>
             <button className="btn primary" onClick={onStart}>
-              <Spark /> Set up Rover
+              <Spark /> Set up Houston
             </button>
           </div>
         )}

@@ -1,4 +1,4 @@
-/* Rover icons — SF Symbols-ish line set, 1:1 from the Claude Design handoff. */
+/* Houston icons — SF Symbols-ish line set, 1:1 from the Claude Design handoff. */
 
 type IconProps = { size?: number; className?: string };
 

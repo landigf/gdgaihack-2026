@@ -42,6 +42,9 @@ export type ConfigResponse = {
   embed: ModelInfo;
 };
 
+export type ClipboardOp = "copy" | "cut";
+export type Clipboard = { paths: string[]; op: ClipboardOp } | null;
+
 /** Anything the AI panel / actions can target — both browse entries and search hits. */
 export type Selection =
   | { kind: "entry"; entry: DirEntry }

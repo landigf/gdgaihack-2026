@@ -20,6 +20,12 @@ pub fn run() {
             commands::create_note,
             commands::confirm_move,
             commands::move_file,
+            // file-explorer ops
+            commands::rename_path,
+            commands::copy_path,
+            commands::move_path,
+            commands::move_to_trash,
+            commands::create_folder,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -27,11 +33,11 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 match sidecar::start(&handle).await {
                     Ok(url) => {
-                        println!("[rover] sidecar ready at {url}");
+                        println!("[houston] sidecar ready at {url}");
                         let _ = handle.emit("sidecar-status", "ready");
                     }
                     Err(e) => {
-                        eprintln!("[rover] sidecar error: {e}");
+                        eprintln!("[houston] sidecar error: {e}");
                         let _ = handle.emit("sidecar-status", "error");
                     }
                 }

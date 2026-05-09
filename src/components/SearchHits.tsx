@@ -48,7 +48,7 @@ export default function SearchHits({ hits, selected, onSelect, query, busy }: Pr
         <div className="empty" style={{ height: 220 }}>
           <h3>No semantic matches for "{query}"</h3>
           <p>
-            Try a different phrasing, or index more folders. Rover only searches
+            Try a different phrasing, or index more folders. Houston only searches
             content from indexed locations.
           </p>
         </div>

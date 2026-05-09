@@ -1,3 +1,4 @@
+import { useState, type DragEvent as ReactDragEvent } from "react";
 import {
   HomeIcon,
   Docs,
@@ -28,6 +29,8 @@ type Props = {
   indexProgress: number; // 0..1, indeterminate when 0
   onIndex: () => void;
   canIndex: boolean;
+  /** Called when files are dropped onto a Favorites item. */
+  onDropOnFavorite: (srcPaths: string[], targetPath: string) => void;
 };
 
 const ICONS = {
@@ -51,7 +54,32 @@ export default function Sidebar({
   indexProgress,
   onIndex,
   canIndex,
+  onDropOnFavorite,
 }: Props) {
+  const [dragOver, setDragOver] = useState<string | null>(null);
+
+  function onDragOverFav(e: ReactDragEvent, path: string) {
+    if (!path) return;
+    const types = e.dataTransfer.types;
+    if (!types || !types.includes("application/x-houston-paths")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = e.altKey ? "copy" : "move";
+    if (dragOver !== path) setDragOver(path);
+  }
+  function onDropFav(e: ReactDragEvent, path: string) {
+    e.preventDefault();
+    setDragOver(null);
+    const data = e.dataTransfer.getData("application/x-houston-paths");
+    if (!data) return;
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        onDropOnFavorite(parsed.filter((p) => typeof p === "string"), path);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   const dotClass =
     engineState === "ready"
       ? ""
@@ -76,9 +104,15 @@ export default function Sidebar({
         return (
           <div
             key={it.path}
-            className="sb-item"
+            className={`sb-item${dragOver === it.path ? " is-drag-over" : ""}`}
             aria-selected={selected}
             onClick={() => onNavigate(it.path)}
+            onDragOver={(e) => onDragOverFav(e, it.path)}
+            onDragEnter={(e) => onDragOverFav(e, it.path)}
+            onDragLeave={() => {
+              if (dragOver === it.path) setDragOver(null);
+            }}
+            onDrop={(e) => onDropFav(e, it.path)}
           >
             <span className="gly">
               <Glyph />

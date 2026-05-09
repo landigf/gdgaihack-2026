@@ -235,3 +235,202 @@ pub fn move_file(src: String, dst: String) -> Result<MoveResult, String> {
         new_path: target.to_string_lossy().into_owned(),
     })
 }
+
+// ------------------------------------------------------------------
+// File-explorer file operations: rename / copy / move / trash / mkdir
+// ------------------------------------------------------------------
+
+fn dir_entry_from_path(path: &Path) -> Result<DirEntry, String> {
+    let meta = path
+        .metadata()
+        .map_err(|e| format!("metadata: {e}"))?;
+    let modified_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    let ext = if meta.is_file() {
+        path.extension()
+            .map(|s| s.to_string_lossy().to_lowercase())
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
+    let name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    Ok(DirEntry {
+        name,
+        path: path.to_string_lossy().into_owned(),
+        is_dir: meta.is_dir(),
+        size: if meta.is_file() { meta.len() } else { 0 },
+        modified_ms,
+        ext,
+    })
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| format!("mkdir {}: {e}", dst.display()))?;
+    for entry in fs::read_dir(src).map_err(|e| format!("read_dir: {e}"))? {
+        let entry = entry.map_err(|e| format!("dir entry: {e}"))?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        let ft = entry.file_type().map_err(|e| format!("file_type: {e}"))?;
+        if ft.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if ft.is_symlink() {
+            // Best-effort: re-create the symlink rather than copying contents.
+            #[cfg(unix)]
+            {
+                let target = fs::read_link(&from).map_err(|e| format!("readlink: {e}"))?;
+                std::os::unix::fs::symlink(target, &to)
+                    .map_err(|e| format!("symlink: {e}"))?;
+            }
+            #[cfg(not(unix))]
+            {
+                fs::copy(&from, &to).map_err(|e| format!("copy symlink: {e}"))?;
+            }
+        } else {
+            fs::copy(&from, &to).map_err(|e| format!("copy {}: {e}", from.display()))?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rename_path(path: String, new_name: String) -> Result<DirEntry, String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err(format!("path not found: {path}"));
+    }
+    let trimmed = new_name.trim();
+    if trimmed.is_empty()
+        || trimmed.contains('/')
+        || trimmed == "."
+        || trimmed == ".."
+    {
+        return Err(format!("invalid name: {new_name:?}"));
+    }
+    let parent = p.parent().ok_or("path has no parent")?;
+    let target = parent.join(trimmed);
+    if target == p {
+        return dir_entry_from_path(p);
+    }
+    if target.exists() {
+        return Err(format!("a file or folder named '{trimmed}' already exists"));
+    }
+    fs::rename(p, &target).map_err(|e| format!("rename failed: {e}"))?;
+    dir_entry_from_path(&target)
+}
+
+#[tauri::command]
+pub fn copy_path(
+    src: String,
+    dst_dir: String,
+    new_name: Option<String>,
+) -> Result<DirEntry, String> {
+    let src_p = Path::new(&src);
+    let dst_p = Path::new(&dst_dir);
+    if !src_p.exists() {
+        return Err(format!("source missing: {src}"));
+    }
+    if !dst_p.is_dir() {
+        return Err(format!("destination not a folder: {dst_dir}"));
+    }
+    let name = new_name
+        .as_deref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            src_p
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        });
+    let target = dst_p.join(&name);
+    if target == src_p {
+        return Err("source and destination are the same".into());
+    }
+    if target.exists() {
+        return Err(format!("a file or folder named '{name}' already exists"));
+    }
+    if src_p.is_dir() {
+        copy_dir_recursive(src_p, &target)?;
+    } else {
+        fs::copy(src_p, &target).map_err(|e| format!("copy failed: {e}"))?;
+    }
+    dir_entry_from_path(&target)
+}
+
+#[tauri::command]
+pub fn move_path(src: String, dst_dir: String) -> Result<DirEntry, String> {
+    let src_p = Path::new(&src);
+    let dst_p = Path::new(&dst_dir);
+    if !src_p.exists() {
+        return Err(format!("source missing: {src}"));
+    }
+    if !dst_p.is_dir() {
+        return Err(format!("destination not a folder: {dst_dir}"));
+    }
+    let name = src_p
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .ok_or("invalid source name")?;
+    let target = dst_p.join(&name);
+    if target == src_p {
+        return Err("source and destination are the same".into());
+    }
+    if target.exists() {
+        return Err(format!("a file or folder named '{name}' already exists at the destination"));
+    }
+    // Try fast same-volume rename first; fall back to copy + delete.
+    if fs::rename(src_p, &target).is_err() {
+        if src_p.is_dir() {
+            copy_dir_recursive(src_p, &target)?;
+            fs::remove_dir_all(src_p).map_err(|e| format!("remove source: {e}"))?;
+        } else {
+            fs::copy(src_p, &target).map_err(|e| format!("copy: {e}"))?;
+            fs::remove_file(src_p).map_err(|e| format!("remove source: {e}"))?;
+        }
+    }
+    dir_entry_from_path(&target)
+}
+
+#[tauri::command]
+pub fn move_to_trash(paths: Vec<String>) -> Result<usize, String> {
+    let mut count = 0usize;
+    let mut last_err: Option<String> = None;
+    for p in &paths {
+        if !Path::new(p).exists() {
+            continue;
+        }
+        match trash::delete(p) {
+            Ok(()) => count += 1,
+            Err(e) => last_err = Some(format!("trash {p}: {e}")),
+        }
+    }
+    if count == 0 && last_err.is_some() {
+        return Err(last_err.unwrap());
+    }
+    Ok(count)
+}
+
+#[tauri::command]
+pub fn create_folder(parent: String, name: String) -> Result<DirEntry, String> {
+    let parent_p = Path::new(&parent);
+    if !parent_p.is_dir() {
+        return Err(format!("parent is not a folder: {parent}"));
+    }
+    let trimmed = name.trim();
+    if trimmed.is_empty() || trimmed.contains('/') || trimmed == "." || trimmed == ".." {
+        return Err(format!("invalid name: {name:?}"));
+    }
+    let target = parent_p.join(trimmed);
+    if target.exists() {
+        return Err(format!("a file or folder named '{trimmed}' already exists"));
+    }
+    fs::create_dir(&target).map_err(|e| format!("create folder failed: {e}"))?;
+    dir_entry_from_path(&target)
+}

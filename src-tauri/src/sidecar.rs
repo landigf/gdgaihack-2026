@@ -66,7 +66,7 @@ async fn ensure_backend(app: &AppHandle) -> Result<PathBuf, String> {
 
     // Stale install detection: the version file is rewritten only after a
     // successful copy, so a partial copy (interrupted launch) re-runs.
-    let version_path = target.join(".rover-version");
+    let version_path = target.join(".houston-version");
     let cached_version = fs::read_to_string(&version_path)
         .ok()
         .map(|s| s.trim().to_string());

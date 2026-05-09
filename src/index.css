@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* =========================================================================
-   Rover — macOS-native file manager with local AI
+   Houston — macOS-native file manager with local AI
    Design direction: Claude Design 2026-05-09
    Auto light/dark via prefers-color-scheme only (no manual toggle)
    ========================================================================= */
@@ -1010,4 +1010,94 @@ mark {
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* =========================================================================
+   Right-click context menu
+   ========================================================================= */
+.ctx-menu {
+  position: fixed;
+  min-width: 220px;
+  max-width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+  z-index: 100;
+  animation: ctx-in 100ms ease-out;
+}
+@keyframes ctx-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.ctx-item {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  padding: 5px 9px;
+  border-radius: 4px;
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  gap: 14px;
+  transition: background 80ms;
+}
+.ctx-item:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.ctx-item:disabled { color: var(--faint); }
+.ctx-item:disabled:hover { background: transparent; }
+.ctx-item.is-danger { color: var(--danger); }
+.ctx-item.is-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: white;
+}
+.ctx-shortcut {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.ctx-item:hover:not(:disabled) .ctx-shortcut { color: rgba(255, 255, 255, 0.75); }
+.ctx-sep {
+  height: 1px;
+  background: var(--rule);
+  margin: 4px 4px;
+}
+
+/* =========================================================================
+   Inline rename input — replaces the row name during rename
+   ========================================================================= */
+.row .name input.rename-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+  font-family: inherit;
+}
+
+/* =========================================================================
+   Drag & drop visuals
+   ========================================================================= */
+.row.is-drag-over,
+.sb-item.is-drag-over {
+  background: var(--accent-wash-strong);
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: 5px;
+}
+.row.is-clipped {
+  opacity: 0.55;
+}
+.row.is-clipped .name b {
+  font-style: italic;
 }

@@ -1,4 +1,4 @@
-# Rover
+# Houston
 
 > A 100% offline, AI-powered Finder alternative for macOS. Semantic file search
 > + on-device LLM actions. Cross-platform desktop app built on Tauri 2 + Rust.
@@ -8,7 +8,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Rover                                          local · offline · private │
+│ Houston                                          local · offline · private │
 ├────────────┬────────────────────────────────────────┬────────────────────┤
 │  Folder    │  ⌕  presentazione budget alpha         │  Selected          │
 │  ~/demo-…  │                                        │  alpha-budget-Q3.md│
@@ -27,7 +27,7 @@
 
 ## Why local
 
-| Pillar (rubric weight) | Rover's pitch |
+| Pillar (rubric weight) | Houston's pitch |
 |---|---|
 | Ottimizzazione tecnica (30%) | Native Tauri 2 + Rust shell (~20 MB binary), single-machine, zero cloud |
 | Utilità pratica (25%) | Find any file by *meaning*, not filename. Summarize. Generate notes. Open in Finder. |
@@ -38,7 +38,7 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Rover.app  (Tauri 2 / Rust shell)          │
+│  Houston.app  (Tauri 2 / Rust shell)          │
 │  ┌─────────────────────────────────────┐    │
 │  │  React renderer (Vite + Tailwind)   │    │
 │  │  SearchBar · FileList · AIPanel     │    │
@@ -100,8 +100,8 @@ npx tauri build
 ```
 
 Outputs:
-- `src-tauri/target/release/bundle/macos/Rover.app`
-- `src-tauri/target/release/bundle/dmg/Rover_0.1.0_aarch64.dmg`
+- `src-tauri/target/release/bundle/macos/Houston.app`
+- `src-tauri/target/release/bundle/dmg/Houston_0.1.0_aarch64.dmg`
 
 The Python `backend/` directory ships as a Tauri resource. The bundled `.app`
 expects `backend/.venv` to be present (run `setup.sh` once on the demo machine
@@ -126,7 +126,7 @@ demo-rover/
     └── vacanze-2025.md             ← bilingual distractor with budget tables
 ```
 
-1. **Open Rover.** Footer dot turns green when sidecar is ready (~2 s warm).
+1. **Open Houston.** Footer dot turns green when sidecar is ready (~2 s warm).
 2. **Pick `~/demo-rover/`** via the native folder picker.
 3. **Click "Index folder"** — 8 files / 11 chunks / under 1 s.
 4. **Type "presentazione budget progetto alpha"** — hit `Enter`.
@@ -177,6 +177,6 @@ File watcher · auto-tagging · batch rename · TTS/STT · multi-folder
 simultaneous indexing · drag&drop · cloud anything · authentication ·
 multi-user · code signing / notarization · PyInstaller standalone sidecar.
 
-These are all *plausible* features that would dilute the demo. Rover does
+These are all *plausible* features that would dilute the demo. Houston does
 one thing — semantic file search with local AI actions — and does it
 properly.

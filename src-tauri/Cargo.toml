@@ -1,11 +1,11 @@
 [package]
-name = "rover"
+name = "houston"
 version = "0.1.0"
 description = "Offline AI Finder alternative"
 edition = "2021"
 
 [lib]
-name = "rover_lib"
+name = "houston_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -20,6 +20,7 @@ serde_json = "1"
 chrono = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "sync"] }
+trash = "5"
 
 [profile.release]
 codegen-units = 1

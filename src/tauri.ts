@@ -14,4 +14,16 @@ export const tauri = {
   moveFile: (src: string, dst: string) =>
     invoke<{ newPath: string }>("move_file", { src, dst }),
   backendUrl: () => invoke<string>("backend_url"),
+
+  // file-explorer ops
+  renamePath: (path: string, newName: string) =>
+    invoke<DirEntry>("rename_path", { path, newName }),
+  copyPath: (src: string, dstDir: string, newName?: string | null) =>
+    invoke<DirEntry>("copy_path", { src, dstDir, newName: newName ?? null }),
+  movePath: (src: string, dstDir: string) =>
+    invoke<DirEntry>("move_path", { src, dstDir }),
+  moveToTrash: (paths: string[]) =>
+    invoke<number>("move_to_trash", { paths }),
+  createFolder: (parent: string, name: string) =>
+    invoke<DirEntry>("create_folder", { parent, name }),
 };

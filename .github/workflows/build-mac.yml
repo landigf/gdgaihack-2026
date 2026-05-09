@@ -53,7 +53,7 @@ jobs:
       # The .app does NOT bundle a Python venv — tauri.conf.json only ships
       # the backend/*.py source files + requirements.txt. On first launch,
       # the Rust shell creates a fresh venv in
-      # ~/Library/Application Support/app.rover.demo/backend/.venv using the
+      # ~/Library/Application Support/app.houston.demo/backend/.venv using the
       # user's system python3, then pip-installs the deps. This makes the
       # .app fully portable: any Mac with Python 3 + Ollama installed will
       # work, no path-dependent venv baggage.
@@ -70,21 +70,21 @@ jobs:
       - name: Zip the .app for upload
         run: |
           cd src-tauri/target/release/bundle/macos
-          zip -ryq Rover.app.zip Rover.app
-          ls -lh Rover.app.zip
+          zip -ryq Houston.app.zip Houston.app
+          ls -lh Houston.app.zip
 
-      - name: Upload Rover.app (zipped)
+      - name: Upload Houston.app (zipped)
         uses: actions/upload-artifact@v4
         with:
-          name: Rover-app-${{ github.sha }}
-          path: src-tauri/target/release/bundle/macos/Rover.app.zip
+          name: Houston-app-${{ github.sha }}
+          path: src-tauri/target/release/bundle/macos/Houston.app.zip
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload Rover.dmg
+      - name: Upload Houston.dmg
         uses: actions/upload-artifact@v4
         with:
-          name: Rover-dmg-${{ github.sha }}
+          name: Houston-dmg-${{ github.sha }}
           path: src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: error
           retention-days: 30
@@ -99,17 +99,17 @@ jobs:
             ls -lh src-tauri/target/release/bundle/dmg/   2>/dev/null || true
             echo
             echo "Artifacts uploaded:"
-            echo "- **Rover-app-${{ github.sha }}** (zipped Rover.app)"
-            echo "- **Rover-dmg-${{ github.sha }}** (Rover_*.dmg)"
+            echo "- **Houston-app-${{ github.sha }}** (zipped Houston.app)"
+            echo "- **Houston-dmg-${{ github.sha }}** (Houston_*.dmg)"
             echo
             echo "## How to install"
             echo
             echo "1. Download the artifact below (click → unzip / mount the .dmg)."
-            echo "2. Drag Rover.app to /Applications (or anywhere)."
+            echo "2. Drag Houston.app to /Applications (or anywhere)."
             echo "3. **First launch only**: macOS will warn 'unidentified developer'."
             echo "   Right-click → Open → Open. Subsequent launches work normally."
-            echo "4. Rover will auto-create its Python venv on first launch (~1 min,"
-            echo "   ~150 MB) inside ~/Library/Application Support/app.rover.demo/."
+            echo "4. Houston will auto-create its Python venv on first launch (~1 min,"
+            echo "   ~150 MB) inside ~/Library/Application Support/app.houston.demo/."
             echo "5. Have **Ollama** running with at least 'gemma4:latest' or another"
             echo "   chat model + 'nomic-embed-text' pulled."
           } >> "$GITHUB_STEP_SUMMARY"
