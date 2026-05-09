@@ -75,12 +75,47 @@ export default function App() {
     []
   );
 
-  // Listen to sidecar status events from Rust
+  // Engine state: drive from /health polling (ground truth), with the
+  // Rust 'sidecar-status' event as a fast initial signal. Without the
+  // poll, we'd miss the event if it fires before this listener attaches.
   useEffect(() => {
+    let cancelled = false;
+    let consecutiveFails = 0;
+
     const unlisten = listen<EngineState>("sidecar-status", (e) => {
-      setEngineState(e.payload);
+      if (!cancelled) setEngineState(e.payload);
     });
+
+    async function probe() {
+      try {
+        const r = await api.health();
+        if (cancelled) return;
+        if (r?.ok) {
+          consecutiveFails = 0;
+          setEngineState((prev) => (prev === "ready" ? prev : "ready"));
+          return true;
+        }
+      } catch {
+        consecutiveFails++;
+      }
+      if (!cancelled && consecutiveFails >= 3) {
+        setEngineState("error");
+      }
+      return false;
+    }
+
+    // Aggressive poll until ready, then keepalive every 8s.
+    let timer: number | null = null;
+    const loop = async () => {
+      const ok = await probe();
+      if (cancelled) return;
+      timer = window.setTimeout(loop, ok ? 8000 : 1000);
+    };
+    loop();
+
     return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
       unlisten.then((u) => u());
     };
   }, []);
