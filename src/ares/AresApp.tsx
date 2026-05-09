@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
 import MarsBase, { type BuildingId } from "./3d/MarsBase";
 import GreenhouseDetail from "./views/GreenhouseDetail";
+import InventoryDetail from "./views/InventoryDetail";
+import RepairAssist from "./components/RepairAssist";
+import VoicePTT, { type TraySnapshot } from "./components/VoicePTT";
+import MarsLatencyChip from "./components/MarsLatencyChip";
+import PerfFooter from "./components/PerfFooter";
 
 const SOL_NUMBER = 423;
+
+// Snapshot the voice loop sends to Houston so spoken answers are grounded
+// in the same per-tray data the operator sees in the greenhouse drill-in.
+// Forward-port from feat/houston-voice (PR #7): without this, "what is tray
+// two doing?" gets a generic "in the corpora" answer; with it, Houston
+// quotes Mizuna stage 5/5 ETA 0 sols.
+const VOICE_TRAY_SNAPSHOT: TraySnapshot[] = [
+  { id: 1, label: "Outredgeous lettuce", species: "lettuce", stage: 4, ndvi: 0.78, ec: 1.8, ph: 6.0, ppfd: 300, moisture: 0.61, days_to_harvest: 6 },
+  { id: 2, label: "Mizuna mustard", species: "mizuna", stage: 5, ndvi: 0.81, ec: 1.9, ph: 6.3, ppfd: 295, moisture: 0.6, days_to_harvest: 0 },
+  { id: 3, label: "Hatch chile pepper", species: "pepper", stage: 2, ndvi: 0.55, ec: 1.7, ph: 6.4, ppfd: 310, moisture: 0.52, days_to_harvest: 95 },
+  { id: 4, label: "Red Robin tomato", species: "tomato", stage: 3, ndvi: 0.7, ec: 1.8, ph: 6.0, ppfd: 305, moisture: 0.55, days_to_harvest: 24 },
+];
 
 function formatBlackoutCountdown(secondsLeft: number) {
   const m = Math.max(0, Math.floor(secondsLeft / 60));
@@ -58,7 +75,8 @@ export default function AresApp() {
             Mars Habitat · Sol {SOL_NUMBER}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <MarsLatencyChip />
           <div
             className="px-3 py-1.5 rounded-md font-mono text-xs flex items-center gap-2"
             style={{
@@ -72,7 +90,7 @@ export default function AresApp() {
           </div>
           <button
             onClick={() => {
-              window.location.hash = "";
+              history.replaceState(null, "", "./");
               window.location.reload();
             }}
             className="text-xs px-3 py-1.5 rounded-md"
@@ -140,8 +158,8 @@ export default function AresApp() {
           </div>
         </div>
 
-        <div className="mt-auto pt-3 text-[10px] tracking-wider opacity-60" style={{ color: "#94a3b8" }}>
-          BUILD: ares-mars · cut-the-cord · 0 packets out
+        <div className="mt-auto pt-3">
+          <PerfFooter />
         </div>
       </aside>
 
@@ -152,25 +170,20 @@ export default function AresApp() {
           greenhouseReady={greenhouseReady}
           ch4FillPct={ch4FillPct}
           onSelectBuilding={(id) => setSelected(id)}
-          showStats
+          showStats={import.meta.env.DEV}
+          hideHints={selected === "greenhouse"}
         />
       </div>
 
-      {/* Floating PTT placeholder (next phase: real voice) */}
-      <button
-        className="absolute bottom-6 left-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
-        style={{
-          background: "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
-          color: "#0a0a0a",
-          boxShadow: "0 0 24px rgba(34,211,238,0.45), 0 4px 12px rgba(0,0,0,0.4)",
-          border: "1px solid #67e8f9",
-          fontWeight: 600,
-        }}
-        onMouseDown={() => setHabitatAlert(true)}
-        onMouseUp={() => setHabitatAlert(false)}
-      >
-        <span>🎙</span> HOLD TO TALK TO HOUSTON (mock)
-      </button>
+      {/* Voice push-to-talk: real STT (whisper.cpp) + LLM + TTS (macOS say).
+          Tray snapshot lets Houston ground spoken answers in real per-tray
+          data (PR #7 forward-port). */}
+      <VoicePTT trays={VOICE_TRAY_SNAPSHOT} selectedTrayId={2} />
+
+      {/* Houston Repair Assist — Houston layered on Rover Core RAG: free-text
+          fault → NASA-cited diagnose + on-base inventory cross-check + 3-5
+          step procedure (optional spoken). Killer Practical-Utility 25% beat. */}
+      <RepairAssist />
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div
@@ -203,6 +216,14 @@ export default function AresApp() {
       {/* Greenhouse drill-in modal */}
       {selected === "greenhouse" && (
         <GreenhouseDetail onClose={() => setSelected(null)} />
+      )}
+
+      {/* Inventory drill-in modal — habitat + eclss share the same view */}
+      {(selected === "habitat" || selected === "eclss") && (
+        <InventoryDetail
+          system={selected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   position: [number, number, number];
@@ -10,6 +10,10 @@ const KILOPOWER_COUNT = 5;
 export default function BuildingPower({ position, onClick }: Props) {
   const [hover, setHover] = useState(false);
   const accent = hover ? "#fbbf24" : "#a78bfa";
+
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
 
   return (
     <group

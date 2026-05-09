@@ -1,0 +1,7 @@
+policy,step,days,elapsed_ms,hits,misses,hit_rate
+naive,0,50,756,0,51,0.0
+naive,1,20,309,0,21,0.0
+naive,2,70,1039,0,71,0.0
+tile,0,50,28,51,0,1.0
+tile,1,20,9,21,0,1.0
+tile,2,70,35,71,0,1.0

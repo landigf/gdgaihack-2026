@@ -1,0 +1,24 @@
+{
+  "machine": "MacBook Pro M3 Pro \u00b7 18 GB unified",
+  "models": {
+    "gen": "gemma3:4b (Q4_K_M)",
+    "embed": "nomic-embed-text (768d)",
+    "asr": "whisper.cpp ggml-base.en",
+    "tts": "macOS say (Daniel)"
+  },
+  "greenhouse": {
+    "cold_ms": 4120,
+    "warm_median_ms": 4050,
+    "warm_p95_ms": 4063
+  },
+  "survival": {
+    "cold_ms": 2499,
+    "warm_median_ms": 2501
+  },
+  "voice": {
+    "cold_ms": 3364,
+    "warm_median_ms": 2649
+  },
+  "idle_ram_gb": 8.46,
+  "load_ram_gb": 9.09
+}

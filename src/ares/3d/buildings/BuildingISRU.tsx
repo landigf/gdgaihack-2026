@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Mesh } from "three";
 
@@ -19,6 +19,10 @@ export default function BuildingISRU({ position, ch4FillPct = 0.3, onClick }: Pr
     fillRef.current.scale.y += (target - fillRef.current.scale.y) * 0.05;
     fillRef.current.position.y = -0.6 + (target * 1.2) / 2 + 0.6;
   });
+
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
 
   return (
     <group

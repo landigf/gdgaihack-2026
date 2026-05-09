@@ -1,3 +1,4 @@
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,9 @@ from store import VectorStore
 from indexer import Indexer
 from retriever import Retriever
 from parsing import parse_file
+from ares import perf as _perf_mod
+from cache import TileCache
+from cache.sensor_producer import register_all as _register_sensor_streams
 
 # ARES / Houston (Mars Base AI Habitat Controller) — additive endpoints
 from ares.router import router as ares_router
@@ -34,18 +38,58 @@ class AppState:
     generator: object
     store: VectorStore
     dim: int
+    tile_cache: TileCache | None = None
 
 
 _state: AppState | None = None
 
 
+def _build_generator(embedder: OllamaClient) -> object:
+    """Pick the LLM generation backend.
+
+    Priority:
+        LLM_BACKEND=mlx     -> in-process MLXClient (Qwen2.5 series)
+        LLM_BACKEND=ollama  -> Ollama (gemma3:4b default)
+        LLM_BACKEND=auto    -> try MLX, fall back to Ollama
+        unset               -> auto
+
+    Embeddings always stay on Ollama (nomic-embed-text is tiny, no MLX gain).
+    """
+    backend = (os.environ.get("LLM_BACKEND") or "auto").lower()
+    if backend in ("mlx", "auto"):
+        try:
+            from mlx_client import MLXClient
+
+            client = MLXClient()
+            _perf_mod.set_backend("mlx")
+            print(f"[main] LLM backend: MLX in-process ({client.model_id})")
+            return client
+        except Exception as e:
+            if backend == "mlx":
+                # Explicit request — surface the error.
+                raise
+            print(f"[main] MLX unavailable, falling back to Ollama: {e}")
+    _perf_mod.set_backend("ollama")
+    print("[main] LLM backend: Ollama")
+    return embedder  # OllamaClient handles both embed and generate
+
+
 def get_app_state() -> AppState:
     global _state
     if _state is None:
-        client = OllamaClient()
+        embedder = OllamaClient()
         store = VectorStore(dim=EMBED_DIM, index_path=INDEX_PATH, meta_path=META_PATH)
         store.load()
-        _state = AppState(embedder=client, generator=client, store=store, dim=EMBED_DIM)
+        generator = _build_generator(embedder)
+        tile_cache = TileCache(root_dir=Path(__file__).parent / "data" / "cache")
+        _register_sensor_streams(tile_cache)
+        _state = AppState(
+            embedder=embedder,
+            generator=generator,
+            store=store,
+            dim=EMBED_DIM,
+            tile_cache=tile_cache,
+        )
     return _state
 
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   position: [number, number, number];
@@ -8,6 +8,10 @@ type Props = {
 export default function BuildingRoverGarage({ position, onClick }: Props) {
   const [hover, setHover] = useState(false);
   const accent = hover ? "#fbbf24" : "#94a3b8";
+
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
 
   return (
     <group
