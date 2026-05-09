@@ -31,6 +31,17 @@ export type IndexState = {
   indexed_at_ms?: number | null;
 };
 
+export type ModelInfo = {
+  name: string;
+  params?: string | null;
+  quant?: string | null;
+};
+
+export type ConfigResponse = {
+  gen: ModelInfo;
+  embed: ModelInfo;
+};
+
 /** Anything the AI panel / actions can target — both browse entries and search hits. */
 export type Selection =
   | { kind: "entry"; entry: DirEntry }

@@ -1,4 +1,5 @@
 import type {
+  ConfigResponse,
   IndexResponse,
   IndexState,
   SearchResponse,
@@ -40,6 +41,7 @@ async function get<T>(path: string): Promise<T> {
 export const api = {
   health: () => get<{ ok: boolean }>("/health"),
   state: () => get<IndexState>("/state"),
+  config: () => get<ConfigResponse>("/config"),
   // Index can take a while on large home folders — generous timeout.
   index: (folder: string) =>
     post<IndexResponse>("/index", { folder }, 10 * 60_000),

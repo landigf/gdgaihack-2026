@@ -44,6 +44,8 @@ export default function App() {
   const [engineState, setEngineState] = useState<EngineState>("starting");
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
+  const [modelGen, setModelGen] = useState<string>("loading…");
+  const [modelEmbed, setModelEmbed] = useState<string>("loading…");
 
   const [toast, setToastNode] = useState<ReactNode | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -144,6 +146,20 @@ export default function App() {
           }
         } catch {
           setWelcomeOpen(true);
+        }
+        // Fetch live model info (name, params, quant) from Ollama
+        try {
+          const c = await api.config();
+          const fmt = (m: typeof c.gen, withQuant: boolean) => {
+            const cleanName = m.name.replace(/:latest$/, "");
+            const parts = [m.params, withQuant ? m.quant : null].filter(Boolean);
+            return parts.length ? `${cleanName} · ${parts.join(" · ")}` : cleanName;
+          };
+          setModelGen(fmt(c.gen, true));
+          setModelEmbed(fmt(c.embed, true));
+        } catch {
+          setModelGen("models unavailable");
+          setModelEmbed("");
         }
         setBootChecked(true);
       } catch (e) {
@@ -315,8 +331,6 @@ export default function App() {
       : engineState === "starting"
       ? "Starting AI engine…"
       : "AI engine offline";
-  const modelInfo = "gemma4 · 8B  ·  nomic-embed-text · 137M";
-
   let centerStatus = "";
   if (indexBusy) centerStatus = "Indexing…";
   else if (isSearching)
@@ -348,7 +362,8 @@ export default function App() {
           currentPath={path}
           onNavigate={(p) => navigateTo(p)}
           engineState={engineState}
-          modelInfo={modelInfo}
+          modelGen={modelGen}
+          modelEmbed={modelEmbed}
           indexedRoot={indexedRoot}
           indexedFiles={indexedFiles}
           indexBusy={indexBusy}
@@ -427,7 +442,7 @@ export default function App() {
       <StatusBar
         engineState={engineState}
         engineLabel={engineLabel}
-        modelInfo={modelInfo}
+        modelInfo={[modelGen, modelEmbed].filter(Boolean).join("  ·  ")}
         centerText={centerStatus}
       />
 

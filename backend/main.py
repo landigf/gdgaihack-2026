@@ -6,13 +6,27 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+import asyncio
 import json
 
-from config import INDEX_PATH, META_PATH, STATE_PATH, EMBED_DIM, TOP_K
+import httpx
+
+from config import (
+    INDEX_PATH,
+    META_PATH,
+    STATE_PATH,
+    EMBED_DIM,
+    TOP_K,
+    OLLAMA_HOST,
+    EMBED_MODEL,
+    GEN_MODEL,
+)
 from models import (
+    ConfigResponse,
     IndexRequest,
     IndexResponse,
     IndexState,
+    ModelInfo,
     SearchRequest,
     SearchResponse,
     SummarizeRequest,
@@ -74,6 +88,30 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+async def _ollama_model_info(name: str) -> ModelInfo:
+    """Ask Ollama /api/show for the live params + quantization of `name`."""
+    info = ModelInfo(name=name)
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as c:
+            r = await c.post(f"{OLLAMA_HOST}/api/show", json={"name": name})
+            if r.status_code == 200:
+                details = r.json().get("details") or {}
+                info.params = details.get("parameter_size") or None
+                info.quant = details.get("quantization_level") or None
+    except Exception:
+        pass
+    return info
+
+
+@app.get("/config", response_model=ConfigResponse)
+async def get_config():
+    gen, embed = await asyncio.gather(
+        _ollama_model_info(GEN_MODEL),
+        _ollama_model_info(EMBED_MODEL),
+    )
+    return ConfigResponse(gen=gen, embed=embed)
 
 
 @app.get("/state", response_model=IndexState)

@@ -20,7 +20,8 @@ type Props = {
   currentPath: string;
   onNavigate: (path: string) => void;
   engineState: EngineState;
-  modelInfo: string; // e.g. "gemma4 · 8B" / "nomic-embed-text · 137M"
+  modelGen: string;   // e.g. "gemma4 · 8.0B"
+  modelEmbed: string; // e.g. "nomic-embed-text · 137M"
   indexedRoot: string | null;
   indexedFiles: number | null;
   indexBusy: boolean;
@@ -42,7 +43,8 @@ export default function Sidebar({
   currentPath,
   onNavigate,
   engineState,
-  modelInfo,
+  modelGen,
+  modelEmbed,
   indexedRoot,
   indexedFiles,
   indexBusy,
@@ -89,7 +91,11 @@ export default function Sidebar({
           <span className={`dot ${dotClass}`} />
           <b>{engineLabel}</b>
         </div>
-        <div className="eng-meta">{modelInfo}</div>
+        <div className="eng-meta">
+          {modelGen}
+          <br />
+          {modelEmbed}
+        </div>
 
         {indexBusy ? (
           <>

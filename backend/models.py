@@ -44,3 +44,14 @@ class IndexState(BaseModel):
     files: int | None = None
     chunks: int | None = None
     indexed_at_ms: int | None = None
+
+
+class ModelInfo(BaseModel):
+    name: str
+    params: str | None = None
+    quant: str | None = None
+
+
+class ConfigResponse(BaseModel):
+    gen: ModelInfo
+    embed: ModelInfo
