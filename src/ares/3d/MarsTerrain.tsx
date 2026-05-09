@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 const SIZE = 30;
@@ -22,6 +22,8 @@ export default function MarsTerrain() {
     g.computeVertexNormals();
     return g;
   }, []);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <mesh

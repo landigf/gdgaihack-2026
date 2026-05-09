@@ -116,7 +116,7 @@ export default function MarsBase({
         maxPolarAngle={Math.PI / 2.2}
         target={[0, 0.5, 0]}
       />
-      {showStats && <Stats />}
+      {import.meta.env.DEV && showStats && <Stats />}
     </Canvas>
   );
 }

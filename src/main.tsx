@@ -6,9 +6,9 @@ import AresTest from "./ares-test/AresTest";
 import AresApp from "./ares/AresApp";
 
 function pickRoot() {
-  const h = window.location.hash;
-  if (h.includes("ares-test")) return AresTest;
-  if (h.includes("ares")) return AresApp;
+  const h = window.location.hash.replace(/^#/, "");
+  if (h === "ares-test") return AresTest;
+  if (h === "ares") return AresApp;
   return App;
 }
 
