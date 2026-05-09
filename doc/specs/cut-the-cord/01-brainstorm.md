@@ -171,7 +171,7 @@ See [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses
 |---|---|---:|---:|---:|---:|---:|---|---|
 | **1** | **Control-Room Copilot** (chemical plant / mining / oil-&-gas operator's desk; EdgeXpert at the workstation) | 3 | 3 | 3 | 3 | **3.00** | **Maximum** — corpus, harness, regulatory moats, Pump Room B SOP, Seed C all reusable | **Lowest** — code already exists, just relocate the device |
 | 2 | Enterprise Doc Copilot (HR / Legal / Finance offline) | 3 | 3 | 2 | 2 | **2.50** | Medium — harness reusable, corpus rebuilt | Medium — corpus rebuild + new pitch |
-| 3 | MedGemma Clinic Copilot | 3 | 2 | 3 | 3 | **2.75** | Medium — HIPAA moats reusable, corpus mostly rebuilt | Medium-high — clinical scenarios need careful claim surface |
+| 3 | MedGemma Clinic Copilot ⚠ | 3 | 2 | 3 | 3 | **2.75** | Medium — HIPAA moats reusable, corpus mostly rebuilt | **High** — see ⚠ below |
 | 4 | Devstral Coding Navigator (Idea 3 sharpened) | 3 | 2 | 3 | 2 | **2.55** | Low — abandon corpus + scenarios | High — full rebuild |
 
 ### Why Control-Room scores 3.00/3.00
@@ -184,7 +184,7 @@ See [research/syntheses/claude-technical-stack-2026-05-06.md](research/syntheses
 ### Why we don't drop the other three yet
 
 - **Enterprise Doc Copilot:** strongest brief-fit for "private by default" framing; if the team doesn't connect to the dangerous-jobs anchor emotionally, this is the safe pivot.
-- **MedGemma Clinic:** the brief NAMES MedGemma. If the team huddle converges on a clinical demo, this is a solid fallback (HIPAA moats already drafted).
+- **MedGemma Clinic:** the brief NAMES MedGemma. If the team huddle converges on a clinical demo, this is a solid fallback (HIPAA moats already drafted). ⚠ **build-risk flag (verified 2026-05-09):** Ollama only ships `medgemma:27b`, NOT the 4B variant the brief names. Choosing this candidate means either (a) loading 27B which needs Comfortable+ tier (32+ GB) and may be tight on M3 Pro 36 GB once the embedder + STT + UI shell are loaded, OR (b) pulling `google/medgemma-4b-it` from Hugging Face and converting to GGUF via llama.cpp ourselves — adds 30-60 min of build time. Decide at huddle.
 - **Devstral Coding Navigator:** scores well on Creative On-Device (multi-agent over a real repo is unambiguous "creative"). Highest 24h build risk because we'd rebuild corpus from scratch.
 
 ### Form-factor pivot (mandatory, all candidates)
