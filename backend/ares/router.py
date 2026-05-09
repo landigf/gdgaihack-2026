@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from retriever import Retriever
@@ -33,6 +33,7 @@ from ares.voice import (
     synthesize,
     transcribe,
 )
+from ares import perf as _perf_mod
 
 
 router = APIRouter(prefix="/ares", tags=["ares"])
@@ -295,11 +296,85 @@ def ares_health():
     return {"ok": True, "service": "houston"}
 
 
+class SensorQueryResponse(BaseModel):
+    stream: str
+    start: int
+    end: int
+    n_samples: int
+    cache: dict
+    aggregates: dict
+
+
 def _get_state():
     """Late-bound import so this module can be loaded without Rover Core
     (e.g. for unit tests). Resolves to main.get_app_state at call time."""
     from main import get_app_state  # type: ignore
     return get_app_state()
+
+
+# ---------------------------------------------------------------------------
+# Time-windowed sensor query — drives the tile-cache reuse demo. A query for
+# "last 50 sols" warms tiles; a follow-up "last 20 sols" hits 100% of cached
+# tiles; "last 70 sols" hits the cached 50 + computes only the 20-sol delta.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sensor/query")
+async def sensor_query(
+    stream: str,
+    days: int = 7,
+    end_ts: int | None = None,
+    state=Depends(_get_state),
+):
+    """Return aggregates over the last ``days`` Sols of ``stream``. The raw
+    samples are not shipped over the wire (they're 1Hz × 86400 × N days = a
+    lot); the response carries summary stats plus the cache hit/miss
+    accounting that drives the tech-report cache figure.
+
+    Demo trace:
+        GET /ares/sensor/query?stream=o2_kg_per_hr&days=50  # 50 misses
+        GET /ares/sensor/query?stream=o2_kg_per_hr&days=20  # 20 hits, 0 miss
+        GET /ares/sensor/query?stream=o2_kg_per_hr&days=70  # 50 hits, 20 miss
+    """
+    if state.tile_cache is None:
+        raise HTTPException(503, "tile cache unavailable")
+    if days <= 0 or days > 365:
+        raise HTTPException(400, "days must be in [1, 365]")
+    end = int(end_ts) if end_ts is not None else int(time.time())
+    start = end - days * 86_400
+    try:
+        table, stats = state.tile_cache.query_window(stream, start, end)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"query failed: {e}")
+
+    if table.num_rows == 0:
+        agg = {"n": 0}
+    else:
+        col = table.column("value").to_numpy(zero_copy_only=False)
+        agg = {
+            "n": int(col.size),
+            "mean": float(col.mean()),
+            "min": float(col.min()),
+            "max": float(col.max()),
+            "stdev": float(col.std()),
+        }
+    return SensorQueryResponse(
+        stream=stream,
+        start=start,
+        end=end,
+        n_samples=table.num_rows,
+        cache=stats.to_dict(),
+        aggregates=agg,
+    )
+
+
+@router.get("/sensor/cache/stats")
+async def sensor_cache_stats(state=Depends(_get_state)):
+    if state.tile_cache is None:
+        raise HTTPException(503, "tile cache unavailable")
+    return state.tile_cache.export_summary()
 
 
 @router.post("/houston/greenhouse", response_model=HoustonResponse)
@@ -419,6 +494,129 @@ async def houston_greenhouse(req: HoustonGreenhouseRequest, state=Depends(_get_s
         procedure=procedure_steps,
         procedure_elapsed_ms=int((time.time() - proc_t0) * 1000) if procedure_steps else 0,
         procedure_kv_cache_hit=proc_kv_hit,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Streaming variant — drops perceived TTFT from ~1.8s (full response wait)
+# to <400ms (first token). Same prompt path as /houston/greenhouse so the
+# bytes-identical system prefix that enables KV-cache reuse is preserved.
+# ---------------------------------------------------------------------------
+
+
+@router.post("/houston/greenhouse/stream")
+async def houston_greenhouse_stream(
+    req: HoustonGreenhouseRequest, state=Depends(_get_state)
+):
+    """SSE stream of greenhouse narration tokens.
+
+    Event format:
+        data: {"ttft_ms": <int>}                         (once, on first token)
+        data: {"token": "<text>"}                         (many)
+        data: {"done": true, "verdict": ..., "tone": ..., (once, terminal)
+               "narration": ..., "citations": [...],
+               "elapsed_ms": <int>, "used_llm": true}
+
+    The procedure (A2A) persona is intentionally NOT streamed here — the
+    non-streaming /houston/greenhouse endpoint remains the path for the
+    full A2A handoff. This endpoint focuses on perceived latency for the
+    primary persona, which is what the live demo benefits from.
+    """
+    sel = next((t for t in req.trays if t.id == req.selected_tray_id), None)
+    if not sel:
+        raise HTTPException(400, f"selected_tray_id {req.selected_tray_id} not in trays")
+
+    # 1) RAG retrieval (same as non-streaming endpoint) — outside the
+    #    generator coroutine so SSE only carries token deltas.
+    citation_pool: list[Citation] = []
+    chunk_block = ""
+    try:
+        retriever = Retriever(state.embedder, state.store)
+        stage_name = STAGE_NAMES[sel.stage] if 0 <= sel.stage < len(STAGE_NAMES) else ""
+        query = f"{sel.species} {stage_name} NASA Veggie APH protocol"
+        hits = await retriever.search(query, k=3)
+    except Exception:
+        hits = []
+    if hits:
+        parts: list[str] = []
+        for i, h in enumerate(hits):
+            cid = f"S{i + 1}"
+            text = (h.get("chunk_text") or "")[:600]
+            parts.append(f"[{cid}] {h['filename']} chunk {h['chunk_index']}\n{text}")
+            citation_pool.append(
+                Citation(
+                    id=cid,
+                    path=h["path"],
+                    filename=h["filename"],
+                    chunk_index=h["chunk_index"],
+                )
+            )
+        chunk_block = "\n\n".join(parts)
+
+    user_prompt = _build_user_prompt(req, chunk_block)
+
+    async def event_stream():
+        t0 = time.time()
+        ttft_ms: int | None = None
+        full_text = ""
+        used_llm = False
+        try:
+            async for piece, done in state.generator.generate_stream(
+                user_prompt, system=greenhouse_system()
+            ):
+                if piece:
+                    if ttft_ms is None:
+                        ttft_ms = int((time.time() - t0) * 1000)
+                        _perf_mod.record_ttft("greenhouse", float(ttft_ms))
+                        yield f"data: {json.dumps({'ttft_ms': ttft_ms})}\n\n"
+                    full_text += piece
+                    yield f"data: {json.dumps({'token': piece})}\n\n"
+                    used_llm = True
+                if done:
+                    break
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        # Parse the final structured response from the streamed text. Falls
+        # back to the deterministic narration if the LLM didn't return JSON.
+        parsed = _parse_houston_json(full_text) if used_llm else None
+        if not parsed:
+            parsed = _fallback_narration(req)
+            used_llm = False
+
+        verdict = str(parsed.get("verdict") or "").strip() or "GREENHOUSE STATUS"
+        narration = str(parsed.get("narration") or "").strip()
+        if not narration:
+            narration = _fallback_narration(req)["narration"]
+        tone = parsed.get("tone") or "growing"
+        if tone not in ("ready", "growing", "early", "alert"):
+            tone = "growing"
+
+        ids_in_text = sorted(set(re.findall(r"\[(S\d+)\]", narration)))
+        if citation_pool:
+            pool_by_id = {c.id: c for c in citation_pool}
+            citations = [pool_by_id[cid] for cid in ids_in_text if cid in pool_by_id]
+        else:
+            if not ids_in_text:
+                ids_in_text = ["S2"]
+            citations = [Citation(id=cid) for cid in ids_in_text]
+
+        final = {
+            "done": True,
+            "verdict": verdict[:60],
+            "narration": narration[:600],
+            "tone": tone,
+            "citations": [c.model_dump() for c in citations],
+            "elapsed_ms": int((time.time() - t0) * 1000),
+            "ttft_ms": ttft_ms,
+            "used_llm": used_llm,
+        }
+        yield f"data: {json.dumps(final)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

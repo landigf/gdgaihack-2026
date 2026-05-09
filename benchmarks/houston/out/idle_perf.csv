@@ -1,7 +1,7 @@
-ts,cpu_pct_total,ram_used_mb,ram_total_mb,ram_pct,sidecar_rss_mb,ollama_rss_mb,cpu_temp_c
-1778361400.820381,0.0,5960,18432,79.4,37,48,
-1778361401.86013,19.2,5912,18432,79.1,39,48,
-1778361402.90889,14.8,5886,18432,78.9,39,48,
-1778361403.958343,23.9,5899,18432,79.0,39,48,
-1778361405.007367,36.4,5926,18432,78.7,39,48,
-1778361406.056287,4.8,5912,18432,78.6,39,48,
+ts,llm_backend,cpu_pct_total,ram_used_mb,ram_total_mb,ram_pct,sidecar_rss_mb,ollama_rss_mb,cpu_temp_c,ttft_greenhouse_p50_ms,ttft_greenhouse_p90_ms,ttft_greenhouse_n,ttft_procedure_p50_ms,ttft_procedure_p90_ms,ttft_procedure_n,ttft_survival_p50_ms,ttft_survival_p90_ms,ttft_survival_n,ttft_voice_p50_ms,ttft_voice_p90_ms,ttft_voice_n
+1778365575.148988,mlx,11.5,8674,18432,65.0,2032,30,,,,0,,,0,,,0,,,0
+1778365576.181101,mlx,8.3,8678,18432,65.0,2032,30,,,,0,,,0,,,0,,,0
+1778365577.230672,mlx,15.3,8666,18432,64.9,2032,30,,,,0,,,0,,,0,,,0
+1778365578.2807481,mlx,13.2,8737,18432,65.2,2032,30,,,,0,,,0,,,0,,,0
+1778365579.3226602,mlx,12.0,8703,18432,65.0,2032,30,,,,0,,,0,,,0,,,0
+1778365580.358767,mlx,13.4,8667,18432,64.8,2032,30,,,,0,,,0,,,0,,,0

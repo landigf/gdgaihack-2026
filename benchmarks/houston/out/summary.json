@@ -7,18 +7,18 @@
     "tts": "macOS say (Daniel)"
   },
   "greenhouse": {
-    "cold_ms": 9387,
-    "warm_median_ms": 8196,
-    "warm_p95_ms": 8380
+    "cold_ms": 4120,
+    "warm_median_ms": 4050,
+    "warm_p95_ms": 4063
   },
   "survival": {
-    "cold_ms": 3348,
-    "warm_median_ms": 3594
+    "cold_ms": 2499,
+    "warm_median_ms": 2501
   },
   "voice": {
-    "cold_ms": 3960,
-    "warm_median_ms": 2382
+    "cold_ms": 3364,
+    "warm_median_ms": 2649
   },
-  "idle_ram_gb": 5.77,
-  "load_ram_gb": 9.32
+  "idle_ram_gb": 8.46,
+  "load_ram_gb": 9.09
 }
