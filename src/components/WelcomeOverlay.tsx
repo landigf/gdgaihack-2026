@@ -1,4 +1,4 @@
-import { Compass, FolderSearch, Loader, Sparkles } from "./Icon";
+import { Spark, SearchIcon, Shield } from "./Icon";
 
 type Props = {
   homeLabel: string;
@@ -16,89 +16,99 @@ export default function WelcomeOverlay({
   onSkip,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-6 backdrop-blur-xl bg-black/20 dark:bg-black/55 animate-fade-in-fast">
-      <div className="card max-w-md w-full p-8 text-center animate-scale-in shadow-pop">
-        {/* Logo + ring pulse */}
-        <div className="mx-auto relative w-20 h-20 mb-5">
-          <div className="absolute inset-0 rounded-3xl bg-accent-soft animate-ring-pulse" />
-          <div className="absolute inset-0 rounded-3xl bg-accent-soft" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Compass size={36} />
-          </div>
-        </div>
-
-        <h1 className="font-display text-2xl font-semibold text-text tracking-tight">
-          Welcome to Rover
-        </h1>
-        <p className="text-sm text-muted leading-relaxed mt-2 mb-6 max-w-sm mx-auto">
-          The AI-powered file finder that runs entirely on your Mac.
-          Find documents by what they{" "}
-          <span className="text-text font-medium">mean</span> — not just by name.
+    <div
+      className="welcome-scrim"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).classList.contains("welcome-scrim")) {
+          onSkip();
+        }
+      }}
+    >
+      <div className="welcome">
+        <span className="badge"><Spark /> Welcome to Rover</span>
+        <h1>Find any document by what it says, not what it's called.</h1>
+        <p className="lede">
+          Rover indexes folders on your Mac and uses a small AI — running
+          entirely on this machine — to make every document searchable by meaning.
         </p>
 
-        <div className="text-left rounded-2xl bg-elevated/70 dark:bg-white/5 p-4 mb-5 shadow-soft">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 text-accent">
-              <FolderSearch size={18} />
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-text">
-                Index{" "}
-                <span className="font-mono text-accent">{homeLabel}</span>
-              </p>
-              <p className="text-xs text-muted mt-1.5 leading-relaxed">
-                We'll scan Documents, Desktop, Downloads — skipping system
-                folders, apps, caches, and code repos. Everything stays on this
-                device.
-              </p>
+        <div className="features">
+          <div className="feat">
+            <span className="fic"><SearchIcon /></span>
+            <div>
+              <b>Semantic search</b>
+              <span>
+                Type "the budget presentation Marco asked for" and find the right
+                PDF — even if its filename is{" "}
+                <span className="mono">Q3_rev2_final.pdf</span>.
+              </span>
+            </div>
+          </div>
+          <div className="feat">
+            <span className="fic"><Spark /></span>
+            <div>
+              <b>Summarize with AI</b>
+              <span>
+                Get a five-bullet summary of any PDF, DOCX, or Markdown file.
+                Save it as a note with one click.
+              </span>
+            </div>
+          </div>
+          <div className="feat">
+            <span className="fic"><Shield /></span>
+            <div>
+              <b>100% offline, 100% private</b>
+              <span>
+                All AI runs locally via Ollama. Your files never leave this Mac.
+                The demo works in airplane mode.
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Bullet feature list */}
-        <ul className="text-left space-y-2.5 text-xs text-muted px-1 mb-6">
-          {[
-            ["100% offline.", "Models run on your hardware, no cloud."],
-            ["Multilingual.", "Search Italian docs in English, and vice versa."],
-            ["Native macOS.", "~20 MB shell. Reveal in Finder. Cmd-K search."],
-          ].map(([h, body]) => (
-            <li key={h} className="flex items-start gap-2">
-              <Sparkles size={12} className="text-accent mt-0.5 shrink-0" />
-              <span>
-                <span className="font-semibold text-text">{h}</span>{" "}
-                {body}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="privacy">
+          <Shield />
+          <span>
+            <b>About to be indexed:</b> {homeLabel}/Documents · {homeLabel}/Desktop · {homeLabel}/Downloads
+            <br />
+            <b>Skipped:</b> ~/Library · /Applications · node_modules · .git · *.tmp
+          </span>
+        </div>
 
         {busy ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 text-sm text-text">
-              <Loader size={16} className="text-accent" />
-              <span>Setting things up…</span>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              fontSize: 12,
+              color: "var(--ink-2)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: "var(--ai)",
+                }}
+              />
+              <span>Setting things up… this can take up to a minute the first time.</span>
             </div>
             {progress && (
-              <p className="text-xs text-muted font-mono">{progress}</p>
+              <span className="mono" style={{ color: "var(--muted)" }}>
+                {progress}
+              </span>
             )}
-            <p className="text-xs text-subtle">
-              First-time setup typically finishes in under a minute.
-            </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={onStart}
-              className="btn btn-primary w-full h-11 text-[14px] font-semibold"
-            >
-              <FolderSearch size={15} />
-              Set up Rover
-            </button>
-            <button
-              onClick={onSkip}
-              className="btn btn-ghost w-full h-9 text-muted hover:text-text"
-            >
+          <div className="cta">
+            <button className="btn" onClick={onSkip}>
               Skip for now
+            </button>
+            <button className="btn primary" onClick={onStart}>
+              <Spark /> Set up Rover
             </button>
           </div>
         )}

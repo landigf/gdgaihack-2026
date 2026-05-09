@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { listen } from "@tauri-apps/api/event";
 import type { DirEntry, SearchHit, Selection } from "./types";
 import { api } from "./api";
 import { tauri } from "./tauri";
 import Toolbar from "./components/Toolbar";
 import Sidebar, { type QuickItem } from "./components/Sidebar";
 import Breadcrumbs from "./components/Breadcrumbs";
-import HeroHeader from "./components/HeroHeader";
 import BrowseList from "./components/BrowseList";
 import SearchHits from "./components/SearchHits";
 import DetailPanel from "./components/DetailPanel";
@@ -13,12 +13,15 @@ import StatusBar from "./components/StatusBar";
 import WelcomeOverlay from "./components/WelcomeOverlay";
 
 type HistoryState = { stack: string[]; index: number };
+type EngineState = "ready" | "starting" | "error";
 
 function homeRel(p: string, home: string) {
   if (!p) return p;
   if (!home) return p;
   return p.startsWith(home) ? "~" + p.slice(home.length) : p;
 }
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function App() {
   const [home, setHome] = useState<string>("");
@@ -29,17 +32,27 @@ export default function App() {
   const [browseError, setBrowseError] = useState<string>("");
 
   const [query, setQuery] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
-  const [searchElapsed, setSearchElapsed] = useState<number | undefined>(undefined);
+  const [searchElapsed, setSearchElapsed] = useState<number | null>(null);
 
   const [indexedRoot, setIndexedRoot] = useState<string | null>(null);
   const [indexedFiles, setIndexedFiles] = useState<number | null>(null);
   const [indexBusy, setIndexBusy] = useState(false);
 
-  const [info, setInfo] = useState<string>("");
+  const [engineState, setEngineState] = useState<EngineState>("starting");
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
+
+  const [toast, setToastNode] = useState<ReactNode | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  const flashToast = useCallback((node: ReactNode) => {
+    setToastNode(node);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToastNode(null), 2400);
+  }, []);
 
   const navigateTo = useCallback(
     async (target: string, pushHistory = true) => {
@@ -49,8 +62,6 @@ export default function App() {
         setEntries(list);
         setSelection(null);
         setBrowseError("");
-        setQuery("");
-        setHits([]);
         if (pushHistory) {
           setHistory((h) => {
             const trimmed = h.stack.slice(0, h.index + 1);
@@ -64,6 +75,17 @@ export default function App() {
     []
   );
 
+  // Listen to sidecar status events from Rust
+  useEffect(() => {
+    const unlisten = listen<EngineState>("sidecar-status", (e) => {
+      setEngineState(e.payload);
+    });
+    return () => {
+      unlisten.then((u) => u());
+    };
+  }, []);
+
+  // Boot
   useEffect(() => {
     (async () => {
       try {
@@ -74,9 +96,7 @@ export default function App() {
           try {
             const ok = await api.health();
             if (ok?.ok) break;
-          } catch {
-            /* not ready */
-          }
+          } catch { /* not ready */ }
           await new Promise((r) => setTimeout(r, 500));
         }
         try {
@@ -98,6 +118,63 @@ export default function App() {
     })();
   }, [navigateTo]);
 
+  // Debounce search
+  useEffect(() => {
+    if (!query.trim()) {
+      setDebouncedQuery("");
+      return;
+    }
+    const t = window.setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [query]);
+
+  // Run search when debounced query changes
+  useEffect(() => {
+    const q = debouncedQuery;
+    if (!q) {
+      setHits([]);
+      setSearchElapsed(null);
+      return;
+    }
+    if (!indexedRoot) {
+      setHits([]);
+      flashToast(
+        <span>
+          Index a folder first — see the <b>sidebar</b>.
+        </span>
+      );
+      return;
+    }
+    let cancelled = false;
+    setSearchBusy(true);
+    api
+      .search(q, 12)
+      .then((r) => {
+        if (cancelled) return;
+        setHits(r.hits);
+        setSearchElapsed(r.elapsed_ms);
+        if (r.hits[0]) setSelection({ kind: "hit", hit: r.hits[0] });
+        else setSelection(null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        flashToast(<>Search error: {(e as Error).message}</>);
+      })
+      .finally(() => {
+        if (!cancelled) setSearchBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, indexedRoot, flashToast]);
+
+  // Keep selection in sync with current folder when navigating
+  useEffect(() => {
+    if (entries.length > 0 && !selection) {
+      setSelection({ kind: "entry", entry: entries[0] });
+    }
+  }, [entries, selection]);
+
   function goBack() {
     if (history.index <= 0) return;
     const i = history.index - 1;
@@ -116,55 +193,52 @@ export default function App() {
     if (parent === path) return;
     navigateTo(parent);
   }
+
   function onOpenEntry(e: DirEntry) {
     if (e.is_dir) {
       navigateTo(e.path);
     } else {
       tauri.openFile(e.path).catch(() => {});
+      flashToast(<>Opening <b>{e.name}</b>…</>);
     }
   }
 
-  async function doSearch(q: string) {
-    if (!indexedRoot) {
-      setInfo("Pick a folder and click 'Index this folder' first.");
-      return;
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const isMac = navigator.platform.toLowerCase().includes("mac");
+      const meta = isMac ? e.metaKey : e.ctrlKey;
+      if (meta && e.key === "[") { e.preventDefault(); goBack(); }
+      if (meta && e.key === "]") { e.preventDefault(); goForward(); }
+      if (meta && e.key === "ArrowUp") { e.preventDefault(); goUp(); }
     }
-    setSearchBusy(true);
-    setQuery(q);
-    setInfo("");
-    try {
-      const r = await api.search(q, 12);
-      setHits(r.hits);
-      setSearchElapsed(r.elapsed_ms);
-      setSelection(r.hits[0] ? { kind: "hit", hit: r.hits[0] } : null);
-    } catch (e) {
-      setInfo(`Search error: ${(e as Error).message}`);
-    } finally {
-      setSearchBusy(false);
-    }
-  }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.index, history.stack, path]);
+
   function clearSearch() {
     setQuery("");
+    setDebouncedQuery("");
     setHits([]);
-    setInfo("");
+    setSearchElapsed(null);
     setSelection(null);
-    setSearchElapsed(undefined);
   }
 
   async function indexFolder(target: string) {
     setIndexBusy(true);
-    setInfo(`Indexing ${homeRel(target, home)}…`);
     try {
       const r = await api.index(target);
       setIndexedRoot(target);
       setIndexedFiles(r.files_indexed);
-      setInfo(
-        `Indexed ${r.files_indexed} files (${r.chunks} sections) in ${(
-          r.elapsed_ms / 1000
-        ).toFixed(1)} s`
+      flashToast(
+        <>
+          Indexed <b>{r.files_indexed}</b> file{r.files_indexed === 1 ? "" : "s"} ·{" "}
+          <span className="mono">{(r.elapsed_ms / 1000).toFixed(1)}s</span>
+        </>
       );
     } catch (e) {
-      setInfo(`Index error: ${(e as Error).message}`);
+      flashToast(<>Index error: {(e as Error).message}</>);
       throw e;
     } finally {
       setIndexBusy(false);
@@ -177,7 +251,7 @@ export default function App() {
       await indexFolder(home);
       setWelcomeOpen(false);
     } catch {
-      /* keep overlay with error */
+      /* keep overlay with error toast */
     }
   }
   function skipWelcome() {
@@ -186,18 +260,41 @@ export default function App() {
 
   const items: QuickItem[] = [
     { label: "Home", path: home, kind: "home" },
-    { label: "Documents", path: `${home}/Documents`, kind: "folder" },
-    { label: "Downloads", path: `${home}/Downloads`, kind: "folder" },
-    { label: "Desktop", path: `${home}/Desktop`, kind: "folder" },
+    { label: "Documents", path: `${home}/Documents`, kind: "documents" },
+    { label: "Downloads", path: `${home}/Downloads`, kind: "downloads" },
+    { label: "Desktop", path: `${home}/Desktop`, kind: "desktop" },
     { label: "demo-rover", path: `${home}/demo-rover`, kind: "starred" },
   ];
 
-  const canIndexCurrent = !!path;
-  const folderName = path === home ? "Home" : path.split("/").pop() || path;
-  const isCurrentIndexed = !!indexedRoot && (indexedRoot === path || path.startsWith(indexedRoot + "/"));
+  const isSearching = !!debouncedQuery;
+  const folderName = !path
+    ? ""
+    : path === home
+    ? "Home"
+    : path.split("/").filter(Boolean).pop() ?? path;
+  const itemsCount = entries.length;
+
+  const engineLabel =
+    engineState === "ready"
+      ? "AI engine ready"
+      : engineState === "starting"
+      ? "Starting AI engine…"
+      : "AI engine offline";
+  const modelInfo = "gemma4 · 8B  ·  nomic-embed-text · 137M";
+
+  let centerStatus = "";
+  if (indexBusy) centerStatus = "Indexing…";
+  else if (isSearching)
+    centerStatus = `${hits.length} match${hits.length === 1 ? "" : "es"}${
+      searchElapsed !== null ? ` · ${searchElapsed} ms` : ""
+    }`;
+  else
+    centerStatus = `${itemsCount} item${itemsCount === 1 ? "" : "s"}${
+      selection ? ", 1 selected" : ""
+    }`;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="window">
       <Toolbar
         canBack={history.index > 0}
         canForward={history.index < history.stack.length - 1}
@@ -206,105 +303,113 @@ export default function App() {
         onForward={goForward}
         onUp={goUp}
         query={query}
-        onSearch={doSearch}
+        onQueryChange={setQuery}
         onClearSearch={clearSearch}
-        searchBusy={searchBusy}
-        searchEnabled={!!indexedRoot}
-        searchHint={
-          indexedRoot
-            ? `Search ${indexedFiles ?? ""} indexed files…`
-            : "Index a folder to enable search"
-        }
-        indexBusy={indexBusy}
       />
 
-      <div className="flex-1 flex min-h-0">
+      <div className="body">
         <Sidebar
           items={items}
           currentPath={path}
           onNavigate={(p) => navigateTo(p)}
+          engineState={engineState}
+          modelInfo={modelInfo}
           indexedRoot={indexedRoot}
           indexedFiles={indexedFiles}
           indexBusy={indexBusy}
-          onIndexCurrent={() => path && indexFolder(path)}
-          currentPathLabel={path.split("/").pop() || path}
-          canIndexCurrent={canIndexCurrent}
+          indexProgress={0}
+          onIndex={() => path && indexFolder(path)}
+          canIndex={!!path}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 main-surface">
-          {/* Slim breadcrumb row */}
-          <div className="h-10 px-6 flex items-center gap-3">
-            <Breadcrumbs path={path} home={home} onNavigate={(p) => navigateTo(p)} />
-            {query && (
-              <button
-                onClick={clearSearch}
-                className="ml-auto btn btn-secondary !h-7 !px-2.5 !text-xs"
-              >
-                ← Back to folder
-              </button>
+        <main className="main">
+          <div className="crumb">
+            {!isSearching ? (
+              <>
+                <Breadcrumbs path={path} home={home} onNavigate={(p) => navigateTo(p)} />
+                <h2>{folderName || "Home"}</h2>
+                <div className="sub">
+                  {itemsCount} item{itemsCount === 1 ? "" : "s"}
+                  {indexedRoot &&
+                    (path === indexedRoot || path.startsWith(indexedRoot + "/")) && (
+                      <>
+                        {" · "}
+                        <span style={{ color: "var(--ai)" }}>● indexed</span>
+                      </>
+                    )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="path">
+                  <span className="sep">
+                    Semantic search across {indexedRoot ? "1 indexed location" : "0 indexed locations"}
+                  </span>
+                </div>
+                <h2>"{debouncedQuery}"</h2>
+                <div className="sub">
+                  {hits.length} result{hits.length === 1 ? "" : "s"} · sorted by relevance
+                </div>
+              </>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
-            {/* Hero header for the active view */}
-            {query ? (
-              <HeroHeader
-                mode="search"
-                query={query}
-                hitsCount={hits.length}
-                elapsedMs={searchElapsed}
-              />
-            ) : (
-              <HeroHeader
-                mode="browse"
-                folderName={folderName}
-                itemsCount={entries.length}
-                isIndexed={isCurrentIndexed}
-              />
-            )}
+          {browseError && !isSearching && (
+            <div className="empty" style={{ height: 220 }}>
+              <h3>Couldn't open this folder</h3>
+              <p>{browseError}</p>
+            </div>
+          )}
 
-            {browseError && !query && (
-              <div className="mb-3 text-sm text-danger bg-danger/10 rounded-xl px-3 py-2 shadow-soft">
-                {browseError}
-              </div>
-            )}
+          {!isSearching && !browseError && (
+            <BrowseList
+              entries={entries}
+              selected={selection?.kind === "entry" ? selection.entry : null}
+              onSelect={(e) => setSelection({ kind: "entry", entry: e })}
+              onOpen={onOpenEntry}
+            />
+          )}
 
-            {query ? (
-              <SearchHits
-                hits={hits}
-                selected={selection?.kind === "hit" ? selection.hit : null}
-                onSelect={(h) => setSelection({ kind: "hit", hit: h })}
-                query={query}
-                busy={searchBusy}
-              />
-            ) : (
-              <BrowseList
-                entries={entries}
-                selected={selection?.kind === "entry" ? selection.entry : null}
-                onSelect={(e) => setSelection({ kind: "entry", entry: e })}
-                onOpen={onOpenEntry}
-              />
-            )}
-          </div>
+          {isSearching && (
+            <SearchHits
+              hits={hits}
+              selected={selection?.kind === "hit" ? selection.hit : null}
+              onSelect={(h) => setSelection({ kind: "hit", hit: h })}
+              query={debouncedQuery}
+              busy={searchBusy}
+            />
+          )}
         </main>
 
         <DetailPanel
           selection={selection}
           indexedRoot={indexedRoot}
-          onIndexFolder={(p) => indexFolder(p)}
+          onIndexFolder={indexFolder}
+          onToast={flashToast}
         />
       </div>
 
-      <StatusBar info={info} indexedRoot={indexedRoot} />
+      <StatusBar
+        engineState={engineState}
+        engineLabel={engineLabel}
+        modelInfo={modelInfo}
+        centerText={centerStatus}
+      />
 
       {bootChecked && welcomeOpen && (
         <WelcomeOverlay
-          homeLabel={homeRel(home, home) || home || "your Home folder"}
+          homeLabel={homeRel(home, home) || "~"}
           busy={indexBusy}
-          progress={info}
+          progress={indexBusy ? "Reading PDFs, building embeddings…" : undefined}
           onStart={startWelcomeIndexing}
           onSkip={skipWelcome}
         />
+      )}
+
+      {toast && (
+        <div className="toast-wrap">
+          <div className="toast">{toast}</div>
+        </div>
       )}
     </div>
   );

@@ -1,380 +1,318 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Selection } from "../types";
 import { api } from "../api";
 import { tauri } from "../tauri";
 import {
-  Sparkles,
-  NotePlus,
-  FolderSearch,
-  ExternalLink,
-  Loader,
-  Folder,
-  FileText,
+  Spark,
+  OpenExt,
+  FinderApp,
+  NoteIcon,
+  IndexBars,
 } from "./Icon";
 
 type Props = {
   selection: Selection | null;
   indexedRoot: string | null;
   onIndexFolder: (path: string) => void;
+  onToast: (node: React.ReactNode) => void;
 };
 
-function targetFile(sel: Selection | null) {
-  if (!sel) return null;
-  if (sel.kind === "entry") {
-    if (sel.entry.is_dir) return null;
-    return { path: sel.entry.path, filename: sel.entry.name };
-  }
-  return { path: sel.hit.path, filename: sel.hit.filename };
+type FileKind = "pdf" | "doc" | "md" | "txt" | "default";
+
+function kindOfFilename(name: string): { kind: FileKind; label: string } {
+  const i = name.lastIndexOf(".");
+  const ext = i >= 0 ? name.slice(i + 1).toLowerCase() : "";
+  if (ext === "pdf") return { kind: "pdf", label: "PDF" };
+  if (ext === "doc" || ext === "docx") return { kind: "doc", label: ext.toUpperCase() };
+  if (ext === "md" || ext === "markdown") return { kind: "md", label: "MD" };
+  if (ext === "txt" || ext === "rtf") return { kind: "txt", label: ext.toUpperCase() };
+  return { kind: "default", label: ext.toUpperCase() || "FILE" };
 }
 
-function fmtBytes(n: number) {
+function kindFullLabel(name: string, isDir: boolean): string {
+  if (isDir) return "Folder";
+  const i = name.lastIndexOf(".");
+  const ext = i >= 0 ? name.slice(i + 1).toLowerCase() : "";
+  if (ext === "pdf") return "PDF Document";
+  if (ext === "docx" || ext === "doc") return "Word Document";
+  if (ext === "md" || ext === "markdown") return "Markdown";
+  if (ext === "txt") return "Plain Text";
+  if (ext === "rtf") return "Rich Text";
+  return ext ? `${ext.toUpperCase()} File` : "File";
+}
+
+function fmtBytes(n: number): string {
   if (n < 1024) return `${n} bytes`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function fmtDate(ms: number) {
+function fmtDateLong(ms: number): string {
   if (!ms) return "—";
   return new Date(ms).toLocaleString([], {
-    year: "numeric",
-    month: "short",
     day: "numeric",
+    month: "long",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-type FileKind = "pdf" | "doc" | "md" | "txt" | "default";
-function kindOf(name: string): FileKind {
-  const i = name.lastIndexOf(".");
-  const ext = i >= 0 ? name.slice(i + 1).toLowerCase() : "";
-  if (ext === "pdf") return "pdf";
-  if (ext === "doc" || ext === "docx") return "doc";
-  if (ext === "md" || ext === "markdown") return "md";
-  if (ext === "txt" || ext === "rtf") return "txt";
-  return "default";
-}
-const KIND_LABEL: Record<FileKind, string> = {
-  pdf: "PDF",
-  doc: "DOC",
-  md: "MD",
-  txt: "TXT",
-  default: "•",
-};
-
-function ActionButton({
-  onClick,
-  disabled,
-  Icon,
-  children,
-  primary = false,
-  busy = false,
+function FileThumb({
+  isDir,
+  name,
 }: {
-  onClick: () => void;
-  disabled?: boolean;
-  Icon: typeof Sparkles;
-  children: React.ReactNode;
-  primary?: boolean;
-  busy?: boolean;
+  isDir: boolean;
+  name: string;
 }) {
+  if (isDir) return <div className="d-thumb folder" />;
+  const { kind, label } = kindOfFilename(name);
+  const shown = label.length > 4 ? label.slice(0, 4) : label;
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled || busy}
-      className={`btn w-full ${primary ? "btn-primary" : "btn-secondary"} ring-focus`}
-    >
-      {busy ? <Loader size={14} /> : <Icon size={14} />}
-      <span>{children}</span>
-    </button>
-  );
-}
-
-/** Light markdown rendering for AI summaries — handles bullets, bold, paragraphs. */
-function SummaryRender({ text }: { text: string }) {
-  // Split into "blocks" by blank line
-  const blocks = text.trim().split(/\n\s*\n/);
-  const renderInline = (s: string, key: string) => {
-    // Bold ** ... **
-    const parts = s.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, i) =>
-      p.startsWith("**") && p.endsWith("**") ? (
-        <strong key={`${key}-${i}`}>{p.slice(2, -2)}</strong>
-      ) : (
-        <span key={`${key}-${i}`}>{p}</span>
-      )
-    );
-  };
-  return (
-    <div className="summary-prose">
-      {blocks.map((b, bi) => {
-        const lines = b.split("\n");
-        const allBullets = lines.every((l) => /^[*\-•]\s+/.test(l.trim()));
-        if (allBullets) {
-          return (
-            <ul key={bi}>
-              {lines.map((l, li) => (
-                <li key={li}>
-                  {renderInline(l.replace(/^[*\-•]\s+/, "").trim(), `${bi}-${li}`)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
-        return <p key={bi}>{renderInline(b, `p-${bi}`)}</p>;
-      })}
+    <div className={`d-thumb k-${kind}`}>
+      <div className="kindlbl">{shown || "—"}</div>
+      <div className="extbar">{label || "FILE"}</div>
     </div>
   );
 }
 
-export default function DetailPanel({ selection, indexedRoot, onIndexFolder }: Props) {
+/** Tiny markdown-bullet renderer: turns lines starting with `*`, `-`, `•` into <li>. */
+function parseBullets(text: string): string[] {
+  const lines = text.split(/\r?\n/);
+  const bullets: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(/^[*\-•]\s+(.*)$/);
+    if (m) bullets.push(m[1]);
+    else if (bullets.length === 0) bullets.push(line); // first paragraph treated as bullet
+    else bullets[bullets.length - 1] += " " + line;
+  }
+  return bullets;
+}
+
+/** Bold inside bullets: **text** → <b>text</b>. Returns sanitized HTML. */
+function renderBullet(b: string): string {
+  const escaped = b
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return escaped.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+}
+
+export default function DetailPanel({
+  selection,
+  indexedRoot,
+  onIndexFolder,
+  onToast,
+}: Props) {
+  const [aiState, setAiState] = useState<"idle" | "thinking" | "done">("idle");
   const [summary, setSummary] = useState<string>("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [toast, setToast] = useState<string>("");
+  const [summaryMeta, setSummaryMeta] = useState<string>("");
 
-  const file = targetFile(selection);
-  const isFolder = selection?.kind === "entry" && selection.entry.is_dir;
-  const folderPath =
-    selection?.kind === "entry" && selection.entry.is_dir ? selection.entry.path : null;
-
-  async function summarize() {
-    if (!file) return;
-    setBusy("summary");
-    setToast("");
+  // Reset summary on selection change
+  useEffect(() => {
+    setAiState("idle");
     setSummary("");
+    setSummaryMeta("");
+  }, [
+    selection?.kind,
+    selection?.kind === "entry" ? selection.entry.path : selection?.kind === "hit" ? selection.hit.path : "",
+  ]);
+
+  if (!selection) {
+    return (
+      <aside className="detail">
+        <div className="d-section" style={{ borderBottom: 0 }}>
+          <div className="empty" style={{ height: 220 }}>
+            <h3>Nothing selected</h3>
+            <p>Select a file or folder to see details and AI actions.</p>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  const file =
+    selection.kind === "entry" && !selection.entry.is_dir
+      ? { path: selection.entry.path, filename: selection.entry.name, size: selection.entry.size, modifiedMs: selection.entry.modifiedMs }
+      : selection.kind === "hit"
+      ? { path: selection.hit.path, filename: selection.hit.filename, size: 0, modifiedMs: 0 }
+      : null;
+  const folder = selection.kind === "entry" && selection.entry.is_dir ? selection.entry : null;
+  const node = folder ?? file!;
+  const name = folder ? folder.name : file!.filename;
+  const path = node.path;
+  const where = path.replace(/\/[^/]+$/, "").replace(/^\/Users\/[^/]+/, "~");
+
+  const isHit = selection.kind === "hit";
+  const isFromBrowse = selection.kind === "entry";
+
+  async function runSummary() {
+    if (!file) return;
+    setAiState("thinking");
+    setSummary("");
+    setSummaryMeta("");
     try {
       const r = await api.summarize(file.path);
       setSummary(r.summary);
-      setToast(`Generated in ${(r.elapsed_ms / 1000).toFixed(1)}s`);
+      setSummaryMeta(`gemma · ${(r.elapsed_ms / 1000).toFixed(1)}s · local`);
+      setAiState("done");
     } catch (e) {
-      setToast(`Could not summarize: ${(e as Error).message}`);
-    } finally {
-      setBusy(null);
+      setAiState("idle");
+      onToast(<>Could not summarize: {(e as Error).message}</>);
     }
   }
 
   async function reveal() {
-    const p = file?.path ?? folderPath;
-    if (!p) return;
-    try {
-      await tauri.revealInFinder(p);
-    } catch (e) {
-      setToast((e as Error).message);
-    }
+    try { await tauri.revealInFinder(node.path); }
+    catch (e) { onToast(<>{(e as Error).message}</>); }
   }
-
   async function open() {
-    if (!file) return;
     try {
-      await tauri.openFile(file.path);
-    } catch (e) {
-      setToast((e as Error).message);
-    }
+      if (folder) await tauri.openFile(folder.path);
+      else if (file) await tauri.openFile(file.path);
+    } catch (e) { onToast(<>{(e as Error).message}</>); }
   }
-
   async function saveNote() {
     if (!file || !summary) return;
-    setBusy("note");
     try {
-      const folder = file.path.replace(/\/[^/]+$/, "");
+      const folderPath = file.path.replace(/\/[^/]+$/, "");
       const r = await tauri.createNote(
-        folder,
+        folderPath,
         `summary-of-${file.filename}`,
         `# Summary of ${file.filename}\n\n_Source: ${file.path}_\n\n${summary}\n`
       );
-      setToast(`Saved: ${r.path.split("/").pop()}`);
-    } catch (e) {
-      setToast((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
+      onToast(<>Saved as <b>{r.path.split("/").pop()}</b></>);
+    } catch (e) { onToast(<>{(e as Error).message}</>); }
   }
 
-  // Empty state
-  if (!selection) {
-    return (
-      <aside className="details-surface w-[400px] p-7 flex flex-col items-center justify-center text-center gap-4 animate-fade-in shrink-0">
-        <span className="w-20 h-20 rounded-3xl bg-accent-soft text-accent flex items-center justify-center shadow-card animate-float">
-          <Sparkles size={34} />
-        </span>
-        <h3 className="font-display text-lg font-semibold text-text">
-          Nothing selected
-        </h3>
-        <p className="text-sm text-muted leading-relaxed max-w-[280px]">
-          Click a file to summarize it with the local AI, or click a folder to
-          make it searchable.
-        </p>
-      </aside>
-    );
-  }
-
-  // Folder selected
-  if (isFolder && selection.kind === "entry") {
-    const e = selection.entry;
-    const isIndexed = indexedRoot === e.path;
-    return (
-      <aside className="details-surface w-[400px] flex flex-col animate-fade-in overflow-hidden shrink-0">
-        <div className="p-5 pt-7">
-          <div className="flex items-start gap-3.5">
-            <span className="icon-tile icon-tile-folder w-14 h-14 rounded-2xl shadow-soft text-[15px]">
-              <Folder size={26} />
-            </span>
-            <div className="min-w-0 flex-1 pt-1">
-              <h2
-                className="font-display text-xl font-semibold tracking-tight truncate"
-                title={e.name}
-              >
-                {e.name}
-              </h2>
-              <p className="text-xs text-muted mt-0.5">Folder</p>
-            </div>
-          </div>
-          <p
-            className="mt-4 text-2xs font-mono text-muted truncate"
-            title={e.path}
-          >
-            {e.path.replace(/^\/Users\/[^/]+/, "~")}
-          </p>
-        </div>
-
-        <div className="px-5 pb-4 flex flex-col gap-2">
-          <ActionButton
-            onClick={() => onIndexFolder(e.path)}
-            primary
-            Icon={FolderSearch}
-            disabled={isIndexed}
-          >
-            {isIndexed ? "✓ Already indexed" : "Index for AI search"}
-          </ActionButton>
-          <ActionButton onClick={reveal} Icon={ExternalLink}>
-            Show in Finder
-          </ActionButton>
-        </div>
-
-        {toast && (
-          <div className="mx-5 mb-4 text-xs bg-elevated/70 dark:bg-white/5 rounded-xl px-3 py-2 shadow-soft animate-fade-in-fast">
-            <span className="text-success mr-1.5">●</span>
-            <span className="text-text">{toast}</span>
-          </div>
-        )}
-
-        <div className="mt-auto m-5 mt-2 rounded-2xl bg-elevated/60 dark:bg-white/4 p-4 text-xs text-muted leading-relaxed shadow-soft">
-          <strong className="text-text font-semibold block mb-1">
-            How indexing works
-          </strong>
-          Rover reads every PDF, DOCX, MD, and TXT inside this folder
-          (recursively) and builds a private semantic index — entirely on your
-          Mac. Nothing leaves the device.
-        </div>
-      </aside>
-    );
-  }
-
-  // File selected (browse or search)
-  const f = file!;
-  const meta = selection.kind === "entry" ? selection.entry : null;
-  const preview = selection.kind === "hit" ? selection.hit.chunk_text : "";
-  const k = kindOf(f.filename);
+  const bullets = summary ? parseBullets(summary) : [];
 
   return (
-    <aside className="details-surface w-[400px] flex flex-col overflow-y-auto animate-fade-in shrink-0">
-      {/* Hero header */}
-      <div className="p-5 pt-7">
-        <div className="flex items-start gap-3.5">
-          <span
-            className={`icon-tile icon-tile-${k} w-14 h-14 rounded-2xl shadow-soft text-[15px]`}
-          >
-            {k === "default" ? <FileText size={22} /> : KIND_LABEL[k]}
-          </span>
-          <div className="min-w-0 flex-1 pt-1">
-            <h2
-              className="font-display text-xl font-semibold tracking-tight truncate"
-              title={f.filename}
-            >
-              {f.filename}
-            </h2>
-            {meta ? (
-              <p className="text-xs text-muted mt-0.5">
-                {fmtBytes(meta.size)} · {fmtDate(meta.modifiedMs)}
-              </p>
-            ) : (
-              <p className="text-xs text-muted mt-0.5">Found via semantic search</p>
-            )}
+    <aside className="detail">
+      <div className="d-hero">
+        <FileThumb isDir={!!folder} name={name} />
+        <h3 className="d-name">{name}</h3>
+        <div className="d-sub">
+          {folder
+            ? "Folder"
+            : `${fmtBytes(file!.size || 0)} · ${kindOfFilename(name).label}`}
+        </div>
+      </div>
+
+      <div className="d-section">
+        <div className="d-section-title">Information</div>
+        <dl className="d-meta">
+          <dt>Kind</dt>
+          <dd>{kindFullLabel(name, !!folder)}</dd>
+          <dt>Size</dt>
+          <dd>{folder ? "—" : fmtBytes(file!.size || 0)}</dd>
+          {!folder && file!.modifiedMs ? (
+            <>
+              <dt>Modified</dt>
+              <dd>{fmtDateLong(file!.modifiedMs)}</dd>
+            </>
+          ) : null}
+          <dt>Where</dt>
+          <dd>{where || "~"}</dd>
+        </dl>
+      </div>
+
+      <div className="d-section">
+        <div className="d-section-title">Actions</div>
+        <div className="actions">
+          {folder ? (
+            <>
+              <button
+                className="btn ai"
+                onClick={() => onIndexFolder(folder.path)}
+                disabled={indexedRoot === folder.path}
+                title={indexedRoot === folder.path ? "This folder is indexed" : "Index for AI search"}
+              >
+                <IndexBars />
+                {indexedRoot === folder.path ? "Indexed" : "Index this folder"}
+              </button>
+              <button className="btn" onClick={reveal}>
+                <FinderApp /> Show in Finder
+              </button>
+              <button className="btn" onClick={open}>
+                <OpenExt /> Open
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn primary" onClick={open}>
+                <OpenExt /> Open
+              </button>
+              <button className="btn" onClick={reveal}>
+                <FinderApp /> Show in Finder
+              </button>
+              {aiState === "idle" && (
+                <button className="btn ai" onClick={runSummary}>
+                  <Spark /> Summarize with AI
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {(aiState !== "idle" || isHit) && (
+        <div className="d-section">
+          <div className="d-section-title">
+            <span>{isHit && aiState === "idle" ? "Search match" : "AI Summary"}</span>
           </div>
-        </div>
-        <p
-          className="mt-4 text-2xs font-mono text-muted truncate"
-          title={f.path}
-        >
-          {f.path.replace(/^\/Users\/[^/]+/, "~")}
-        </p>
-      </div>
 
-      {/* Action buttons */}
-      <div className="px-5 pb-4 flex flex-col gap-2">
-        <ActionButton
-          onClick={summarize}
-          primary
-          Icon={Sparkles}
-          busy={busy === "summary"}
-        >
-          {busy === "summary" ? "Asking the local AI…" : "Summarize with AI"}
-        </ActionButton>
-        <ActionButton
-          onClick={saveNote}
-          Icon={NotePlus}
-          disabled={!summary}
-          busy={busy === "note"}
-        >
-          Save summary as note
-        </ActionButton>
-        <div className="grid grid-cols-2 gap-2">
-          <ActionButton onClick={reveal} Icon={ExternalLink}>
-            Show in Finder
-          </ActionButton>
-          <ActionButton onClick={open} Icon={ExternalLink}>
-            Open
-          </ActionButton>
-        </div>
-      </div>
+          {isHit && aiState === "idle" && (
+            <div className="search-snippet">
+              <div className="sn-head">
+                <span>Matched chunk</span>
+                <span className="pct">{selection.hit.score.toFixed(2)} match</span>
+              </div>
+              <div>{selection.hit.chunk_text}</div>
+            </div>
+          )}
 
-      {toast && (
-        <div className="mx-5 -mt-2 mb-3 text-xs bg-elevated/70 dark:bg-white/5 rounded-xl px-3 py-2 shadow-soft flex items-start gap-2 animate-fade-in-fast">
-          <span className="text-success mt-0.5">●</span>
-          <span className="flex-1 break-words text-text">{toast}</span>
+          {aiState === "thinking" && (
+            <div className="summary-thinking">
+              <span className="pulse" />
+              <span>
+                <b>gemma</b> is reading {name}…
+              </span>
+            </div>
+          )}
+
+          {aiState === "done" && bullets.length > 0 && (
+            <div className="summary">
+              <div className="head">
+                <span className="badge"><Spark /> Summary</span>
+                <span className="by">{summaryMeta}</span>
+              </div>
+              <ul>
+                {bullets.map((b, i) => (
+                  <li
+                    key={i}
+                    style={{ animationDelay: `${i * 50}ms` }}
+                    dangerouslySetInnerHTML={{ __html: renderBullet(b) }}
+                  />
+                ))}
+              </ul>
+              <button
+                className="btn ai-ghost"
+                onClick={saveNote}
+                style={{ marginTop: 12, height: 28, fontSize: 12 }}
+              >
+                <NoteIcon /> Save summary as note
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Summary / preview pane */}
-      <div className="flex-1 px-5 pb-5 flex flex-col gap-2 min-h-0">
-        <h3 className="text-2xs font-semibold uppercase tracking-wider text-muted/85 flex items-center gap-2">
-          {summary ? (
-            <>
-              <Sparkles size={11} className="text-accent" />
-              <span>AI summary</span>
-            </>
-          ) : preview ? (
-            "Matched excerpt"
-          ) : (
-            "Preview"
-          )}
-        </h3>
-        <div className="flex-1 bg-elevated/70 dark:bg-white/5 rounded-2xl p-4 overflow-y-auto min-h-[160px] shadow-soft">
-          {summary ? (
-            <div className="animate-fade-in">
-              <SummaryRender text={summary} />
-            </div>
-          ) : preview ? (
-            <p className="text-sm text-text/85 leading-relaxed whitespace-pre-wrap">
-              {preview}
-            </p>
-          ) : (
-            <p className="text-sm text-muted leading-relaxed">
-              Click <strong className="text-text">Summarize with AI</strong> to
-              read a 5–8 bullet summary in the document's language.
-            </p>
-          )}
-        </div>
-      </div>
+      {/* Suppress unused-vars when path/isFromBrowse not directly referenced */}
+      <div style={{ display: "none" }}>{path}{String(isFromBrowse)}</div>
     </aside>
   );
 }

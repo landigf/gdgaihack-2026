@@ -1,94 +1,143 @@
-import type { SVGProps } from "react";
+/* Rover icons — SF Symbols-ish line set, 1:1 from the Claude Design handoff. */
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+type IconProps = { size?: number; className?: string };
 
-function svg(d: string) {
-  return ({ size = 16, className, ...rest }: IconProps) => (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...rest}
-    >
-      <path d={d} />
+const stroke = (path: string, width = 1.4) =>
+  function StrokeIcon({ size = 16, className }: IconProps) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+      >
+        <path d={path} />
+      </svg>
+    );
+  };
+
+const fill = (path: string) =>
+  function FillIcon({ size = 16, className }: IconProps) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 16 16"
+        fill="currentColor"
+        className={className}
+      >
+        <path d={path} />
+      </svg>
+    );
+  };
+
+export const Back = stroke("M10 3L5 8l5 5", 1.6);
+export const Forward = stroke("M6 3l5 5-5 5", 1.6);
+export const Up = stroke("M3 9l5-5 5 5M8 4v9", 1.6);
+
+export const ListView = stroke("M2 4h12M2 8h12M2 12h12", 1.5);
+
+export function ColumnsView({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className={className}>
+      <rect x="2" y="3" width="3.5" height="10" rx="0.5" />
+      <rect x="6.25" y="3" width="3.5" height="10" rx="0.5" />
+      <rect x="10.5" y="3" width="3.5" height="10" rx="0.5" />
     </svg>
   );
 }
 
-export const ArrowLeft = svg("M19 12H5M12 19l-7-7 7-7");
-export const ArrowRight = svg("M5 12h14M12 5l7 7-7 7");
-export const ArrowUp = svg("M12 19V5M5 12l7-7 7 7");
-export const Search = svg("M21 21l-4.35-4.35M10.5 17a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13z");
-export const Home = svg("M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z");
-export const Folder = svg("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z");
-export const FileText = svg("M14 3v5h5M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-5z");
-export const Sparkles = svg("M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3zM5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z");
-export const NotePlus = svg("M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M19 3v6M16 6h6");
-export const ExternalLink = svg("M15 3h6v6M21 3l-9 9M5 5h6v0a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4");
-export const FolderSearch = svg("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v3M14.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 21l-3-3");
-export const ChevronRight = svg("M9 18l6-6-6-6");
-export const Star = svg("M12 2.5l2.9 6.9 7.4.6-5.6 4.9 1.7 7.3L12 18.3 5.6 22.2l1.7-7.3L1.7 10l7.4-.6L12 2.5z");
-export const Loader = ({ size = 16, className, ...rest }: IconProps) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.8}
-    strokeLinecap="round"
-    className={`animate-spin ${className ?? ""}`}
-    {...rest}
-  >
-    <path d="M21 12a9 9 0 1 1-6.2-8.55" />
-  </svg>
+export function SearchIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className={className}>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5L14 14" />
+    </svg>
+  );
+}
+
+export function CloseX({ size = 10, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" className={className}>
+      <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export const Spark = fill(
+  "M8 1.5l1.4 4.1 4.1 1.4-4.1 1.4L8 12.5l-1.4-4.1-4.1-1.4 4.1-1.4L8 1.5zM13 10.5l.7 1.8 1.8.7-1.8.7L13 15.5l-.7-1.8-1.8-.7 1.8-.7.7-1.8z"
 );
 
-/** Custom Rover mark — diamond compass needle inside a soft ring. */
-export const Compass = ({ size = 22, className, ...rest }: IconProps) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    className={className}
-    {...rest}
-  >
-    <defs>
-      <linearGradient id="rover-mark-grad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="var(--accent-2)" />
-        <stop offset="100%" stopColor="var(--accent)" />
-      </linearGradient>
-    </defs>
-    <circle
-      cx="12"
-      cy="12"
-      r="10"
-      fill="url(#rover-mark-grad)"
-      opacity="0.18"
-    />
-    <circle
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="url(#rover-mark-grad)"
-      strokeWidth="1.4"
-    />
-    <path
-      d="M12 5.5 L14.5 12 L12 18.5 L9.5 12 Z"
-      fill="url(#rover-mark-grad)"
-    />
-    <circle cx="12" cy="12" r="1.2" fill="var(--bg)" />
-  </svg>
+export const HomeIcon = stroke("M2 8l6-5 6 5v6.5a.5.5 0 01-.5.5H10v-4H6v4H2.5a.5.5 0 01-.5-.5V8z", 1.5);
+export const Docs = stroke("M3.5 2.5h6L12.5 5.5v8a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-11a.5.5 0 01.5-.5zM9 2.5v3h3.5", 1.4);
+export const Downloads = stroke("M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13h10", 1.5);
+export const Desktop = stroke("M2 3h12v9H2zM6 14h4M8 12v2", 1.4);
+
+export const Star = fill(
+  "M8 1.7l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.5l-3.8 2 .7-4.3-3.1-3 4.3-.6L8 1.7z"
 );
 
-export const X = svg("M18 6L6 18M6 6l12 12");
-export const Sun = svg("M12 3v2M12 19v2M5 12H3M21 12h-2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z");
-export const Moon = svg("M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z");
-export const Filter = svg("M3 5h18M6 12h12M10 19h4");
+export const Folder = stroke(
+  "M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1V5z",
+  1.4
+);
+
+export function FolderClosed({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+    </svg>
+  );
+}
+
+export function FileDoc({ size = 22, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" className={className}>
+      <path d="M3.5 2h6L12.5 5v9a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5V2.5a.5.5 0 01.5-.5z" fill="currentColor" fillOpacity="0.08" />
+      <path d="M9 2v3h3.5" />
+    </svg>
+  );
+}
+
+export const OpenExt = stroke(
+  "M9 3h4v4M13 3l-6 6M11 8.5V13a.5.5 0 01-.5.5H3.5A.5.5 0 013 13V5.5a.5.5 0 01.5-.5H8",
+  1.4
+);
+
+export function FinderApp({ size = 13, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" className={className}>
+      <rect x="2" y="3" width="12" height="10" rx="1" />
+      <path d="M5 7l2 2 4-4" />
+    </svg>
+  );
+}
+
+export function NoteIcon({ size = 13, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 3h7l3 3v7a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" />
+      <path d="M5 7h6M5 9.5h6M5 12h4" />
+    </svg>
+  );
+}
+
+export const Shield = stroke(
+  "M8 1.5l5 2v4.5c0 3-2.5 5.5-5 6.5-2.5-1-5-3.5-5-6.5V3.5l5-2zM5.5 8l2 2 3-3.5",
+  1.4
+);
+
+export function IndexBars({ size = 12, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round" className={className}>
+      <rect x="2" y="3" width="12" height="3" rx="0.5" />
+      <rect x="2" y="7" width="12" height="3" rx="0.5" />
+      <rect x="2" y="11" width="12" height="2" rx="0.5" />
+    </svg>
+  );
+}

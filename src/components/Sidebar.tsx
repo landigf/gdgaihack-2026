@@ -1,141 +1,133 @@
-import { Home, Folder, FolderSearch, Star, Loader } from "./Icon";
+import {
+  HomeIcon,
+  Docs,
+  Downloads,
+  Desktop,
+  Star,
+  IndexBars,
+} from "./Icon";
 
-type QuickItem = { label: string; path: string; kind: "home" | "folder" | "starred" };
+export type QuickItem = {
+  label: string;
+  path: string;
+  kind: "home" | "documents" | "downloads" | "desktop" | "starred";
+};
+
+type EngineState = "ready" | "starting" | "error";
 
 type Props = {
   items: QuickItem[];
   currentPath: string;
   onNavigate: (path: string) => void;
+  engineState: EngineState;
+  modelInfo: string; // e.g. "gemma4 · 8B" / "nomic-embed-text · 137M"
   indexedRoot: string | null;
   indexedFiles: number | null;
   indexBusy: boolean;
-  onIndexCurrent: () => void;
-  currentPathLabel: string;
-  canIndexCurrent: boolean;
+  indexProgress: number; // 0..1, indeterminate when 0
+  onIndex: () => void;
+  canIndex: boolean;
 };
 
-function homeRel(p: string, home: string): string {
-  return p.startsWith(home) ? "~" + p.slice(home.length) : p;
-}
+const ICONS = {
+  home: HomeIcon,
+  documents: Docs,
+  downloads: Downloads,
+  desktop: Desktop,
+  starred: Star,
+};
 
 export default function Sidebar({
   items,
   currentPath,
   onNavigate,
+  engineState,
+  modelInfo,
   indexedRoot,
   indexedFiles,
   indexBusy,
-  onIndexCurrent,
-  currentPathLabel,
-  canIndexCurrent,
+  indexProgress,
+  onIndex,
+  canIndex,
 }: Props) {
-  const home = items.find((i) => i.kind === "home")?.path ?? "";
+  const dotClass =
+    engineState === "ready" ? "" : engineState === "starting" ? "warn" : "err";
+  const engineLabel =
+    engineState === "ready"
+      ? "AI engine ready"
+      : engineState === "starting"
+      ? "Starting AI engine…"
+      : "AI engine offline";
 
   return (
-    <aside className="sidebar-surface w-64 px-2.5 pt-3 pb-3 flex flex-col gap-5 overflow-y-auto shrink-0">
-      {/* Favorites */}
-      <section>
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted/85 px-2.5 pb-2">
-          Favorites
-        </h2>
-        <ul className="flex flex-col gap-0.5">
-          {items.map((it) => {
-            const Icon = it.kind === "home" ? Home : it.kind === "starred" ? Star : Folder;
-            const active = currentPath === it.path;
-            return (
-              <li key={it.path}>
-                <button
-                  onClick={() => onNavigate(it.path)}
-                  className={`pill w-full flex items-center gap-2.5 px-2.5 py-1.5 text-sm ring-focus ${
-                    active
-                      ? "pill-selected font-medium"
-                      : "text-text/85 hover:bg-black/5 dark:hover:bg-white/5"
-                  }`}
-                >
-                  <Icon
-                    size={15}
-                    className={active ? "text-accent" : "text-muted"}
-                  />
-                  <span className="truncate">{it.label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {/* Smart search */}
-      <section className="px-1">
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted/85 px-1.5 pb-2">
-          Smart Search
-        </h2>
-        <div className="flex flex-col gap-2.5">
-          <p className="text-xs text-muted leading-snug px-1.5">
-            Make a folder searchable by meaning — not just by name.
-          </p>
-          <button
-            onClick={onIndexCurrent}
-            disabled={indexBusy || !canIndexCurrent}
-            title={
-              canIndexCurrent
-                ? `Make "${currentPathLabel}" searchable`
-                : "Open a folder to index it"
-            }
-            className="btn btn-primary w-full ring-focus"
+    <aside className="sidebar">
+      <div className="sb-section">Favorites</div>
+      {items.map((it) => {
+        const Glyph = ICONS[it.kind];
+        const selected = currentPath === it.path;
+        return (
+          <div
+            key={it.path}
+            className="sb-item"
+            aria-selected={selected}
+            onClick={() => onNavigate(it.path)}
           >
-            {indexBusy ? (
-              <>
-                <Loader size={14} /> Indexing…
-              </>
-            ) : (
-              <>
-                <FolderSearch size={14} />
-                {indexedRoot === currentPath
-                  ? "Re-index this folder"
-                  : "Index this folder"}
-              </>
-            )}
-          </button>
-          {indexedRoot && (
-            <div className="mx-1 rounded-xl bg-elevated/70 dark:bg-white/5 p-3 text-xs shadow-soft">
-              <div className="flex items-center gap-2">
-                <span className="relative inline-flex">
-                  <span className="w-2 h-2 rounded-full bg-success" />
-                  <span className="absolute inset-0 w-2 h-2 rounded-full bg-success animate-ring-pulse" />
-                </span>
-                <span className="font-semibold text-text text-[12px]">Search ready</span>
-              </div>
-              <div
-                className="font-mono text-muted truncate mt-1.5 text-[11px]"
-                title={indexedRoot}
-              >
-                {homeRel(indexedRoot, home)}
-              </div>
-              {indexedFiles !== null && (
-                <div className="text-muted mt-0.5 text-[11px]">
-                  {indexedFiles.toLocaleString()}{" "}
-                  {indexedFiles === 1 ? "file" : "files"}
-                </div>
+            <span className="gly">
+              <Glyph />
+            </span>
+            <span>{it.label}</span>
+            <span className="sb-count" />
+          </div>
+        );
+      })}
+
+      <div className="sb-section">
+        <span>Smart Search</span>
+      </div>
+      <div className="sb-engine">
+        <div className="eng-row">
+          <span className={`dot ${dotClass}`} />
+          <b>{engineLabel}</b>
+        </div>
+        <div className="eng-meta">{modelInfo}</div>
+
+        {indexBusy ? (
+          <>
+            <button className="index-btn indexing" disabled>
+              {indexProgress > 0
+                ? `Indexing… ${Math.round(indexProgress * 100)}%`
+                : "Indexing…"}
+            </button>
+            <div className={`idx-bar ${indexProgress > 0 ? "" : "indeterminate"}`}>
+              <div style={{ width: `${Math.max(8, indexProgress * 100)}%` }} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="eng-meta" style={{ marginBottom: 8 }}>
+              {indexedRoot ? (
+                <>
+                  <b style={{ color: "var(--ink)" }}>
+                    {(indexedFiles ?? 0).toLocaleString()}
+                  </b>{" "}
+                  file{indexedFiles === 1 ? "" : "s"} indexed
+                </>
+              ) : (
+                "No folder indexed yet"
               )}
             </div>
-          )}
-        </div>
-      </section>
-
-      {/* Tips */}
-      <section className="mt-auto px-1">
-        <h2 className="text-2xs font-semibold uppercase tracking-wider text-muted/85 px-1.5 pb-1.5">
-          Try
-        </h2>
-        <ul className="px-1.5 flex flex-col gap-1.5 text-xs text-muted leading-snug">
-          <li>"presentazione budget alpha"</li>
-          <li>"meeting notes last sprint"</li>
-          <li>"contratto vendor X"</li>
-          <li>"recipe with mascarpone"</li>
-        </ul>
-      </section>
+            <button
+              className="index-btn"
+              onClick={onIndex}
+              disabled={!canIndex}
+              title={canIndex ? undefined : "Open a folder first"}
+            >
+              <IndexBars />
+              {indexedRoot ? "Re-index this folder" : "Index this folder"}
+            </button>
+          </>
+        )}
+      </div>
     </aside>
   );
 }
-
-export type { QuickItem };
