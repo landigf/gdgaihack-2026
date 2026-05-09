@@ -1,0 +1,122 @@
+# ============================================================
+# FinderAI .gitignore — Python backend + React/Vite frontend
+# ============================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# pytest / coverage / mypy
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# ---------- Node / Vite / React ----------
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+*.local
+
+# Vite cache
+.vite/
+frontend/.vite/
+
+# ---------- FinderAI runtime artifacts ----------
+# Embedding indices and parsed data
+data/
+backend/data/
+*.faiss
+*.index
+index_metadata.json
+
+# User-indexed paths (never commit user files)
+indexed/
+.finderai/
+
+# Logs
+logs/
+*.log
+
+# ---------- Editors / IDEs ----------
+.vscode/
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# ---------- macOS ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# ---------- Env / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- Tauri (in case we pivot to Option A) ----------
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# ---------- Models / heavy artifacts (Ollama lives in ~/.ollama) ----------
+*.gguf
+*.bin
+models/
