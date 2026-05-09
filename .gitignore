@@ -34,6 +34,12 @@ doc/specs/cut-the-cord/evidence/*.mov
 # Per-developer Claude Code overrides (committed settings.json is the team default)
 .claude/settings.local.json
 
+# Saved-page assets bundled by the browser when archiving HTML (root-level only).
+# We keep the .html itself in doc/specs/cut-the-cord/evidence/ but the asset folder
+# at repo root from a "Save Page As..." is noise.
+/Cut the Cord *_files/
+/*_files/
+
 # Python venv + cache
 .venv/
 __pycache__/

@@ -198,3 +198,35 @@ The pre-work assumed a **wearable-on-the-worker** form factor. The brief mandate
 3. Which candidate makes the EdgeXpert form factor unambiguously the hero of the demo (not the fallback)?
 4. Which candidate's "isolated chatbot" disqualifier defense is strongest? (i.e. which one has a forcing function for OS / file integration that a judge can SEE on stage in 60 seconds?)
 5. Which candidate's failure mode at T+18h is the least catastrophic? (Control-Room: fall back to text-only RAG; Enterprise: fall back to a different doc set; Clinic: fall back to non-clinical phrasing; Coding: fall back to read-only Q&A.)
+
+### Brief case-study mapping (added 2026-05-09 after reading the official HTML)
+
+The brief publishes 4 *aspirational* case studies. The brief is explicit: *"these are aspirational examples designed to inspire, not literal 24-hour blueprints. Take the core idea and scope it to what's buildable in a hackathon."* Don't COPY them; map our candidates onto their patterns.
+
+| Brief case study | Pattern | How it maps to our candidates |
+|---|---|---|
+| **CS-01 — Local Multi-Agent Cyber-Defense SOC** | Log Sentinel + Threat Hunter + Incident Responder agents · agent-to-agent · MCP for syscalls/network · OS-level isolation actions | Pure Creative On-Device 25%. **New Candidate 5: Plant SOC Copilot** (control-room SOC for OT cybersecurity) — fuses our control-room corpus with a multi-agent SOC pattern. |
+| **CS-02 — GDPR-Compliant Medical Scribe** | Whisper.cpp + local RAG + MedGemma 4B → structured clinical notes | **Direct match for Candidate 3 (MedGemma Clinic Copilot).** The brief literally endorses this stack. Strongest "the brief told us to" defense. |
+| **CS-03 — Offline Accessibility Controller** | voice agent + vision agent · agent-to-agent · NPU-zero-latency macros | Reusable PATTERN for any candidate that adds VLM + STT (likely Candidate 1 stretch path). |
+| **CS-04 — Privacy-First Smart Restaurant Concierge** | FoH agent (TTS/STT) + Inventory agent (MCP into POS/ERP) + Docker-sandboxed optimization | Reusable PATTERN: agent-to-agent + MCP into a "system of record" + sandboxed code execution. **Maps onto Control-Room** (operator agent + safety-form-fill agent + MCP into customer SOPs + Docker for OSHA-form rendering). |
+
+**Net effect on the candidate landscape:**
+- **New Candidate 5: Plant SOC Copilot** added below — emerges from CS-01.
+- Candidates 1 (Control-Room) and 3 (Clinic) get a credibility boost — both map onto a published case study pattern.
+- Candidates 2 (Enterprise Doc) and 4 (Coding Navigator) get NO direct case-study endorsement — slightly weaker positioning.
+
+### Candidate 5 — Plant SOC Copilot (added 2026-05-09 from CS-01 pattern)
+
+> Voice + multi-agent + MCP for OT (Operational Technology) cybersecurity in industrial sites. Three agents: **Log Sentinel** watches plant SCADA/HMI logs and network traffic via MCP; **Threat Hunter** runs local RAG over MITRE ATT&CK for ICS + plant SOPs + NERC-CIP/IEC 62443 policy docs; **Incident Responder** uses Open Interpreter to draft NERC-CIP incident reports + execute pre-approved firewall rule changes via MCP. Operator at the EdgeXpert in the control room is the human-in-the-loop. Demo: airplane mode → speak/log a synthetic anomaly → agents converge on a cited response with audit trail.
+
+| W | D | F | M | Total |
+|---:|---:|---:|---:|---:|
+| 3 | 3 | 2 | 3 | **11/12** (pre-kickoff axes) |
+
+| Tech Opt 30% | Practical 25% | Creative On-Device 25% | Comp Adv 20% | Weighted /3.00 |
+|---:|---:|---:|---:|---:|
+| 3 | 2 | 3 | 3 | **2.75** |
+
+**Pre-work reuse:** Medium — corpus reusable for safety-procedure RAG; need to add MITRE ATT&CK for ICS + NERC-CIP excerpts. **Build risk in 24h:** High — 3 agents + agent-to-agent + Open Interpreter is the largest scope. **Differentiator:** the brief's Case Study 1 LITERALLY describes this pattern; "we're shipping the case study they published" is a memorable pitch line.
+
+**Why it's not the default pick:** highest scope, highest 24h build risk, requires a new corpus subset. Choose only if the team huddle decides the multi-agent narrative is more compelling than the regulatory-moat narrative.

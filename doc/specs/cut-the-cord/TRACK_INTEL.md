@@ -22,7 +22,15 @@
 
 ## Working thesis (sharpened 2026-05-09 against actual brief)
 
-> The brief weights **Technical Optimization 30%** highest. Judges reward MEASURED on-device performance — model selection, quantization, memory management, inference speed, hardware-specific tuning. **The benchmark slide carries 30% of the score; the regulatory-moat slide carries only 20%.** Reframe pitch beats accordingly (see [PITCH_PLAN.md](PITCH_PLAN.md) beat allocation post-2026-05-09).
+> The brief weights **Technical Optimization 30%** highest, AND it explicitly frames the goal as *"proving your solution is ready for next-gen AI machines like the MSI AI Edge PC or Copilot+ Prestige/PRO laptops."* Judges reward MEASURED on-device performance — model selection, quantization, memory management, inference speed, hardware-specific tuning. **The benchmark slide carries 30% of the score; the regulatory-moat slide carries only 20%.** Reframe pitch beats accordingly (see [PITCH_PLAN.md](PITCH_PLAN.md) beat allocation post-2026-05-09).
+
+> **Verbatim from brief (Hardware Reality section):** *"The judging criteria reward optimization for the hardware you have, not raw model size. A team running a 7B model beautifully on a 16 GB laptop with smart caching and a great UX can outscore a team barely running a 70B model with a broken interface. ... **Plan your architecture around your hardware, not the other way around.**"*
+
+> **The team's demo machine is MacBook Pro M3 Pro 36GB.** We don't have an EdgeXpert. The pitch frames M3 Pro as the proof point, MSI AI Edge PC / Copilot+ Prestige/PRO as the deployment target. Every model choice, quant, and memory budget must be justified by the hardware tier we're optimizing for — see [02-specification.md §"Hardware Reality (verbatim)"](02-specification.md) and the `feedback_hardware_first` memory.
+
+> **Verbatim quote for the pitch's Tech Optimization beat (40s, slide 5):** *"A team that runs Phi-4 at 40 tok/s with smart caching should outscore a team barely running a 70B at 2 tok/s."* — directly from the brief's Tech Optimization criterion. We don't need to invent the framing; we just have to BE the team running 4-7B beautifully.
+
+> **The brief explicitly anti-patterns "chatbot but local"**: *"Did you go beyond 'chatbot but local'?"* (Creative On-Device 25% definition). MCP server + filesystem tools + multi-agent are mandatory for that 25%, not optional.
 
 > Brief constraint #1 (verbatim): *"The AI cannot be an isolated terminal chatbot."* — must integrate with OS / desktop apps / filesystem. A pure Streamlit web UI is read by judges as an isolated chatbot. **Score Creative On-Device 25% by shipping MCP server + file-system tools + at minimum one OS-level integration**.
 
