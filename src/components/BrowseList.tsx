@@ -98,9 +98,9 @@ export default function BrowseList({ entries, selected, onSelect, onOpen }: Prop
     );
 
   return (
-    <div className="bg-elevated border border-border rounded-macos overflow-hidden shadow-macos-sm animate-fade-in">
+    <div className="card overflow-hidden animate-fade-in">
       <div
-        className="grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-2xs uppercase tracking-wider text-muted border-b border-separator bg-surface/60"
+        className="grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-2xs uppercase tracking-wider text-muted bg-surface/40 border-b border-separator"
         role="row"
       >
         <span>Name</span>
@@ -108,7 +108,7 @@ export default function BrowseList({ entries, selected, onSelect, onOpen }: Prop
         <span className="text-right">Modified</span>
       </div>
       <div role="rowgroup">
-        {entries.map((e) => {
+        {entries.map((e, i) => {
           const isSel = !!selected && selected.path === e.path;
           return (
             <button
@@ -117,26 +117,18 @@ export default function BrowseList({ entries, selected, onSelect, onOpen }: Prop
               onDoubleClick={() => onOpen(e)}
               role="row"
               aria-selected={isSel}
-              className={`grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-sm text-left items-center transition border-b border-separator/60 last:border-0 ${
-                isSel ? "row-selected" : "hover:bg-surface/80"
-              }`}
+              className={`grid grid-cols-[minmax(0,1fr)_90px_140px] gap-4 px-4 py-2 text-sm text-left items-center transition ${
+                i < entries.length - 1 ? "border-b border-separator" : ""
+              } ${isSel ? "row-selected" : "hover:bg-surface/60"}`}
             >
               <span className="flex items-center gap-3 min-w-0">
                 <FileGlyph entry={e} />
-                <span className="truncate">{e.name}</span>
+                <span className="truncate text-text">{e.name}</span>
               </span>
-              <span
-                className={`text-right text-xs font-mono row-meta ${
-                  isSel ? "" : "text-muted"
-                }`}
-              >
+              <span className="text-right text-xs font-mono text-muted">
                 {e.is_dir ? "—" : fmtSize(e.size)}
               </span>
-              <span
-                className={`text-right text-xs font-mono row-meta ${
-                  isSel ? "" : "text-muted"
-                }`}
-              >
+              <span className="text-right text-xs font-mono text-muted">
                 {fmtDate(e.modifiedMs)}
               </span>
             </button>

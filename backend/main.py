@@ -6,10 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import INDEX_PATH, META_PATH, EMBED_DIM, TOP_K
+import json
+
+from config import INDEX_PATH, META_PATH, STATE_PATH, EMBED_DIM, TOP_K
 from models import (
     IndexRequest,
     IndexResponse,
+    IndexState,
     SearchRequest,
     SearchResponse,
     SummarizeRequest,
@@ -71,6 +74,23 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/state", response_model=IndexState)
+def index_state():
+    if not STATE_PATH.exists():
+        return IndexState(indexed=False)
+    try:
+        s = json.loads(STATE_PATH.read_text())
+        return IndexState(
+            indexed=True,
+            root=s.get("root"),
+            files=s.get("files"),
+            chunks=s.get("chunks"),
+            indexed_at_ms=s.get("indexed_at_ms"),
+        )
+    except Exception:
+        return IndexState(indexed=False)
 
 
 @app.post("/index", response_model=IndexResponse)

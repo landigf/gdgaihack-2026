@@ -36,3 +36,11 @@ class SummarizeRequest(BaseModel):
 class SummarizeResponse(BaseModel):
     summary: str
     elapsed_ms: int
+
+
+class IndexState(BaseModel):
+    indexed: bool
+    root: str | None = None
+    files: int | None = None
+    chunks: int | None = None
+    indexed_at_ms: int | None = None

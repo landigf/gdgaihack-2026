@@ -48,14 +48,11 @@ export default function Sidebar({
                   onClick={() => onNavigate(it.path)}
                   className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition ${
                     active
-                      ? "bg-accent text-white"
-                      : "text-text/85 hover:bg-bg/70"
+                      ? "row-selected font-medium"
+                      : "text-text/85 hover:bg-surface/60"
                   }`}
                 >
-                  <Icon
-                    size={15}
-                    className={active ? "text-white" : "text-accent"}
-                  />
+                  <Icon size={15} className="text-accent" />
                   <span className="truncate">{it.label}</span>
                 </button>
               </li>

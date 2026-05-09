@@ -23,6 +23,14 @@ export type DirEntry = {
   ext: string;
 };
 
+export type IndexState = {
+  indexed: boolean;
+  root?: string | null;
+  files?: number | null;
+  chunks?: number | null;
+  indexed_at_ms?: number | null;
+};
+
 /** Anything the AI panel / actions can target — both browse entries and search hits. */
 export type Selection =
   | { kind: "entry"; entry: DirEntry }

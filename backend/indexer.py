@@ -1,9 +1,44 @@
 import time
+import os
+import json
 from pathlib import Path
 import numpy as np
 from chunking import chunk_text
 from parsing import parse_file
-from config import SUPPORTED_EXT, CHUNK_TOKENS, CHUNK_OVERLAP
+from config import (
+    SUPPORTED_EXT,
+    CHUNK_TOKENS,
+    CHUNK_OVERLAP,
+    EXCLUDE_DIR_NAMES,
+    MAX_FILES,
+    STATE_PATH,
+)
+
+
+def _walk_indexable(root: Path, max_files: int = MAX_FILES) -> list[Path]:
+    """Walk `root` collecting indexable files, pruning excluded directories.
+
+    `os.walk` lets us drop entire subtrees by mutating `dirnames`, which is
+    much faster than `rglob` on large home folders.
+    """
+    out: list[Path] = []
+    root = root.resolve()
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        # Prune by name *and* by hidden-prefix.
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in EXCLUDE_DIR_NAMES and not d.startswith(".")
+        ]
+        for name in filenames:
+            if name.startswith("."):
+                continue
+            p = Path(dirpath) / name
+            if p.suffix.lower() in SUPPORTED_EXT:
+                out.append(p)
+                if len(out) >= max_files:
+                    return out
+    return out
 
 
 class Indexer:
@@ -15,15 +50,14 @@ class Indexer:
     async def index_folder(self, root: Path) -> dict:
         t0 = time.time()
         self.store.reset()
-        files = [
-            p
-            for p in root.rglob("*")
-            if p.is_file() and p.suffix.lower() in SUPPORTED_EXT
-        ]
+        files = _walk_indexable(root)
         all_vecs: list[list[float]] = []
         all_meta: list[dict] = []
         for f in files:
-            text = parse_file(f)
+            try:
+                text = parse_file(f)
+            except Exception:
+                continue
             if not text.strip():
                 continue
             chunks = chunk_text(text, max_tokens=CHUNK_TOKENS, overlap=CHUNK_OVERLAP)
@@ -32,7 +66,10 @@ class Indexer:
             # nomic-embed-text needs task-specific prefixes for usable quality.
             # Filename signal helps disambiguate cross-lingual queries.
             prefixed = [f"search_document: {f.name} — {c}" for c in chunks]
-            vecs = await self.embedder.embed_batch(prefixed)
+            try:
+                vecs = await self.embedder.embed_batch(prefixed)
+            except Exception:
+                continue
             for i, (c, v) in enumerate(zip(chunks, vecs)):
                 all_vecs.append(v)
                 all_meta.append(
@@ -46,8 +83,26 @@ class Indexer:
         if all_vecs:
             self.store.add(np.array(all_vecs, dtype=np.float32), all_meta)
             self.store.save()
-        return {
+        elapsed_ms = int((time.time() - t0) * 1000)
+        stats = {
             "files_indexed": len(files),
             "chunks": len(all_vecs),
-            "elapsed_ms": int((time.time() - t0) * 1000),
+            "elapsed_ms": elapsed_ms,
         }
+        # Persist state so the UI can show "what's indexed" across restarts.
+        try:
+            STATE_PATH.write_text(
+                json.dumps(
+                    {
+                        "root": str(root.resolve()),
+                        "files": len(files),
+                        "chunks": len(all_vecs),
+                        "indexed_at_ms": int(time.time() * 1000),
+                        "elapsed_ms": elapsed_ms,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        except Exception:
+            pass
+        return stats

@@ -3,44 +3,57 @@
 @tailwind utilities;
 
 /* ====================================================================
-   macOS Sequoia-inspired design tokens.
-   Light theme is default; dark theme auto-switches via prefers-color-scheme.
+   macOS Sequoia-inspired tokens. Softer than the first pass — less
+   contrast, fewer hard borders, more surface layering.
    ==================================================================== */
 
 :root {
-  --bg: #ffffff;
-  --surface: #fbfbfd;
-  --sidebar: #f4f4f6;
+  /* Layered surfaces (light) */
+  --bg: #fafafb;
+  --surface: #f1f1f3;
+  --sidebar: #eaeaee;
   --elevated: #ffffff;
-  --border: rgba(0, 0, 0, 0.09);
-  --separator: rgba(0, 0, 0, 0.06);
+
+  /* Borders — kept very soft to avoid the "wireframed" look */
+  --border: rgba(0, 0, 0, 0.06);
+  --separator: rgba(0, 0, 0, 0.04);
+
+  /* Text */
   --text: #1d1d1f;
   --muted: #6e6e73;
-  --subtle: #a1a1a6;
-  --accent: #007aff;
+  --subtle: #a8a8ad;
+
+  /* Accent — slightly de-saturated from raw system blue */
+  --accent: #0a7aff;
   --accent-hover: #0066d6;
-  --accent-soft: rgba(0, 122, 255, 0.12);
-  --selected: rgba(0, 122, 255, 0.15);
-  --success: #34c759;
+  --accent-soft: rgba(10, 122, 255, 0.10);
+  --selected: rgba(10, 122, 255, 0.13);
+
+  /* Semantic */
+  --success: #30c759;
   --warning: #ff9f0a;
-  --danger: #ff3b30;
+  --danger: #ff453a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1e1e20;
-    --surface: #28282c;
-    --sidebar: #1c1c1e;
-    --elevated: #2c2c2e;
-    --border: rgba(255, 255, 255, 0.10);
-    --separator: rgba(255, 255, 255, 0.06);
-    --text: #f5f5f7;
-    --muted: #98989e;
-    --subtle: #6e6e73;
-    --accent: #0a84ff;
-    --accent-hover: #409cff;
-    --accent-soft: rgba(10, 132, 255, 0.18);
-    --selected: rgba(10, 132, 255, 0.22);
+    --bg: #1c1c1e;
+    --surface: #232326;
+    --sidebar: #1a1a1c;
+    --elevated: #2a2a2e;
+
+    /* Even softer borders in dark — was the main source of "harsh" feel */
+    --border: rgba(255, 255, 255, 0.06);
+    --separator: rgba(255, 255, 255, 0.035);
+
+    --text: #ebebed;
+    --muted: #8e8e93;
+    --subtle: #5e5e63;
+
+    --accent: #339fff;
+    --accent-hover: #5cb3ff;
+    --accent-soft: rgba(51, 159, 255, 0.14);
+    --selected: rgba(51, 159, 255, 0.18);
   }
 }
 
@@ -56,6 +69,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
   font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
 }
 
 input,
@@ -73,10 +87,10 @@ button {
 button:focus-visible,
 input:focus-visible {
   outline: none;
-  box-shadow: var(--tw-shadow, 0 0 0 3px var(--accent-soft));
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* macOS-style scrollbars: thin, auto-hide-ish look */
+/* Native-feel scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -85,33 +99,62 @@ input:focus-visible {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(127, 127, 127, 0.25);
+  background: rgba(127, 127, 127, 0.18);
   border: 2px solid transparent;
   background-clip: content-box;
   border-radius: 8px;
+  transition: background 120ms;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(127, 127, 127, 0.45);
+  background: rgba(127, 127, 127, 0.35);
   background-clip: content-box;
 }
 
-/* macOS sidebar vibrancy fallback (real vibrancy is via Tauri config) */
+/* Sidebar vibrancy fallback (Tauri can't always supply real vibrancy) */
 .vibrancy {
   background: var(--sidebar);
   backdrop-filter: blur(30px) saturate(160%);
   -webkit-backdrop-filter: blur(30px) saturate(160%);
 }
 
-/* Selected list-row blue (mimics NSTableView source-list selection) */
+/* Subtle row selection — matches macOS unfocused source-list selection */
 .row-selected {
+  background: var(--selected);
+  color: var(--text);
+}
+
+/* Active selection (focused) — slightly stronger but still text-color, not white */
+.row-selected-strong {
   background: var(--accent);
   color: white;
 }
-.row-selected .row-meta {
+.row-selected-strong .row-meta {
   color: rgba(255, 255, 255, 0.85);
 }
 
 .kbd {
-  @apply inline-flex items-center justify-center rounded font-mono text-2xs px-1 py-0.5 border border-border bg-bg/60 text-muted;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
+  font-size: 10px;
+  line-height: 14px;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  background: rgba(127, 127, 127, 0.06);
+  color: var(--muted);
   min-width: 16px;
+}
+
+/* Soft glassy card — used by detail panel sections + cards */
+.card {
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: var(--elevated);
+  }
 }

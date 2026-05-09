@@ -9,8 +9,15 @@ import BrowseList from "./components/BrowseList";
 import SearchHits from "./components/SearchHits";
 import DetailPanel from "./components/DetailPanel";
 import StatusBar from "./components/StatusBar";
+import WelcomeOverlay from "./components/WelcomeOverlay";
 
 type HistoryState = { stack: string[]; index: number };
+
+function homeRel(p: string, home: string) {
+  if (!p) return p;
+  if (!home) return p;
+  return p.startsWith(home) ? "~" + p.slice(home.length) : p;
+}
 
 export default function App() {
   const [home, setHome] = useState<string>("");
@@ -29,6 +36,10 @@ export default function App() {
   const [indexBusy, setIndexBusy] = useState(false);
 
   const [info, setInfo] = useState<string>("");
+
+  // OOTB first-run flow
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [bootChecked, setBootChecked] = useState(false);
 
   const navigateTo = useCallback(
     async (target: string, pushHistory = true) => {
@@ -53,14 +64,41 @@ export default function App() {
     []
   );
 
+  // Boot: home → list home → check index state → maybe show welcome
   useEffect(() => {
     (async () => {
       try {
         const h = await tauri.homeDir();
         setHome(h);
         await navigateTo(h, true);
+
+        // Wait for sidecar to be ready before hitting /state
+        for (let i = 0; i < 30; i++) {
+          try {
+            const ok = await api.health();
+            if (ok?.ok) break;
+          } catch {
+            // not ready
+          }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+
+        try {
+          const s = await api.state();
+          if (s.indexed && s.root) {
+            setIndexedRoot(s.root);
+            setIndexedFiles(s.files ?? null);
+          } else {
+            setWelcomeOpen(true);
+          }
+        } catch {
+          // sidecar issue — show welcome anyway, user can skip
+          setWelcomeOpen(true);
+        }
+        setBootChecked(true);
       } catch (e) {
         setBrowseError((e as Error).message);
+        setBootChecked(true);
       }
     })();
   }, [navigateTo]);
@@ -123,19 +161,36 @@ export default function App() {
 
   async function indexFolder(target: string) {
     setIndexBusy(true);
-    setInfo(`Indexing ${target}…`);
+    setInfo(`Indexing ${homeRel(target, home)}…`);
     try {
       const r = await api.index(target);
       setIndexedRoot(target);
       setIndexedFiles(r.files_indexed);
       setInfo(
-        `Indexed ${r.files_indexed} files (${r.chunks} sections) in ${r.elapsed_ms} ms`
+        `Indexed ${r.files_indexed} files (${r.chunks} sections) in ${(
+          r.elapsed_ms / 1000
+        ).toFixed(1)} s`
       );
     } catch (e) {
       setInfo(`Index error: ${(e as Error).message}`);
+      throw e;
     } finally {
       setIndexBusy(false);
     }
+  }
+
+  async function startWelcomeIndexing() {
+    if (!home) return;
+    try {
+      await indexFolder(home);
+      setWelcomeOpen(false);
+    } catch {
+      // Stay on welcome with error visible in info
+    }
+  }
+
+  function skipWelcome() {
+    setWelcomeOpen(false);
   }
 
   const items: QuickItem[] = [
@@ -162,7 +217,11 @@ export default function App() {
         onClearSearch={clearSearch}
         searchBusy={searchBusy}
         searchEnabled={!!indexedRoot}
-        searchHint="Search across indexed files…"
+        searchHint={
+          indexedRoot
+            ? `Search ${indexedFiles ?? ""} indexed files…`
+            : "Index a folder to enable search"
+        }
       />
 
       <div className="flex-1 flex min-h-0">
@@ -180,21 +239,21 @@ export default function App() {
 
         <main className="flex-1 flex flex-col min-w-0 bg-bg">
           {/* Path bar row */}
-          <div className="h-10 px-4 border-b border-separator flex items-center gap-3 bg-surface/30">
+          <div className="h-11 px-4 border-b border-separator flex items-center gap-3">
             <Breadcrumbs path={path} home={home} onNavigate={(p) => navigateTo(p)} />
             {query && (
               <button
                 onClick={clearSearch}
-                className="ml-auto text-xs px-2.5 py-1 rounded-md bg-bg border border-border hover:border-muted/50 transition"
+                className="ml-auto text-xs px-3 py-1 rounded-md bg-surface hover:bg-bg border border-border hover:border-muted/40 transition"
               >
                 ← Back to folder
               </button>
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-5">
             {browseError && !query && (
-              <div className="mb-3 text-sm text-danger bg-danger/10 border border-danger/30 rounded-md px-3 py-2">
+              <div className="mb-3 text-sm text-danger bg-danger/8 border border-danger/20 rounded-md px-3 py-2">
                 {browseError}
               </div>
             )}
@@ -228,6 +287,16 @@ export default function App() {
       </div>
 
       <StatusBar info={info} indexedRoot={indexedRoot} />
+
+      {bootChecked && welcomeOpen && (
+        <WelcomeOverlay
+          homeLabel={homeRel(home, home) || home || "your Home folder"}
+          busy={indexBusy}
+          progress={info}
+          onStart={startWelcomeIndexing}
+          onSkip={skipWelcome}
+        />
+      )}
     </div>
   );
 }
