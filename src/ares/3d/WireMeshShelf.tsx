@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
 type Props = {
@@ -38,12 +38,26 @@ export default function WireMeshShelf({
     return g;
   }, [width, depth, meshSize]);
 
+  useEffect(() => () => geom.dispose(), [geom]);
+
   return (
     <group position={position}>
       {/* Outer thin frame for definition */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[width + 0.04, 0.012, depth + 0.04]} />
-        <meshStandardMaterial color="#1a1a1a" metalness={0.6} roughness={0.4} />
+      <mesh position={[0, 0, -depth / 2]}>
+        <boxGeometry args={[width + 0.08, 0.035, 0.045]} />
+        <meshStandardMaterial color="#111827" metalness={0.72} roughness={0.32} />
+      </mesh>
+      <mesh position={[0, 0, depth / 2]}>
+        <boxGeometry args={[width + 0.08, 0.035, 0.045]} />
+        <meshStandardMaterial color="#111827" metalness={0.72} roughness={0.32} />
+      </mesh>
+      <mesh position={[-width / 2, 0, 0]}>
+        <boxGeometry args={[0.045, 0.035, depth + 0.08]} />
+        <meshStandardMaterial color="#111827" metalness={0.72} roughness={0.32} />
+      </mesh>
+      <mesh position={[width / 2, 0, 0]}>
+        <boxGeometry args={[0.045, 0.035, depth + 0.08]} />
+        <meshStandardMaterial color="#111827" metalness={0.72} roughness={0.32} />
       </mesh>
       {/* Wire grid */}
       <lineSegments geometry={geom} position={[0, 0.008, 0]}>

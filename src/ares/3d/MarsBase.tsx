@@ -48,23 +48,27 @@ export default function MarsBase({
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ position: [12, 10, 12], fov: 30 }}
     >
-      <color attach="background" args={["#10070a"]} />
-      <fog attach="fog" args={["#1a0d0e", 18, 38]} />
+      <color attach="background" args={["#080305"]} />
+      <fog attach="fog" args={["#2b0f0a", 13, 34]} />
 
       <directionalLight
-        position={[8, 14, 6]}
-        intensity={1.7}
-        color="#ffe2c0"
+        position={[10, 8, 5]}
+        intensity={2.15}
+        color="#ffd0a0"
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
         shadow-camera-left={-15}
         shadow-camera-right={15}
         shadow-camera-top={15}
         shadow-camera-bottom={-15}
       />
-      <directionalLight position={[-8, 4, -6]} intensity={0.4} color="#c2410c" />
-      <ambientLight intensity={0.25} color="#7c2d12" />
+      <directionalLight position={[-8, 4, -6]} intensity={0.55} color="#38bdf8" />
+      <hemisphereLight args={["#fed7aa", "#4a160d", 0.42]} />
+      <ambientLight intensity={0.18} color="#7c2d12" />
+      <pointLight position={[5, 2.0, 1]} intensity={1.15} color="#10b981" distance={7} />
+      <pointLight position={[-1, 2.0, -5]} intensity={0.75} color="#fb923c" distance={7} />
+      <pointLight position={[-6.5, 1.2, -3]} intensity={0.55} color="#a78bfa" distance={7} />
 
       <MarsTerrain />
 

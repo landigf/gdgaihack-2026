@@ -29,10 +29,20 @@ export default function Pot({ color, position = [0, 0, 0], scale = 1 }: Props) {
         <cylinderGeometry args={[rTop, r, h, 16]} />
         <meshStandardMaterial color={palette.body} roughness={0.85} metalness={0.05} />
       </mesh>
+      {/* saucer shadow base */}
+      <mesh position={[0, 0.018 * scale, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[rTop * 1.15, rTop * 1.05, 0.035 * scale, 18]} />
+        <meshStandardMaterial color={palette.rim} roughness={0.78} metalness={0.08} />
+      </mesh>
       {/* rim */}
       <mesh position={[0, h - 0.005, 0]} castShadow>
         <torusGeometry args={[rTop, 0.018 * scale, 6, 18]} />
         <meshStandardMaterial color={palette.rim} roughness={0.7} />
+      </mesh>
+      {/* small front label stripe for scale and readability */}
+      <mesh position={[0, h * 0.47, -rTop * 0.98]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[rTop * 0.85, 0.035 * scale, 0.006 * scale]} />
+        <meshStandardMaterial color="#f8fafc" roughness={0.65} />
       </mesh>
       {/* soil disk just under the rim */}
       <mesh position={[0, h - 0.012, 0]}>

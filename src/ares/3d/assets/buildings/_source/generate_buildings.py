@@ -117,6 +117,39 @@ def box(extents_xyz: Sequence[float]) -> trimesh.Trimesh:
     return trimesh.creation.box(extents=list(extents_xyz))
 
 
+def add_box(
+    scene: trimesh.Scene,
+    extents_xyz: Sequence[float],
+    translation: Sequence[float],
+    material,
+    *,
+    node_name: str = "box",
+    rotation: Optional[np.ndarray] = None,
+) -> trimesh.Trimesh:
+    m = box(extents_xyz)
+    if rotation is not None:
+        m.apply_transform(rotation)
+    m.apply_translation(translation)
+    scene.add_geometry(apply_material(m, material), node_name=node_name)
+    return m
+
+
+def add_cylinder(
+    scene: trimesh.Scene,
+    mesh: trimesh.Trimesh,
+    translation: Sequence[float],
+    material,
+    *,
+    node_name: str = "cylinder",
+    rotation: Optional[np.ndarray] = None,
+) -> trimesh.Trimesh:
+    if rotation is not None:
+        mesh.apply_transform(rotation)
+    mesh.apply_translation(translation)
+    scene.add_geometry(apply_material(mesh, material), node_name=node_name)
+    return mesh
+
+
 # ---------- export with ALERT_RING_ANCHOR ----------------------------------
 
 def export_with_anchor(
@@ -148,6 +181,8 @@ def build_habitat(out_path: str) -> int:
     body_mat = make_pbr("habitat_body", "#e7e5e4", metallic=0.05, roughness=0.55)
     accent_mat = make_pbr("habitat_solar", "#22d3ee", metallic=0.55, roughness=0.25)
     dark_mat = make_pbr("habitat_dark", "#1f2937", metallic=0.7, roughness=0.4)
+    seam_mat = make_pbr("habitat_panel_seams", "#a8a29e", metallic=0.35, roughness=0.5)
+    foot_mat = make_pbr("habitat_landing_feet", "#64748b", metallic=0.6, roughness=0.45)
 
     scene = trimesh.Scene()
 
@@ -166,11 +201,44 @@ def build_habitat(out_path: str) -> int:
         cap.apply_translation([sx * (body_length / 2.0 + cap_t / 2.0), body_radius, 0.0])
         scene.add_geometry(apply_material(cap, dark_mat), node_name=f"cap_{int(sx)}")
 
+    # Thin exterior panel ribs and landing legs make the module read like hardware.
+    for sx in (-0.55, 0.0, 0.55):
+        rib = x_cylinder(body_radius + 0.01, 0.035, sections=20)
+        rib.apply_translation([sx, body_radius, 0.0])
+        scene.add_geometry(apply_material(rib, seam_mat), node_name=f"pressure_rib_{sx}")
+
+    for sx in (-0.75, 0.75):
+        for sz in (-0.42, 0.42):
+            add_cylinder(
+                scene,
+                y_cylinder(0.035, 0.42, sections=8),
+                [sx, 0.21, sz],
+                foot_mat,
+                node_name=f"leg_{sx}_{sz}",
+            )
+            add_box(scene, [0.26, 0.035, 0.18], [sx, 0.02, sz], foot_mat, node_name="foot_pad")
+
     # Roof solar panel - thin box on top center
     panel_w, panel_h, panel_d = 1.4, 0.04, 0.45
     panel = box([panel_w, panel_h, panel_d])
     panel.apply_translation([0.0, body_radius * 2 + panel_h / 2.0, 0.0])
     scene.add_geometry(apply_material(panel, accent_mat), node_name="solar_panel")
+    for gx in (-0.45, 0.0, 0.45):
+        add_box(
+            scene,
+            [0.018, 0.012, panel_d * 1.03],
+            [gx, body_radius * 2 + panel_h + 0.008, 0.0],
+            dark_mat,
+            node_name="solar_grid_x",
+        )
+    for gz in (-0.13, 0.13):
+        add_box(
+            scene,
+            [panel_w * 1.02, 0.012, 0.014],
+            [0.0, body_radius * 2 + panel_h + 0.009, gz],
+            dark_mat,
+            node_name="solar_grid_z",
+        )
 
     # Tiny antenna on top - thin tall cylinder + sphere tip
     ant_h = 0.32
@@ -186,6 +254,15 @@ def build_habitat(out_path: str) -> int:
     # z_cylinder axis=Z; we want it on -Z face, so position z = -body_radius - 0.01
     porthole.apply_translation([0.0, body_radius, -body_radius - 0.005])
     scene.add_geometry(apply_material(porthole, dark_mat), node_name="porthole")
+    for px in (-0.55, 0.55):
+        small_port = z_cylinder(0.09, 0.025, sections=12)
+        small_port.apply_translation([px, body_radius + 0.08, -body_radius - 0.006])
+        scene.add_geometry(apply_material(small_port, accent_mat), node_name=f"side_porthole_{px}")
+
+    # Docking collar on the right end, visible in the hero angle.
+    dock = x_cylinder(0.28, 0.12, sections=16)
+    dock.apply_translation([body_length / 2.0 + cap_t + 0.06, body_radius, 0.0])
+    scene.add_geometry(apply_material(dock, dark_mat), node_name="docking_collar")
 
     anchor_y = body_radius * 2 + panel_h + ant_h + 0.12
     return export_with_anchor(scene, anchor_y, out_path, "habitat")
@@ -204,6 +281,10 @@ def build_greenhouse(out_path: str) -> int:
     rack_mat = make_pbr("greenhouse_rack_dark", "#15803d", metallic=0.1, roughness=0.6)
     leaves_mat = make_pbr("greenhouse_leaves", "#22c55e", metallic=0.0, roughness=0.85)
     base_mat = make_pbr("greenhouse_base", "#475569", metallic=0.4, roughness=0.5)
+    rib_mat = make_pbr("greenhouse_dome_ribs", "#d9f99d", alpha=0.9, metallic=0.2, roughness=0.25,
+                       emissive_hex="#86efac", emissive_strength=0.25)
+    grow_mat = make_pbr("greenhouse_grow_lights", "#a78bfa", metallic=0.25, roughness=0.35,
+                        emissive_hex="#a78bfa", emissive_strength=1.4)
 
     scene = trimesh.Scene()
 
@@ -212,6 +293,10 @@ def build_greenhouse(out_path: str) -> int:
     base = y_cylinder(1.18, base_h, sections=24)
     base.apply_translation([0.0, base_h / 2.0, 0.0])
     scene.add_geometry(apply_material(base, base_mat), node_name="base_ring")
+    for rad in (1.0, 0.72):
+        inner_ring = y_cylinder(rad, 0.025, sections=24)
+        inner_ring.apply_translation([0.0, base_h + 0.025, 0.0])
+        scene.add_geometry(apply_material(inner_ring, rib_mat), node_name=f"floor_ring_{rad}")
 
     # Plant racks INSIDE (visible through translucent dome)
     rack_y = base_h + 0.05
@@ -223,6 +308,7 @@ def build_greenhouse(out_path: str) -> int:
         leaves = trimesh.creation.icosphere(subdivisions=1, radius=0.13)
         leaves.apply_translation([x_offset, rack_y + 0.35 + 0.1, z_offset])
         scene.add_geometry(apply_material(leaves, leaves_mat), node_name=f"leaves_{x_offset}_{z_offset}")
+        add_box(scene, [0.42, 0.035, 0.05], [x_offset, rack_y + 0.58, z_offset], grow_mat, node_name="rack_grow_light")
 
     # Central tall planter
     central_planter = y_cylinder(0.18, 0.4, sections=10)
@@ -238,6 +324,18 @@ def build_greenhouse(out_path: str) -> int:
     dome.apply_translation([0.0, base_h, 0.0])
     scene.add_geometry(apply_material(dome, dome_mat), node_name="dome")
 
+    # Dome ribs: radial struts plus a bright equator ring. These preserve the
+    # same footprint but make the greenhouse the obvious hero target.
+    for angle in np.linspace(0, math.pi * 2, 8, endpoint=False):
+        x = math.cos(angle) * dome_radius * 0.55
+        z = math.sin(angle) * dome_radius * 0.55
+        rib = y_cylinder(0.018, dome_radius * 0.9, sections=6)
+        rib.apply_translation([x, base_h + dome_radius * 0.45, z])
+        scene.add_geometry(apply_material(rib, rib_mat), node_name=f"dome_rib_{angle:.2f}")
+    equator = y_cylinder(dome_radius + 0.015, 0.035, sections=32)
+    equator.apply_translation([0.0, base_h + 0.04, 0.0])
+    scene.add_geometry(apply_material(equator, rib_mat), node_name="dome_equator_ring")
+
     anchor_y = base_h + dome_radius + 0.08
     return export_with_anchor(scene, anchor_y, out_path, "greenhouse")
 
@@ -251,6 +349,8 @@ def build_eclss(out_path: str) -> int:
     pipe_mat = make_pbr("eclss_pipe", "#475569", metallic=0.7, roughness=0.35)
     accent_mat = make_pbr("eclss_accent", "#38bdf8", metallic=0.4, roughness=0.3,
                           emissive_hex="#38bdf8", emissive_strength=0.4)
+    alert_mat = make_pbr("eclss_status_cyan", "#22d3ee", metallic=0.25, roughness=0.25,
+                         emissive_hex="#22d3ee", emissive_strength=1.2)
     grille_mat = make_pbr("eclss_grille", "#1f2937", metallic=0.6, roughness=0.5)
 
     scene = trimesh.Scene()
@@ -279,6 +379,14 @@ def build_eclss(out_path: str) -> int:
         led.apply_translation([cx, rack_h * 0.85, -rack_d / 2.0 - 0.018])
         scene.add_geometry(apply_material(led, accent_mat), node_name=f"led_{i}")
 
+        for gy in (0.32, 0.5, 0.68):
+            slat = box([rack_w * 0.62, 0.014, 0.018])
+            slat.apply_translation([cx, gy, -rack_d / 2.0 - 0.026])
+            scene.add_geometry(apply_material(slat, grille_mat), node_name=f"vent_slat_{i}_{gy}")
+        status = box([0.035, rack_h * 0.55, 0.018])
+        status.apply_translation([cx + rack_w * 0.36, rack_h * 0.5, -rack_d / 2.0 - 0.032])
+        scene.add_geometry(apply_material(status, alert_mat), node_name=f"status_strip_{i}")
+
     # Top pipes connecting the 3 racks (horizontal cylinder along X)
     top_y = rack_h + 0.05
     pipe1 = x_cylinder(0.06, total_w * 0.95, sections=10)
@@ -287,14 +395,21 @@ def build_eclss(out_path: str) -> int:
     pipe2 = x_cylinder(0.06, total_w * 0.95, sections=10)
     pipe2.apply_translation([0.0, top_y, 0.35])
     scene.add_geometry(apply_material(pipe2, pipe_mat), node_name="pipe_top_b")
+    duct = box([total_w * 0.82, 0.12, 0.34])
+    duct.apply_translation([0.0, top_y + 0.12, 0.0])
+    scene.add_geometry(apply_material(duct, pipe_mat), node_name="top_filter_duct")
     # Vertical risers on each end
     for sx in (-1, 1):
         for sz in (-0.35, 0.35):
             riser = y_cylinder(0.06, 0.18, sections=8)
             riser.apply_translation([sx * (total_w / 2.0 - 0.05), rack_h + 0.05 - 0.09, sz])
             scene.add_geometry(apply_material(riser, pipe_mat))
+    for sx in (-0.9, 0.9):
+        side_pipe = z_cylinder(0.045, 1.45, sections=8)
+        side_pipe.apply_translation([sx, 0.26, 0.0])
+        scene.add_geometry(apply_material(side_pipe, pipe_mat), node_name=f"low_side_pipe_{sx}")
 
-    anchor_y = top_y + 0.12
+    anchor_y = top_y + 0.28
     return export_with_anchor(scene, anchor_y, out_path, "eclss")
 
 
@@ -312,6 +427,8 @@ def build_isru(out_path: str) -> int:
     tank_mat = make_pbr("isru_tank", "#94a3b8", metallic=0.65, roughness=0.4)
     pipe_mat = make_pbr("isru_pipe", "#475569", metallic=0.7, roughness=0.35)
     band_mat = make_pbr("isru_band", "#1f2937", metallic=0.65, roughness=0.45)
+    valve_mat = make_pbr("isru_valves", "#fb923c", metallic=0.35, roughness=0.35,
+                         emissive_hex="#fb923c", emissive_strength=0.8)
 
     scene = trimesh.Scene()
 
@@ -328,6 +445,12 @@ def build_isru(out_path: str) -> int:
     rcap = hemisphere(reactor_r, subdivisions=2)
     rcap.apply_translation([reactor_x, reactor_h, 0.0])
     scene.add_geometry(apply_material(rcap, metal_mat), node_name="reactor_cap")
+    stack = y_cylinder(0.16, 0.28, sections=12)
+    stack.apply_translation([reactor_x, reactor_h + reactor_r * 0.3 + 0.14, 0.0])
+    scene.add_geometry(apply_material(stack, band_mat), node_name="reactor_exhaust_stack")
+    stack_tip = y_cone(0.18, 0.12, sections=12)
+    stack_tip.apply_translation([reactor_x, reactor_h + reactor_r * 0.3 + 0.28, 0.0])
+    scene.add_geometry(apply_material(stack_tip, valve_mat), node_name="reactor_stack_beacon")
 
     # Glowing core hint - small inner cylinder visible via 2 vent slots (boxes)
     # We approximate "glow hint" with two thin emissive bands on the reactor
@@ -364,13 +487,20 @@ def build_isru(out_path: str) -> int:
     pipe = x_cylinder(0.07, pipe_len, sections=10)
     pipe.apply_translation([pipe_cx, pipe_y, 0.0])
     scene.add_geometry(apply_material(pipe, pipe_mat), node_name="pipe_connector")
+    bypass = z_cylinder(0.045, 1.1, sections=8)
+    bypass.apply_translation([0.08, 0.34, 0.0])
+    scene.add_geometry(apply_material(bypass, pipe_mat), node_name="front_bypass_pipe")
+    for vx, vz in ((-0.15, -0.55), (0.35, 0.55), (0.85, -0.55)):
+        valve = trimesh.creation.icosphere(subdivisions=1, radius=0.075)
+        valve.apply_translation([vx, 0.34, vz])
+        scene.add_geometry(apply_material(valve, valve_mat), node_name="orange_valve")
     # Pipe joints (small dark spheres)
     for jx in (reactor_x + reactor_r, tank_x - tank_r):
         joint = trimesh.creation.icosphere(subdivisions=1, radius=0.08)
         joint.apply_translation([jx, pipe_y, 0.0])
         scene.add_geometry(apply_material(joint, band_mat))
 
-    anchor_y = max(reactor_h + reactor_r * 0.3, tank_h + tank_r) + 0.12
+    anchor_y = max(reactor_h + reactor_r * 0.3 + 0.42, tank_h + tank_r) + 0.12
     return export_with_anchor(scene, anchor_y, out_path, "isru")
 
 
@@ -411,10 +541,24 @@ def build_power(out_path: str) -> int:
         p.apply_translation([dx, center_y, panel_z])
         scene.add_geometry(apply_material(p, panel_mat), node_name=f"panel_{i}")
 
+        for gx in (-0.32, 0.0, 0.32):
+            grid = box([0.018, 0.012, panel_d * 0.98])
+            grid.apply_transform(Rt)
+            grid.apply_translation([dx + gx, center_y + 0.026, panel_z])
+            scene.add_geometry(apply_material(grid, cap_mat), node_name=f"panel_grid_x_{i}_{gx}")
+        for gz in (-0.22, 0.0, 0.22):
+            grid = box([panel_w * 0.96, 0.012, 0.014])
+            grid.apply_transform(Rt)
+            grid.apply_translation([dx, center_y + 0.027, panel_z + gz])
+            scene.add_geometry(apply_material(grid, cap_mat), node_name=f"panel_grid_z_{i}_{gz}")
+
         # Support pole under each panel
         pole = y_cylinder(0.05, center_y, sections=8)
         pole.apply_translation([dx, center_y / 2.0, panel_z])
         scene.add_geometry(apply_material(pole, support_mat), node_name=f"pole_{i}")
+        foot = box([0.32, 0.035, 0.22])
+        foot.apply_translation([dx, 0.018, panel_z])
+        scene.add_geometry(apply_material(foot, support_mat), node_name=f"solar_foot_{i}")
 
     # 5 Kilopower reactors in a row along the FRONT (-Z half).
     # Each: small cylinder + cone tip + tiny purple glow ring
@@ -447,6 +591,14 @@ def build_power(out_path: str) -> int:
         glow.apply_translation([rx, r_height - 0.06, r_z])
         scene.add_geometry(apply_material(glow, glow_mat), node_name=f"react_glow_{i}")
 
+    cable = x_cylinder(0.04, r_spacing * (n_reactors - 1) + 0.3, sections=8)
+    cable.apply_translation([0.0, 0.12, -0.56])
+    scene.add_geometry(apply_material(cable, support_mat), node_name="kilopower_cable_trunk")
+    for dx in (-spacing, 0.0, spacing):
+        feed = z_cylinder(0.035, 1.35, sections=8)
+        feed.apply_translation([dx, 0.1, -0.1])
+        scene.add_geometry(apply_material(feed, support_mat), node_name="solar_feed_cable")
+
     anchor_y = 0.65 + (panel_d / 2.0) * math.sin(panel_tilt) + 0.15
     return export_with_anchor(scene, anchor_y, out_path, "power")
 
@@ -464,6 +616,8 @@ def build_airlock(out_path: str) -> int:
         emissive_hex="#facc15", emissive_strength=3.0,
     )
     rim_mat = make_pbr("airlock_rim", "#a16207", metallic=0.6, roughness=0.45)
+    stripe_mat = make_pbr("airlock_caution_black", "#111827", metallic=0.35, roughness=0.45)
+    rail_mat = make_pbr("airlock_handrails", "#fef3c7", metallic=0.45, roughness=0.35)
 
     scene = trimesh.Scene()
 
@@ -486,6 +640,10 @@ def build_airlock(out_path: str) -> int:
     handle = box([0.04, 0.18, 0.04])
     handle.apply_translation([-body_len / 2.0 - 0.02, body_r, 0.0])
     scene.add_geometry(apply_material(handle, rim_mat), node_name="hatch_handle")
+    for i, z in enumerate((-0.26, -0.13, 0.13, 0.26)):
+        stripe = box([0.035, 0.13, 0.045])
+        stripe.apply_translation([-body_len / 2.0 - 0.055, body_r + (0.08 if i % 2 else -0.08), z])
+        scene.add_geometry(apply_material(stripe, stripe_mat), node_name=f"hatch_caution_stripe_{i}")
 
     # Caution lamp on top
     lamp_base = y_cylinder(0.06, 0.05, sections=10)
@@ -499,6 +657,15 @@ def build_airlock(out_path: str) -> int:
     rear_cap = x_cylinder(body_r + 0.02, 0.05, sections=18)
     rear_cap.apply_translation([body_len / 2.0 + 0.025, body_r, 0.0])
     scene.add_geometry(apply_material(rear_cap, rim_mat), node_name="rear_cap")
+
+    for z in (-0.36, 0.36):
+        rail = x_cylinder(0.025, body_len * 0.82, sections=8)
+        rail.apply_translation([0.0, body_r + 0.12, z])
+        scene.add_geometry(apply_material(rail, rail_mat), node_name=f"side_handrail_{z}")
+        for sx in (-0.32, 0.32):
+            post = y_cylinder(0.018, 0.22, sections=6)
+            post.apply_translation([sx, body_r + 0.01, z])
+            scene.add_geometry(apply_material(post, rail_mat), node_name="handrail_post")
 
     anchor_y = body_r * 2 + 0.05 + 0.085 * 2 + 0.08
     return export_with_anchor(scene, anchor_y, out_path, "airlock")
@@ -516,6 +683,7 @@ def build_rover_garage(out_path: str) -> int:
     solar_mat = make_pbr("rover_solar", "#1e3a8a", metallic=0.55, roughness=0.25)
     accent_mat = make_pbr("rover_accent", "#22d3ee", metallic=0.4, roughness=0.3,
                           emissive_hex="#22d3ee", emissive_strength=0.4)
+    ramp_mat = make_pbr("garage_ramp", "#64748b", metallic=0.6, roughness=0.5)
 
     scene = trimesh.Scene()
 
@@ -538,6 +706,15 @@ def build_rover_garage(out_path: str) -> int:
     floor = box([shell_len, 0.04, shell_r * 1.8])
     floor.apply_translation([0.0, 0.02, 0.0])
     scene.add_geometry(apply_material(floor, floor_mat), node_name="garage_floor")
+    ramp = box([shell_len * 0.86, 0.04, 0.48])
+    Rr = trimesh.transformations.rotation_matrix(math.radians(-10), [1, 0, 0])
+    ramp.apply_transform(Rr)
+    ramp.apply_translation([0.0, 0.04, -0.64])
+    scene.add_geometry(apply_material(ramp, ramp_mat), node_name="garage_ramp")
+    for sx in (-0.78, 0.78):
+        rail = z_cylinder(0.025, 1.18, sections=8)
+        rail.apply_translation([sx, 0.15, -0.24])
+        scene.add_geometry(apply_material(rail, accent_mat), node_name=f"garage_side_rail_{sx}")
 
     # Rover sticking out the front (-Z). Body offset toward -Z so half is outside.
     rb_w = 0.55  # along X
@@ -553,6 +730,8 @@ def build_rover_garage(out_path: str) -> int:
     lid = box([rb_w * 0.9, 0.025, rb_d * 0.85])
     lid.apply_translation([0.0, rover_y + rb_h / 2.0 + 0.013, rover_z])
     scene.add_geometry(apply_material(lid, solar_mat), node_name="rover_solar_lid")
+    for gx in (-0.16, 0.0, 0.16):
+        add_box(scene, [0.012, 0.01, rb_d * 0.78], [gx, rover_y + rb_h / 2.0 + 0.03, rover_z], wheel_mat, node_name="rover_panel_grid")
 
     # 4 wheels - cylinders with axis along X
     wheel_r = 0.12
@@ -564,11 +743,20 @@ def build_rover_garage(out_path: str) -> int:
             w = x_cylinder(wheel_r, wheel_w, sections=12)
             w.apply_translation([sx * (rb_w / 2.0 + wheel_w / 2.0 - 0.01), wheel_y, wz])
             scene.add_geometry(apply_material(w, wheel_mat), node_name=f"wheel_{sx}_{sz}")
+            hub = x_cylinder(wheel_r * 0.45, wheel_w + 0.02, sections=10)
+            hub.apply_translation([sx * (rb_w / 2.0 + wheel_w / 2.0 - 0.01), wheel_y, wz])
+            scene.add_geometry(apply_material(hub, accent_mat), node_name="wheel_hub")
 
     # Front-facing accent strip (cyan) on rover nose
     accent = box([rb_w * 0.6, 0.04, 0.025])
     accent.apply_translation([0.0, rover_y + 0.02, rover_z - rb_d / 2.0 - 0.012])
     scene.add_geometry(apply_material(accent, accent_mat), node_name="rover_accent")
+    mast = y_cylinder(0.018, 0.34, sections=8)
+    mast.apply_translation([0.17, rover_y + rb_h / 2.0 + 0.18, rover_z - 0.12])
+    scene.add_geometry(apply_material(mast, wheel_mat), node_name="rover_mast")
+    camera = box([0.14, 0.07, 0.07])
+    camera.apply_translation([0.17, rover_y + rb_h / 2.0 + 0.36, rover_z - 0.16])
+    scene.add_geometry(apply_material(camera, accent_mat), node_name="rover_camera_head")
 
     # Garage entrance frame (ring on -Z opening edge)
     # Build a thin torus-like ring using trimesh annulus path - simpler: 2 boxes top + sides
@@ -576,6 +764,10 @@ def build_rover_garage(out_path: str) -> int:
     lip_top = box([shell_len + 0.04, 0.06, 0.06])
     lip_top.apply_translation([0.0, shell_r * 2 - 0.03, 0.0])
     scene.add_geometry(apply_material(lip_top, accent_mat), node_name="entrance_lip")
+    for sx in (-0.78, 0.78):
+        lip_side = box([0.05, shell_r * 1.55, 0.06])
+        lip_side.apply_translation([sx, shell_r * 0.76, 0.0])
+        scene.add_geometry(apply_material(lip_side, accent_mat), node_name="entrance_side_lip")
 
     anchor_y = shell_r * 2 + 0.1
     return export_with_anchor(scene, anchor_y, out_path, "rover_garage")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Html } from "@react-three/drei";
 import Plant, { stageName, type PlantSpecies, type PlantStage } from "./PlantStages";
 import Pot, { type PotColor, potHeight } from "./Pot";
@@ -49,12 +49,20 @@ function shelfTone(shelf: Shelf): string {
 export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: Props) {
   const [hoverPotId, setHoverPotId] = useState<string | null>(null);
 
+  useEffect(() => () => {
+    document.body.style.cursor = "default";
+  }, []);
+
   return (
     <group position={[0, 0, 0]}>
       {/* Floor */}
       <mesh position={[0, -0.05, 0]} receiveShadow>
-        <boxGeometry args={[3.7, 0.05, 1.7]} />
-        <meshStandardMaterial color="#0d0d0d" roughness={0.95} />
+        <boxGeometry args={[3.9, 0.06, 1.9]} />
+        <meshStandardMaterial color="#101418" roughness={0.85} metalness={0.18} />
+      </mesh>
+      <mesh position={[0, -0.012, -0.88]}>
+        <boxGeometry args={[3.7, 0.01, 0.035]} />
+        <meshStandardMaterial color="#10b981" emissive="#10b981" emissiveIntensity={0.25} />
       </mesh>
 
       {/* 4 corner posts spanning all 4 shelves (taller now that shelves are spread) */}
@@ -66,9 +74,19 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
       ].map(([x, y, z], i) => (
         <mesh key={`post-${i}`} position={[x, y, z]} castShadow>
           <boxGeometry args={[0.05, 3.15, 0.05]} />
-          <meshStandardMaterial color="#0a0a0a" metalness={0.65} roughness={0.35} />
+          <meshStandardMaterial color="#111827" metalness={0.72} roughness={0.28} />
         </mesh>
       ))}
+
+      {/* top gantry makes the rack read as a real APH-style chamber */}
+      <mesh position={[0, 3.18, -SHELF_D / 2 - 0.02]} castShadow>
+        <boxGeometry args={[SHELF_W + 0.16, 0.06, 0.08]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.65} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 3.18, SHELF_D / 2 + 0.02]} castShadow>
+        <boxGeometry args={[SHELF_W + 0.16, 0.06, 0.08]} />
+        <meshStandardMaterial color="#1f2937" metalness={0.65} roughness={0.35} />
+      </mesh>
 
       {SHELF_Y.map((y, idx) => {
         const shelf = shelves[idx];
@@ -79,6 +97,10 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
           <group key={`shelf-${idx}`} position={[0, y, 0]}>
             {/* Wire-mesh shelf surface */}
             <WireMeshShelf width={SHELF_W} depth={SHELF_D} />
+            <mesh position={[0, 0.03, -SHELF_D / 2 - 0.04]}>
+              <boxGeometry args={[SHELF_W, 0.035, 0.035]} />
+              <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.18} />
+            </mesh>
 
             {/* Per-shelf species label tag (outside, on right side, billboarded).
                 x-offset pushed to +1.15 so the box clears the rightmost pot
@@ -184,12 +206,20 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
 
             {/* Grow-light strip above shelf — moved higher to give clearance */}
             <mesh position={[0, 0.78, 0]}>
-              <boxGeometry args={[SHELF_W * 0.95, 0.03, 0.22]} />
+              <boxGeometry args={[SHELF_W * 0.95, 0.035, 0.26]} />
               <meshStandardMaterial
                 color="#1e1b4b"
                 emissive="#a78bfa"
-                emissiveIntensity={0.7}
+                emissiveIntensity={0.95}
               />
+            </mesh>
+            <mesh position={[-SHELF_W / 2 + 0.18, 0.78, 0]}>
+              <boxGeometry args={[0.04, 0.045, SHELF_D * 0.82]} />
+              <meshStandardMaterial color="#a78bfa" emissive="#a78bfa" emissiveIntensity={0.6} />
+            </mesh>
+            <mesh position={[SHELF_W / 2 - 0.18, 0.78, 0]}>
+              <boxGeometry args={[0.04, 0.045, SHELF_D * 0.82]} />
+              <meshStandardMaterial color="#a78bfa" emissive="#a78bfa" emissiveIntensity={0.6} />
             </mesh>
           </group>
         );
