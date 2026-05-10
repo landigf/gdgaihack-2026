@@ -80,9 +80,12 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
             {/* Wire-mesh shelf surface */}
             <WireMeshShelf width={SHELF_W} depth={SHELF_D} />
 
-            {/* Per-shelf species label tag (outside, on right side, billboarded) */}
+            {/* Per-shelf species label tag (outside, on right side, billboarded).
+                x-offset pushed to +1.15 so the box clears the rightmost pot
+                even on stage-5 lettuce/pepper which spread further than the
+                procedural plants the rack was originally tuned for. */}
             <Html
-              position={[SHELF_W / 2 + 0.55, 0.35, 0]}
+              position={[SHELF_W / 2 + 1.15, 0.35, 0]}
               center
               distanceFactor={9}
               style={{

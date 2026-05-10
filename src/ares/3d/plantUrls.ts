@@ -29,12 +29,12 @@ export const PLANT_TRANSFORM: Partial<Record<
   // Scale ~0.0015 brings a 30 cm plant down to roughly 0.45 m — fits
   // a pot of radius 0.16 with the foliage spreading outward.
   tomato: { scaleMul: 0.0015, yOffset: 0, rotY: 0 },
-  // Lettuce GLB is ~1 unit ≈ 1 m, so scale 0.25 gives ~25 cm rosette.
-  // We will tune visually after first render.
-  lettuce: { scaleMul: 0.25, yOffset: 0, rotY: 0 },
-  // Pepper plant: pre-converted GLB, native scale unknown — start at
-  // 0.15 and tune. Plants are ~50 cm tall in real life.
-  pepper: { scaleMul: 0.15, yOffset: 0, rotY: 0 },
+  // Lettuce GLB is ~4.5 m tall in native units (much larger than expected).
+  // 0.07 brings stage-5 down to ~32 cm — fits the pot, fills the shelf.
+  lettuce: { scaleMul: 0.07, yOffset: 0, rotY: 0 },
+  // Pepper GLB is ~0.5 m tall in native meters — 0.15 was too small,
+  // pots looked seed-only. 0.60 puts stage-5 at ~30 cm canopy.
+  pepper: { scaleMul: 0.60, yOffset: 0, rotY: 0 },
 };
 
 // Preload all GLBs we have at module-load time so the first drill-in
