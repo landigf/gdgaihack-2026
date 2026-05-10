@@ -1,0 +1,200 @@
+\documentclass[9pt]{extarticle}
+
+\usepackage[margin=0.46in]{geometry}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{microtype}
+\usepackage{graphicx}
+
+\IfFontExistsTF{Helvetica Neue}{\setmainfont{Helvetica Neue}}{\setmainfont{TeX Gyre Heros}}
+\IfFontExistsTF{Menlo}{\setmonofont{Menlo}[Scale=0.82]}{\setmonofont{Latin Modern Mono}[Scale=0.86]}
+
+\definecolor{spaceblack}{HTML}{050203}
+\definecolor{mars}{HTML}{A64422}
+\definecolor{cyan}{HTML}{0891B2}
+\definecolor{green}{HTML}{047857}
+\definecolor{orange}{HTML}{C2410C}
+\definecolor{ink}{HTML}{111827}
+\definecolor{muted}{HTML}{475569}
+\definecolor{rule}{HTML}{CBD5E1}
+\definecolor{panel}{HTML}{F8FAFC}
+
+\hypersetup{
+  colorlinks=true,
+  urlcolor=cyan,
+  linkcolor=cyan,
+  pdftitle={Houston - Technical Writeup},
+  pdfauthor={Team PoliSa}
+}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2.5pt}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.04}
+\setlist[itemize]{leftmargin=1.05em, itemsep=0.5pt, topsep=1pt}
+\titleformat{\section}{\large\bfseries\color{spaceblack}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{5pt}{2pt}
+\graphicspath{{benchmarks/houston/out/light/}}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\metric}[2]{\textbf{\color{cyan}#1} {\small #2}}
+\newcommand{\badge}[1]{\fcolorbox{rule}{white}{\strut\hspace{3pt}{\small #1}\hspace{3pt}}}
+\newcommand{\tightline}{\vspace{2pt}{\color{rule}\hrule height 0.35pt}\vspace{4pt}}
+\newcommand{\nodebox}[3]{%
+  \fcolorbox{#1}{panel}{\begin{minipage}[t]{#2}\centering\small #3\end{minipage}}%
+}
+\newcommand{\plotbox}[3]{%
+  \begin{minipage}[t]{#1}
+    \includegraphics[width=\linewidth]{#2}
+    \vspace{-5pt}
+    {\scriptsize #3}
+  \end{minipage}%
+}
+
+\begin{document}
+
+{\Huge \textbf{Houston}}\\[-2pt]
+{\Large On-Device Mars Habitat AI Controller}\\[2pt]
+{\small GDG AI Hack 2026 - MSI Cut the Cord - Team PoliSa - Repository:
+\href{https://github.com/landigf/gdgaihack-2026}{github.com/landigf/gdgaihack-2026}}
+
+\vspace{4pt}
+\badge{single MacBook M3 Pro, 18 GB unified}
+\badge{100\% local inference}
+\badge{30 NASA PDFs / 1,292 FAISS chunks}\\[2pt]
+\badge{0 outbound packets}
+\badge{airplane-mode verified}
+
+\tightline
+
+\section{1. Architecture and product surface}
+
+Houston is a local mission-control assistant for a Mars surface habitat. Mars is
+the stress test where local AI is the correct architecture: Earth-Mars one-way
+light time is 4--24 minutes and solar conjunction can produce multi-day
+blackouts, so a cloud SLA cannot reach the operator in time.
+
+\begin{center}
+\nodebox{cyan}{0.205\linewidth}{\textbf{Tauri 2 shell}\\Rust + WebKit\\Finder route + \code{/ares}}
+\hfill
+\nodebox{mars}{0.205\linewidth}{\textbf{React / R3F UI}\\Mars base\\16-pot greenhouse}
+\hfill
+\nodebox{orange}{0.205\linewidth}{\textbf{FastAPI sidecar}\\\code{127.0.0.1:8765}\\\code{/ares/*} endpoints}
+\hfill
+\nodebox{green}{0.205\linewidth}{\textbf{Local AI stack}\\MLX/Ollama\\FAISS + whisper + say}\\[-1pt]
+{\small\color{muted}
+native OS actions \(\rightarrow\) dashboard state \(\rightarrow\) local personas
+\(\rightarrow\) cited NASA chunks \(\rightarrow\) PDF receipt}
+\end{center}
+
+\begin{tabularx}{\linewidth}{>{\bfseries}p{0.18\linewidth}X}
+\toprule
+Shell & Tauri 2 desktop app with native folder picker, PDF opening,
+microphone permission, React 18 dashboard and Three.js drill-ins.\\
+Sidecar & Python FastAPI mounted on localhost only. Houston adds
+\code{/ares/houston/*}, \code{/ares/sensor/query}, \code{/ares/perf} without
+breaking Rover Core search/index/summarize.\\
+Local AI & MLX-LM Qwen2.5-3B-4bit for generation; Ollama \code{gemma3:4b}
+fallback; Ollama \code{nomic-embed-text}; whisper.cpp ASR; macOS \code{say} TTS.\\
+Knowledge & 30 public NASA/space PDFs chunked into 1,292 FAISS vectors.
+Answers use structured \code{[S1]} citations that open the source PDF.\\
+\bottomrule
+\end{tabularx}
+
+\section{2. Multi-agent design decisions}
+
+\begin{center}
+\nodebox{green}{0.18\linewidth}{\textbf{Greenhouse}\\harvest verdict\\Veggie / APH citations}
+\(\rightarrow\)
+\nodebox{cyan}{0.18\linewidth}{\textbf{Procedure}\\5-step checklist\\same retrieved chunks}
+\(\quad\)
+\nodebox{mars}{0.18\linewidth}{\textbf{Survival}\\habitat margins\\NASA-STD / HRP}
+\(\quad\)
+\nodebox{orange}{0.18\linewidth}{\textbf{Repair}\\fault triage\\inventory cross-check}
+\(\quad\)
+\nodebox{cyan}{0.16\linewidth}{\textbf{Voice}\\whisper.cpp\\macOS say}\\[-2pt]
+{\small\color{muted}All personas share byte-identical \code{HOUSTON\_PREFIX};
+the chained greenhouse \(\rightarrow\) procedure path reuses KV cache.}
+\end{center}
+
+\begin{tabularx}{\linewidth}{>{\bfseries}p{0.25\linewidth}X}
+\toprule
+Why Mars & It turns ``offline'' from a privacy claim into a physics requirement:
+the cloud cannot answer during the operator's decision window.\\
+Why small models & On an 18 GB M3 Pro, a fast 3B 4-bit model plus RAG, schemas
+and streaming beat a larger model that wastes the latency budget.\\
+Why citations & A habitat controller cannot hallucinate. Houston retrieves NASA
+chunks first and either cites them or returns a deterministic fallback.\\
+Why app integration & The useful product is not a chatbot: it ties local files,
+PDF receipts, mic/TTS, sensor cache, 3D drill-ins and app state together.\\
+\bottomrule
+\end{tabularx}
+
+\section{3. What we tried and learned}
+
+\begin{itemize}
+  \item \textbf{MLX in-process is the operating point for this machine.} On the
+  committed RAG-prefill benchmark, MLX Qwen2.5-3B hit \metric{57.6}{tok/s} and
+  \metric{1,668}{ms TTFT}. The same plot keeps the slower local alternatives
+  visible instead of hiding them.
+  \item \textbf{Cache the workflow, not only the model.} Shared persona prefix
+  gave a measured \metric{2.0x}{A2A speedup}; the Arrow/Parquet tile cache gave
+  \metric{29.2x}{speedup} on time-window sensor queries.
+  \item \textbf{Receipts matter on stage.} The PDF is not asking judges to
+  trust us: every number below is regenerated from committed CSVs under
+  \code{benchmarks/houston/out/light/}.
+\end{itemize}
+
+\section{4. Compliance and reproducibility}
+
+At demo time Houston makes no hosted AI calls: no OpenAI, Anthropic, Google,
+Groq, Together, Replicate, cloud embeddings, cloud ASR or cloud TTS. Runtime
+services are local-only: Tauri app, FastAPI sidecar, MLX/Ollama, FAISS,
+whisper.cpp and macOS \code{say}. We verified airplane mode with
+\code{scripts/airplane-check.sh} and a 90-second \code{tcpdump} capture showing
+zero outbound packets outside localhost. Reproduce with
+\code{./scripts/setup.sh} \(\rightarrow\) \code{./scripts/download-mars-corpus.sh}
+\(\rightarrow\) \code{LLM\_BACKEND=mlx npm run tauri:dev}.
+
+\newpage
+
+\section{5. Benchmark receipts from real plots}
+
+\plotbox{\linewidth}{throughput.png}{\textbf{Throughput + TTFT.} Three local
+generation backends on the same RAG-prefill prompt. Operating point:
+\metric{57.6}{tok/s} and \metric{1,668}{ms TTFT} on MLX Qwen2.5-3B-4bit.}
+
+\vspace{4pt}
+\plotbox{0.49\linewidth}{cache_lattice.png}{\textbf{Tile-lattice cache.}
+50d cold \(\rightarrow\) 20d subset \(\rightarrow\) 70d superset:
+\metric{2,104 ms \(\rightarrow\) 72 ms}{= 29.2x}.}
+\hfill
+\plotbox{0.49\linewidth}{a2a_kv_cache.png}{\textbf{A2A KV-cache reuse.}
+Greenhouse persona chains into procedure persona:
+\metric{8,124 ms \(\rightarrow\) 4,050 ms}{= 2.0x}.}
+
+\vspace{4pt}
+\plotbox{0.49\linewidth}{perf_timeline.png}{\textbf{Memory and CPU.}
+Five-call greenhouse burst stays below the 18 GB ceiling:
+\metric{about 9.1 / 18 GB}{peak RAM}, zero swap.}
+\hfill
+\plotbox{0.49\linewidth}{voice_breakdown.png}{\textbf{Offline voice loop.}
+whisper.cpp + LLM + macOS \code{say}: about \metric{2.6s}{warm round-trip}.}
+
+\vspace{4pt}
+{\small
+\textbf{What we would add next:} retrieval precision@k audit, reranker ablation,
+fresh-PDF indexing throughput, and an injection-safety test suite. We did not
+claim those numbers because they were not measured during the hackathon. The
+quality gate we did ship is citation grounding: Houston must answer from local
+\code{[S\_n]} chunks or fall back safely.
+}
+
+\end{document}

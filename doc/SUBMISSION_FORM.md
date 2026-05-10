@@ -100,7 +100,7 @@ https://github.com/landigf/gdgaihack-2026/blob/main/doc/TECHNICAL_WRITEUP.pdf
 
 ### Option B — Google Doc copy (set "anyone with the link can view")
 
-Source markdown: [doc/TECHNICAL_WRITEUP.md](TECHNICAL_WRITEUP.md)
+Editable source: [doc/TECHNICAL_WRITEUP.tex](TECHNICAL_WRITEUP.tex)
 
 ```
 https://docs.google.com/document/d/<DOC_ID>/edit?usp=sharing
