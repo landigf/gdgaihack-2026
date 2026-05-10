@@ -6,6 +6,10 @@ fastapi==0.115.5
 # before serving the first request.
 python-multipart==0.0.28
 uvicorn[standard]==0.32.1
+# FastAPI's Form(...) parser pulls multipart at request time — without
+# this pin, the /voice/houston audio-upload route blows up at import in
+# production builds (works in dev because pip auto-resolves it locally).
+python-multipart==0.0.20
 httpx==0.28.1
 pydantic==2.10.3
 faiss-cpu==1.9.0.post1
