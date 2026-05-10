@@ -89,10 +89,22 @@ the latest tagged release.
    [Releases page](https://github.com/landigf/gdgaihack-2026/releases).
    (No login required — picks up `.app.zip` + `.dmg` from CI.)
 2. **Open the .dmg**, drag **Houston** into `/Applications`.
-3. **First launch:** macOS will warn *"unidentified developer"*. We
-   didn't pay for an Apple notarization cert; the app is safe. Either:
-   - Right-click the app → **Open** → **Open** in the dialog. *Or*
-   - System Settings → Privacy & Security → **Open Anyway**.
+3. **First launch:** macOS will say *"Houston is damaged and can't be
+   opened"* or *"unidentified developer"*. This is **not** corruption —
+   it's Gatekeeper blocking unsigned apps (we didn't pay for an Apple
+   notarization cert). Two ways to fix in 5 seconds:
+
+   **Recommended (one-liner in Terminal):**
+   ```bash
+   xattr -cr /Applications/Houston.app
+   open /Applications/Houston.app
+   ```
+   This strips the macOS quarantine flag from the bundle and launches it.
+
+   **GUI alternative:**
+   - Right-click `Houston.app` → **Open** → **Open** in the dialog. *Or*
+   - System Settings → Privacy & Security → scroll down to *"Houston was
+     blocked from use…"* → **Open Anyway**.
 4. **Make sure Ollama is running** locally with the models pulled:
    ```bash
    brew install ollama
