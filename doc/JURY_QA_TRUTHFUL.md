@@ -26,6 +26,72 @@
 
 ## ✅ TRUTHFUL ANSWERS (memorize these)
 
+### Story / framing block (Q1, Q4, Q5, Q9, Q10, Q11)
+
+#### Q1 — "It's too sci-fi, this isn't a real problem."
+
+> "Mars is our **stress test**, not our only market. We picked it
+> because it makes the Cut the Cord constraint *binary*: high latency,
+> limited bandwidth, no cloud reachable at all. The same architecture
+> drops onto submarines, Antarctic stations, offshore platforms,
+> field hospitals, mining sites, and any military airgapped SOC.
+> Mars is the lighthouse — those are the buyers."
+
+#### Q4 — "Cut the Cord with NASA PDFs preloaded?"
+
+> "Cut the Cord doesn't mean zero preparation — it means **zero
+> runtime dependency**. The mission corpus is preloaded, indexed
+> locally with FAISS, and fully usable when the connection is gone.
+> `airplane-check.sh` greps every source file for outbound URLs and
+> exits 0; `tcpdump` on the demo machine shows 0 packets in 90 s.
+> The only thing the .dmg needs at install is Ollama, which is also
+> 100% local."
+
+#### Q5 — "It's just RAG offline. What's actually new?"
+
+> "It's not just RAG. It's the **combination** of:
+> 4-persona multi-agent A2A with measured **2.0× KV-cache reuse**
+> across the shared HOUSTON_PREFIX (`a2a_kv_cache.png`); a 3D
+> habitat UI that feeds **telemetry context** (sensors, inventory,
+> crew roster) into every query; a tile-lattice sensor cache with
+> **29× speedup** on time-window queries (`cache_lattice.png`);
+> a voice loop that's offline end-to-end (whisper.cpp + macOS say
+> + LLM, ~2.6 s warm); a citation chip that opens the **actual NASA
+> PDF in an embedded PDF.js viewer with the cited paragraph
+> highlighted**; and a tcpdump-verified zero-egress proof.
+> Each piece is local-only on commodity hardware. None of the
+> incumbents combine all six."
+
+#### Q9 — "If the network is down, how do you have live sensor data?"
+
+> "The network *to Earth* is down — not the local sensor bus.
+> Houston assumes habitat telemetry stays available through onboard
+> systems. In the demo we simulate it deterministically (greenhouse
+> NDVI/EC/pH/PPFD, ECLSS CO₂/pressure/radiation), but the same
+> endpoint shape (`/ares/sensor/query`) accepts a real bus feed
+> with no architectural change."
+
+#### Q10 — "Why not just Spotlight / Finder / Copilot?"
+
+> "Spotlight finds files by name. Copilot needs the cloud. Houston
+> connects **mission context**: semantic retrieval + procedure
+> citations + telemetry state + mission-specific persona reasoning,
+> all locally. Copilot Recall is passive screenshot indexing — a
+> different problem. We're decision support for an operator who
+> can't reach the cloud, not a personal assistant on a laptop."
+
+#### Q11 — "Who's the real user?"
+
+> "Crew members and mission operators in disconnected environments.
+> In the demo, the astronaut is the user — that's why we anchored
+> on Mars. Outside the lighthouse, the user is any field team with
+> limited connectivity and high operational stakes: nuclear
+> submarine crews, Antarctic research staff, offshore rig
+> technicians, naval ships, field hospitals, disaster-response
+> medical teams, remote mining sites, and (eventually) lunar bases."
+
+---
+
 ### Q12 — "How many tokens/sec?"
 
 > "On Ollama gemma3:4b Q4_K_M, our 30-call warm benchmark gives
@@ -63,6 +129,16 @@
 > During dev we spot-checked manually. Hardening to a code-level
 > regex veto + automated 50-query audit is on the post-submission
 > roadmap."
+
+### Q16 — "How fast does a fresh 200-page PDF index?"
+
+> "We chunk at 512 tokens with 64 overlap (`backend/config.py`).
+> The full demo corpus — **30 PDFs, 1 292 chunks** — re-indexed in
+> under a minute on this machine. We don't have a published per-PDF
+> throughput plot, so I won't quote a 200-page number. **Drop a
+> file and we'll measure it live**: indexing is async on a
+> background thread, the UI stays responsive, and the new chunks
+> become queryable as each batch completes."
 
 ### Q17 — "Peak RAM with everything running?"
 
@@ -108,6 +184,20 @@
 > doesn't curate. Recall is passive screenshot indexing, a different
 > problem entirely."
 
+### Q24 — "TAM is <200 astronauts. Who actually pays?"
+
+> "Mars is the **lighthouse**, not the buyer. The 24-month addressable
+> markets are the same constraint applied to terrestrial use cases:
+> nuclear submarine fleets, Antarctic research stations, offshore
+> oil/gas platforms, naval and merchant ships, military field
+> hospitals, defense contractors with airgapped SOCs, remote mining
+> ops. We haven't run a formal TAM study — what we have is the
+> *architectural fit*: the same code, with a different corpus,
+> serves any operator who can't reach the cloud. **MSI is the
+> hardware partner. We're the application layer that justifies the
+> EdgeXpert premium** (see the EdgeXpert projection slide for the
+> 50× scale-up math)."
+
 ### Q26 — "Drag a new PDF — how fast does it index?"
 
 > "Our chunker uses **512 tokens with 64 overlap** (`backend/config.py`).
@@ -130,6 +220,16 @@
 > (returns 0) + open Activity Monitor with `tcpdump -i any -nn` (zero
 > packets in 90 s) → repeat the harvest demo. **Pre-flight check
 > obbligatoria — fai questo flow due volte prima del pitch.**
+
+### Q29 — "Why Mars 3 hours before the demo? Mentor was excited; jury isn't."
+
+> "Because the constraint we're demonstrating — **physically can't
+> reach the cloud** — is binary on Mars and gradient everywhere
+> else. Mars makes the architectural case unambiguous in 30 seconds.
+> The slide that follows reframes the *same* architecture for the
+> markets that actually buy: subs, Antarctic, offshore, defense.
+> The cinematic anchor sells the concept; the EdgeXpert projection
+> slide sells the deal."
 
 ---
 
