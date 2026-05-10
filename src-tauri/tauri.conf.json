@@ -45,10 +45,25 @@
       "../backend/parsing.py": "backend/parsing.py",
       "../backend/chunking.py": "backend/chunking.py",
       "../backend/ollama_client.py": "backend/ollama_client.py",
+      "../backend/mlx_client.py": "backend/mlx_client.py",
+      "../backend/prompts.py": "backend/prompts.py",
       "../backend/store.py": "backend/store.py",
       "../backend/indexer.py": "backend/indexer.py",
       "../backend/retriever.py": "backend/retriever.py",
-      "../backend/requirements.txt": "backend/requirements.txt"
+      "../backend/requirements.txt": "backend/requirements.txt",
+      "../backend/ares/__init__.py": "backend/ares/__init__.py",
+      "../backend/ares/perf.py": "backend/ares/perf.py",
+      "../backend/ares/prompts.py": "backend/ares/prompts.py",
+      "../backend/ares/router.py": "backend/ares/router.py",
+      "../backend/ares/voice.py": "backend/ares/voice.py",
+      "../backend/cache/__init__.py": "backend/cache/__init__.py",
+      "../backend/cache/sensor_producer.py": "backend/cache/sensor_producer.py",
+      "../backend/cache/tile_cache.py": "backend/cache/tile_cache.py",
+      "../backend/agent_tools/__init__.py": "backend/agent_tools/__init__.py",
+      "../backend/agent_tools/houston_sdk.py": "backend/agent_tools/houston_sdk.py",
+      "../backend/agent_tools/python_exec.py": "backend/agent_tools/python_exec.py",
+      "../mars-corpus/**/*.pdf": "mars-corpus/",
+      "../mars-corpus/manifest.json": "mars-corpus/manifest.json"
     },
     "macOS": {
       "minimumSystemVersion": "12.0"

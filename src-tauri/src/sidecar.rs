@@ -11,23 +11,42 @@ pub const SIDECAR_PORT: u16 = 8765;
 
 /// Bumped whenever the bundled backend sources or requirements.txt change.
 /// Used to invalidate the cached app_data_dir copy on user upgrades.
-const SIDECAR_VERSION: &str = "1";
+/// Bumped to "2" when we extended the bundle to include ares/, cache/,
+/// agent_tools/, prompts.py, mlx_client.py + the mars-corpus PDFs.
+const SIDECAR_VERSION: &str = "2";
 
-/// Files to copy from the bundled backend resource dir to the user-writable
-/// app_data_dir. Anything not in this list is intentionally left out
-/// (tests, __pycache__, data, .venv).
-const BACKEND_FILES: &[&str] = &[
-    "main.py",
-    "config.py",
-    "models.py",
-    "parsing.py",
-    "chunking.py",
-    "ollama_client.py",
-    "store.py",
-    "indexer.py",
-    "retriever.py",
-    "requirements.txt",
-];
+/// Directory entries to skip when copying the bundled backend tree.
+/// Local dev artifacts that bloat the .app or break in production.
+const COPY_SKIP: &[&str] = &[".venv", "__pycache__", "tests", "data", "out"];
+
+/// Recursively copy the contents of `src` into `dst`, creating parent
+/// dirs as needed. Skips entries whose name is in `skip` (typed
+/// against the file_name() string match).
+fn copy_dir_recursive(src: &Path, dst: &Path, skip: &[&str]) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| format!("mkdir {}: {e}", dst.display()))?;
+    let entries = fs::read_dir(src).map_err(|e| format!("read_dir {}: {e}", src.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("read entry in {}: {e}", src.display()))?;
+        let path = entry.path();
+        let name_os = entry.file_name();
+        let name = name_os.to_string_lossy();
+        if skip.iter().any(|s| name.as_ref() == *s) {
+            continue;
+        }
+        let dst_path = dst.join(name.as_ref());
+        let ft = entry
+            .file_type()
+            .map_err(|e| format!("file_type {}: {e}", path.display()))?;
+        if ft.is_dir() {
+            copy_dir_recursive(&path, &dst_path, skip)?;
+        } else if ft.is_file() {
+            fs::copy(&path, &dst_path)
+                .map_err(|e| format!("copy {} -> {}: {e}", path.display(), dst_path.display()))?;
+        }
+        // Symlinks are intentionally ignored (none in our bundle).
+    }
+    Ok(())
+}
 
 pub struct SidecarHandle(pub Mutex<Option<Child>>);
 
@@ -50,17 +69,19 @@ async fn ensure_backend(app: &AppHandle) -> Result<PathBuf, String> {
         return Ok(p);
     }
 
-    let bundled = app
+    let resource_dir = app
         .path()
         .resource_dir()
-        .map_err(|e| format!("resource_dir: {e}"))?
-        .join("backend");
+        .map_err(|e| format!("resource_dir: {e}"))?;
+    let bundled_backend = resource_dir.join("backend");
+    let bundled_corpus = resource_dir.join("mars-corpus");
 
-    let target = app
+    let app_data = app
         .path()
         .app_data_dir()
-        .map_err(|e| format!("app_data_dir: {e}"))?
-        .join("backend");
+        .map_err(|e| format!("app_data_dir: {e}"))?;
+    let target = app_data.join("backend");
+    let corpus_target = app_data.join("mars-corpus");
 
     fs::create_dir_all(&target).map_err(|e| format!("mkdir {}: {e}", target.display()))?;
 
@@ -73,17 +94,23 @@ async fn ensure_backend(app: &AppHandle) -> Result<PathBuf, String> {
     let needs_recopy = cached_version.as_deref() != Some(SIDECAR_VERSION);
 
     if needs_recopy {
-        for name in BACKEND_FILES {
-            let src = bundled.join(name);
-            let dst = target.join(name);
-            if !src.exists() {
-                return Err(format!(
-                    "bundled file missing — corrupt .app? {}",
-                    src.display()
-                ));
-            }
-            fs::copy(&src, &dst).map_err(|e| format!("copy {name}: {e}"))?;
+        if !bundled_backend.exists() {
+            return Err(format!(
+                "bundled backend missing — corrupt .app? {}",
+                bundled_backend.display()
+            ));
         }
+        // Recursive copy of the entire backend/ tree (skipping .venv,
+        // __pycache__, tests, data, out). Picks up prompts.py +
+        // mlx_client.py + ares/ + cache/ + agent_tools/.
+        copy_dir_recursive(&bundled_backend, &target, COPY_SKIP)?;
+
+        // Mars corpus → app_data_dir/mars-corpus/. Backend code resolves
+        // it 3 levels up from ares/router.py, which lands at app_data_dir.
+        if bundled_corpus.exists() {
+            copy_dir_recursive(&bundled_corpus, &corpus_target, &[])?;
+        }
+
         fs::write(&version_path, SIDECAR_VERSION)
             .map_err(|e| format!("write version: {e}"))?;
     }
