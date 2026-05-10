@@ -1,10 +1,23 @@
 # Houston
 
-> A 100% offline, AI-powered Finder alternative for macOS. Semantic file search
-> + on-device LLM actions. Cross-platform desktop app built on Tauri 2 + Rust.
-> Demos in airplane mode.
+> A 100% offline, AI-powered Finder alternative for macOS — **plus a Mars Base
+> AI Habitat Controller route** that demos how Rover's RAG substrate scales
+> from "find a file on my laptop" to "diagnose an ECLSS fault on Sol 423".
+> Cross-platform desktop app built on Tauri 2 + Rust. Demos in airplane mode.
 >
 > Built for the **GDG AI Hack Milano 2026 — MSI "Cut the Cord"** track.
+
+## Two routes, one binary
+
+| URL fragment | Route | Persona | Killer beat |
+|---|---|---|---|
+| `/`        | **Rover Finder** | semantic file search + summarize + note + filename + image-describe | bilingual query → top hit at 69% similarity |
+| `/#ares`   | **Houston Mars** | greenhouse / survival / repair / voice on a 4-persona stack (KV-cache reuse) | typed-or-spoken **"Tray 4 EC sensor at 4.2 mS/cm"** → grounded NASA-cited diagnose + on-base parts checklist + 5-step repair procedure |
+
+Both routes share **the same FAISS index, the same MLX-LM / Ollama generator,
+the same `HOUSTON_PREFIX` system prefix** — Houston Mars is layered on top
+of Rover Core RAG, not a parallel build. The architecture story is concrete
+in the response payload (`powered_by: rover-core-rag+houston-repair`).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -135,6 +148,67 @@ demo-rover/
 6. **Click "Create Note"** — a `summary-of-alpha-budget-Q3.md-…md` lands next to the source. Confirm via the macOS Finder.
 7. **Click "Reveal in Finder"** — Finder window opens, file selected.
 8. **Toggle Wi-Fi off and re-do steps 4–7.** Identical behavior. Show `./scripts/airplane-check.sh` returning 0.
+
+## Mars Habitat AI · open `/#ares`
+
+The same window also runs an on-device Mars Base AI Habitat Controller —
+the **Cut the Cord physics-enforced offline argument**: 78 million km from
+the closest data center, 14-day blackouts every 26 months, Earth-Mars
+one-way light time 4–24 minutes. We didn't choose offline; Mars chose for us.
+
+**Live numbers — MLX-LM Qwen2.5-3B-4bit + tile cache + code-as-action**
+(measured on the demo machine, M3 Pro 18 GB):
+
+| Metric | Naive baseline | **Optimized stack** | Win |
+|---|---:|---:|---:|
+| Decode tok/s (RAG prefill, 100 tokens) | 43.1 tok/s (Ollama gemma3:4b) | **57.6 tok/s** (MLX 3B) | **+34 %** |
+| TTFT (RAG prefill, 100 tokens)         | 2249 ms | **1668 ms** | **−26 %** |
+| Greenhouse + procedure A2A (warm)      | 8124 ms | **4050 ms** | **2.0× speedup** |
+| Sensor cache trace 50d→20d→70d         | 2104 ms | **72 ms**  | **29.2× speedup** |
+| Code-as-action `python_exec`            | (would need 2nd LLM round) | **438 ms** | LLM answers quantitative Q without 2nd decode |
+| RAM under load                         | 10.2 / 18 GB | **9.09 / 18 GB** (50 %) | **9.86 GB headroom** |
+| Outbound packets during demo           | 0 | **0** | airplane-check exit 0 |
+
+**Endpoints (additive under `/ares`):**
+- `POST /ares/houston/greenhouse` — narrate per-tray status, cite Veggie / APH chunks
+- `POST /ares/houston/greenhouse/stream` — same, streamed via SSE (TTFT < 2 s)
+- `POST /ares/houston/survival` — habitat / ECLSS tip + severity (NASA-STD-3001)
+- `POST /ares/houston/repair` — **the killer query.** Free-text fault →
+  diagnose + parts_needed + parts_missing (cross-checked against on-base
+  inventory) + 3-5 step procedure + optional macOS-`say` TTS
+- `POST /ares/voice/houston` — whisper.cpp + LLM + macOS `say` round-trip
+- `POST /ares/voice/houston/text` — same pipeline minus ASR (demo-friendly
+  text path)
+- `GET  /ares/sensor/query` — tile-lattice cached (29× speedup)
+- `GET  /ares/perf` — psutil snapshot + active backend label
+
+**Demo flow (90 s, all offline):**
+1. Open `http://127.0.0.1:1420/#ares` (or click the route toggle in the header)
+2. Click HABITAT → Inventory drill-in (6 bars + 4-crew roster + Houston survival tip)
+3. Click 🛠 **HOUSTON REPAIR ASSIST** (bottom-right amber button) → modal
+   with 3 quick-pick faults
+4. Send "Tray 4 EC sensor reading 4.2 mS/cm — fertilizer overdose"
+5. Houston replies in ~3.8 s warm: WATCH severity, diagnosis with `[S1]`
+   citation that opens the actual NASA Veggie PDF in macOS Preview, parts
+   checklist (✓ available / ✗ REORDER NEXT RESUPPLY), 5-step procedure,
+   optional spoken summary via `say`
+
+Reproduce the benchmark plots (light-theme, no sudo, no internet):
+
+```bash
+. backend/.venv/bin/activate
+python benchmarks/houston/make_light_figures.py
+# → benchmarks/houston/out/light/{throughput,cache_lattice,houston_latency,
+#                                 voice_breakdown,perf_timeline,a2a_kv_cache}.png
+```
+
+WhatsApp / Slides bundle of all 7 figures: `doc/plots-whatsapp/light/`
+(plus a `REPRO_PROMPT.md` you can paste into another Claude / Codex on
+any other machine).
+
+The 2-page tech writeup (`doc/TECHNICAL_WRITEUP.{md,pdf}`) defends each
+of the four MSI rubric sub-criteria — model selection, quantization,
+memory management, inference speed — with a measured number per claim.
 
 ## Airplane mode proof
 

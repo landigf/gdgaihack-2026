@@ -11,6 +11,11 @@ tiktoken==0.8.0
 pytest==8.3.4
 pytest-asyncio==0.24.0
 
+# Houston tile-lattice cache (Arrow/Parquet) feeds /ares/sensor/query.
+pyarrow>=17.0
+# Houston perf endpoint snapshots for /ares/perf + benchmarks/houston/.
+psutil>=5.9
+
 # MLX backend — Apple Silicon only. PEP 508 markers skip these on every
 # other platform, so requirements.txt stays universal.
 mlx>=0.16; sys_platform == "darwin" and platform_machine == "arm64"

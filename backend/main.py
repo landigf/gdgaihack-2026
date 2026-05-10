@@ -56,6 +56,15 @@ from prompts import (
     summarizer_system,
 )
 
+# ARES / Houston (Mars Base AI Habitat Controller) — additive endpoints
+# under /ares. Houston layers on top of the same FAISS index Rover Finder
+# uses, so /ares/houston/repair etc. delegate retrieval to the same
+# Rover Core RAG substrate.
+from ares import perf as _perf_mod
+from ares.router import router as ares_router
+from cache import TileCache
+from cache.sensor_producer import register_all as _register_sensor_streams
+
 
 def _summary_system_for(p: Path) -> str:
     """Pick the right summarizer persona based on the file extension.
@@ -83,6 +92,7 @@ class AppState:
     generator: object
     store: VectorStore
     dim: int
+    tile_cache: TileCache | None = None  # Houston sensor-tile cache (additive)
 
 
 _state: AppState | None = None
@@ -121,10 +131,26 @@ def get_app_state() -> AppState:
     if _state is None:
         embedder = OllamaClient()
         generator, _active_backend = _build_generator(embedder)
+        # Mirror the active backend label into the Houston perf module so
+        # /ares/perf can publish the same `llm_backend` tag the UI shows.
+        _perf_mod.set_backend(_active_backend)
         store = VectorStore(dim=EMBED_DIM, index_path=INDEX_PATH, meta_path=META_PATH)
         store.load()
+        # Houston tile-lattice cache (Arrow/Parquet) — feeds /ares/sensor/query.
+        # If pyarrow / disk is unavailable, init swallows the error so Rover
+        # Finder still boots cleanly.
+        tile_cache: TileCache | None = None
+        try:
+            tile_cache = TileCache(root_dir=Path(__file__).parent / "data" / "cache")
+            _register_sensor_streams(tile_cache)
+        except Exception as e:
+            print(f"[houston] tile cache disabled: {type(e).__name__}: {e}")
         _state = AppState(
-            embedder=embedder, generator=generator, store=store, dim=EMBED_DIM
+            embedder=embedder,
+            generator=generator,
+            store=store,
+            dim=EMBED_DIM,
+            tile_cache=tile_cache,
         )
     return _state
 
@@ -152,6 +178,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Houston / ARES (Mars Base AI Habitat Controller) under /ares.
+# All endpoints additive: /ares/houston/{greenhouse,survival,repair,voice},
+# /ares/sensor/query, /ares/perf, /ares/voice/health.
+app.include_router(ares_router)
 
 
 @app.get("/health")

@@ -1,0 +1,6 @@
+i,wall_ms,houston_ms,procedure_ms,verdict,used_llm,n_citations,kv_cache_hit
+0,4120,4117,1787,NOMINAL VEGETATIVE,True,1,False
+1,4027,4024,1764,NOMINAL VEGETATIVE,True,1,False
+2,4048,4045,1756,NOMINAL VEGETATIVE,True,1,False
+3,4063,4060,1785,NOMINAL VEGETATIVE,True,1,False
+4,4052,4050,1782,NOMINAL VEGETATIVE,True,1,False
