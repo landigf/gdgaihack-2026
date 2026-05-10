@@ -74,12 +74,15 @@ class HoustonGreenhouseRequest(BaseModel):
 
 class Citation(BaseModel):
     """Resolved [S_n] reference. `path`/`filename` are empty when the FAISS
-    store is unindexed — frontend renders the chip as a non-clickable badge."""
+    store is unindexed — frontend renders the chip as a non-clickable badge.
+    `excerpt` is the first ~400 chars of the actual chunk so the UI can show
+    "look, this is the paragraph from the manual" before opening the full PDF."""
 
     id: str
     path: str = ""
     filename: str = ""
     chunk_index: int = -1
+    excerpt: str = ""
 
 
 class HoustonResponse(BaseModel):
@@ -472,6 +475,7 @@ async def houston_greenhouse(req: HoustonGreenhouseRequest, state=Depends(_get_s
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)
@@ -610,6 +614,7 @@ async def houston_greenhouse_stream(
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)
@@ -953,6 +958,7 @@ async def voice_houston(
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)
@@ -1041,6 +1047,7 @@ async def voice_houston_text(req: HoustonTextRequest, state=Depends(_get_state))
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)
@@ -1147,6 +1154,7 @@ async def houston_survival(req: SurvivalRequest, state=Depends(_get_state)):
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)
@@ -1267,6 +1275,7 @@ async def houston_repair(req: RepairRequest, state=Depends(_get_state)):
                     path=h["path"],
                     filename=h["filename"],
                     chunk_index=h["chunk_index"],
+                    excerpt=text,
                 )
             )
         chunk_block = "\n\n".join(parts)

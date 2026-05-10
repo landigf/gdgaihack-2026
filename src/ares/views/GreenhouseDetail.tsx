@@ -15,6 +15,7 @@ type Citation = {
   path: string;
   filename: string;
   chunk_index: number;
+  excerpt?: string;
 };
 
 type HoustonReply = {
@@ -255,6 +256,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
   const [selectedPotId, setSelectedPotId] = useState<string>(HERO_POT_ID);
   const [houstonReply, setHoustonReply] = useState<HoustonReply | null>(null);
   const [houstonBusy, setHoustonBusy] = useState(false);
+  const [focusedCitation, setFocusedCitation] = useState<Citation | null>(null);
   const houstonInflight = useRef<AbortController | null>(null);
   const lastFetchKey = useRef<string>("");
 
@@ -647,23 +649,26 @@ export default function GreenhouseDetail({ onClose }: Props) {
                 {houstonReply?.citations && houstonReply.citations.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {houstonReply.citations.map((c) => {
-                      const clickable = !!c.path;
+                      const clickable = !!c.excerpt || !!c.path;
+                      const focused = focusedCitation?.id === c.id;
                       return (
                         <button
                           key={c.id}
-                          onClick={() => openCitation(c)}
+                          onClick={() => setFocusedCitation(c)}
                           disabled={!clickable}
                           title={
                             clickable
-                              ? `Open ${c.filename} (chunk ${c.chunk_index})`
+                              ? `View excerpt from ${c.filename} (chunk ${c.chunk_index})`
                               : "no source path (corpus not indexed)"
                           }
                           className="px-2 py-1 rounded text-[10px] font-mono"
                           style={{
-                            background: clickable
-                              ? "rgba(34,211,238,0.14)"
-                              : "rgba(255,255,255,0.04)",
-                            border: `1px solid ${clickable ? "#22d3ee66" : "rgba(255,255,255,0.1)"}`,
+                            background: focused
+                              ? "rgba(34,211,238,0.28)"
+                              : clickable
+                                ? "rgba(34,211,238,0.14)"
+                                : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${focused ? "#22d3ee" : clickable ? "#22d3ee66" : "rgba(255,255,255,0.1)"}`,
                             color: clickable ? "#22d3ee" : "#64748b",
                             cursor: clickable ? "pointer" : "not-allowed",
                             maxWidth: 220,
@@ -676,6 +681,96 @@ export default function GreenhouseDetail({ onClose }: Props) {
                         </button>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Citation detail — clicking a chip pops the excerpt of
+                    the actual NASA chunk that grounded Houston's answer.
+                    "Open PDF" delegates to tauri.openFile so the PDF
+                    opens in macOS Preview (the live-demo wow beat). */}
+                {focusedCitation && (
+                  <div
+                    className="rounded-md p-2 mt-2"
+                    style={{
+                      background: "rgba(34,211,238,0.06)",
+                      border: "1px solid rgba(34,211,238,0.35)",
+                    }}
+                  >
+                    <div
+                      className="flex items-center justify-between mb-1.5"
+                      style={{ fontSize: 10 }}
+                    >
+                      <div
+                        className="font-mono"
+                        style={{ color: "#22d3ee", fontWeight: 600 }}
+                      >
+                        [{focusedCitation.id}] · {focusedCitation.filename || "source"}
+                        <span style={{ color: "#94a3b8", fontWeight: 400 }}>
+                          {" "}chunk #{focusedCitation.chunk_index ?? "?"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setFocusedCitation(null)}
+                        className="font-mono px-1.5 py-0.5 rounded"
+                        style={{
+                          fontSize: 9,
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          color: "#94a3b8",
+                          cursor: "pointer",
+                        }}
+                        title="Close excerpt"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {focusedCitation.excerpt ? (
+                      <div
+                        className="font-mono leading-relaxed mb-1.5"
+                        style={{
+                          color: "#e2e8f0",
+                          background: "rgba(0,0,0,0.45)",
+                          padding: "6px 8px",
+                          borderRadius: 4,
+                          borderLeft: "3px solid #22d3ee",
+                          maxHeight: 140,
+                          overflow: "auto",
+                          whiteSpace: "pre-wrap",
+                          fontSize: 10,
+                        }}
+                      >
+                        {focusedCitation.excerpt}
+                      </div>
+                    ) : (
+                      <div
+                        className="font-mono"
+                        style={{
+                          color: "#94a3b8",
+                          fontStyle: "italic",
+                          fontSize: 10,
+                        }}
+                      >
+                        (no excerpt — backend may need a restart)
+                      </div>
+                    )}
+                    {focusedCitation.path && (
+                      <button
+                        onClick={() => openCitation(focusedCitation)}
+                        className="font-mono px-2 py-1 rounded"
+                        style={{
+                          fontSize: 10,
+                          background:
+                            "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
+                          color: "#0a0a0a",
+                          border: "1px solid #67e8f9",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        title={`Open ${focusedCitation.filename} in macOS Preview`}
+                      >
+                        📄 Open full PDF in Preview ↗
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

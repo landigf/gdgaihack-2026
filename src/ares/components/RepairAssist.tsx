@@ -7,6 +7,7 @@ type Citation = {
   path?: string;
   filename?: string;
   chunk_index?: number;
+  excerpt?: string;
 };
 
 type RepairResponse = {
@@ -54,12 +55,14 @@ export default function RepairAssist() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
   const [resp, setResp] = useState<RepairResponse | null>(null);
+  const [focusedCitation, setFocusedCitation] = useState<Citation | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
 
-  // Stop TTS when modal closes
+  // Stop TTS + clear citation focus when modal closes
   useEffect(() => {
-    if (!open && audio.current) {
-      audio.current.pause();
+    if (!open) {
+      if (audio.current) audio.current.pause();
+      setFocusedCitation(null);
     }
   }, [open]);
 
@@ -69,6 +72,7 @@ export default function RepairAssist() {
     setBusy(true);
     setError("");
     setResp(null);
+    setFocusedCitation(null);
     try {
       const r = await fetch("http://127.0.0.1:8765/ares/houston/repair", {
         method: "POST",
@@ -101,13 +105,24 @@ export default function RepairAssist() {
     }
   }
 
-  async function openCitation(c: Citation) {
+  async function openPdfInPreview(c: Citation) {
     if (!c.path) return;
     try {
       await tauri.openFile(c.path);
     } catch {
-      /* not running in tauri shell */
+      // Browser fallback: surface the absolute path so the operator
+      // can open it manually if needed.
+      console.log("[citation] tauri.openFile unavailable; path:", c.path);
     }
+  }
+
+  // Click on a chip → open the citation detail panel (excerpt + open-PDF
+  // button). This is the "live demo" experience the team rehearses for the
+  // jury Q&A: someone asks a question, Houston cites [S1], operator clicks
+  // the chip, the audience sees the actual NASA paragraph + can drill down
+  // to the full PDF.
+  function focusCitation(c: Citation) {
+    setFocusedCitation(c);
   }
 
   return (
@@ -351,25 +366,125 @@ export default function RepairAssist() {
 
                   {resp.citations.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-2">
-                      {resp.citations.map((c) => (
+                      {resp.citations.map((c) => {
+                        const clickable = !!c.excerpt || !!c.path;
+                        const focused = focusedCitation?.id === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => focusCitation(c)}
+                            disabled={!clickable}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded"
+                            style={{
+                              background: focused
+                                ? "rgba(34,211,238,0.25)"
+                                : "rgba(34,211,238,0.1)",
+                              border: `1px solid ${focused ? "#22d3ee" : "rgba(34,211,238,0.4)"}`,
+                              color: clickable ? "#22d3ee" : "#64748b",
+                              cursor: clickable ? "pointer" : "default",
+                            }}
+                            title={
+                              clickable
+                                ? `View excerpt from ${c.filename || "source"}`
+                                : "Citation (no corpus indexed)"
+                            }
+                          >
+                            [{c.id}] {c.filename
+                              ? c.filename.replace(/\.pdf$/i, "")
+                              : "no-corpus"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Citation detail panel — shows the actual chunk text
+                      from the indexed NASA PDF + an "open the full PDF in
+                      Preview" button. This is the live-demo wow beat: a
+                      jury question → Houston cites [S1] → operator clicks
+                      the chip → audience sees the literal paragraph from
+                      the manual, then opens the full file. */}
+                  {focusedCitation && (
+                    <div
+                      className="rounded-md p-3 mt-2"
+                      style={{
+                        background: "rgba(34,211,238,0.06)",
+                        border: "1px solid rgba(34,211,238,0.35)",
+                      }}
+                    >
+                      <div
+                        className="flex items-center justify-between mb-2"
+                        style={{ fontSize: 11 }}
+                      >
+                        <div
+                          className="font-mono"
+                          style={{ color: "#22d3ee", fontWeight: 600 }}
+                        >
+                          [{focusedCitation.id}] ·{" "}
+                          {focusedCitation.filename || "source"}{" "}
+                          <span
+                            style={{ color: "#94a3b8", fontWeight: 400 }}
+                          >
+                            chunk #{focusedCitation.chunk_index ?? "?"}
+                          </span>
+                        </div>
                         <button
-                          key={c.id}
-                          onClick={() => openCitation(c)}
-                          disabled={!c.path}
+                          onClick={() => setFocusedCitation(null)}
                           className="text-[10px] font-mono px-2 py-0.5 rounded"
                           style={{
-                            background: "rgba(34,211,238,0.1)",
-                            border: "1px solid rgba(34,211,238,0.4)",
-                            color: c.path ? "#22d3ee" : "#64748b",
-                            cursor: c.path ? "pointer" : "default",
+                            background: "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            color: "#94a3b8",
+                            cursor: "pointer",
                           }}
-                          title={c.path ? `Open ${c.filename}` : "Citation"}
+                          title="Close excerpt"
                         >
-                          [{c.id}] {c.filename
-                            ? c.filename.replace(/\.pdf$/i, "")
-                            : "no-corpus"}
+                          ✕
                         </button>
-                      ))}
+                      </div>
+                      {focusedCitation.excerpt ? (
+                        <div
+                          className="font-mono text-xs leading-relaxed mb-2"
+                          style={{
+                            color: "#e2e8f0",
+                            background: "rgba(0,0,0,0.45)",
+                            padding: "8px 10px",
+                            borderRadius: 4,
+                            borderLeft: "3px solid #22d3ee",
+                            maxHeight: 180,
+                            overflow: "auto",
+                            whiteSpace: "pre-wrap",
+                            fontSize: 11,
+                          }}
+                        >
+                          {focusedCitation.excerpt}
+                        </div>
+                      ) : (
+                        <div
+                          className="font-mono text-xs"
+                          style={{ color: "#94a3b8", fontStyle: "italic" }}
+                        >
+                          (no excerpt — backend may need to be restarted to
+                          surface chunk text)
+                        </div>
+                      )}
+                      {focusedCitation.path && (
+                        <button
+                          onClick={() => openPdfInPreview(focusedCitation)}
+                          className="text-[11px] font-mono px-3 py-1.5 rounded"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
+                            color: "#0a0a0a",
+                            border: "1px solid #67e8f9",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                          title={`Open ${focusedCitation.filename} in macOS Preview`}
+                        >
+                          📄 Open full PDF in Preview ↗
+                        </button>
+                      )}
                     </div>
                   )}
 

@@ -155,12 +155,15 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
                     jitter={(shelf.id * 13 + i * 7) % 360}
                   />
 
-                  {/* READY badge — small, above the plant top */}
+                  {/* READY badge — small chip clipped to the pot rim
+                      (front-right corner) so it visibly belongs to THIS
+                      pot and never floats over the shelf above. */}
                   {pot.stage === 5 && (
                     <Html
-                      position={[0, ph + 0.55, 0]}
+                      position={[0.18, ph + 0.05, 0.22]}
                       center
-                      distanceFactor={11}
+                      distanceFactor={9}
+                      zIndexRange={[100, 0]}
                       style={{
                         pointerEvents: "none",
                         background: "rgba(16,185,129,0.95)",
@@ -173,9 +176,10 @@ export default function GreenhouseRack({ shelves, selectedPotId, onSelectPot }: 
                         fontFamily: "JetBrains Mono, monospace",
                         textShadow: "none",
                         letterSpacing: 0.5,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
                       }}
                     >
-                      READY
+                      ✓ READY
                     </Html>
                   )}
                 </group>

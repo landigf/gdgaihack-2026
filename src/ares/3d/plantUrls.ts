@@ -29,11 +29,12 @@ export const PLANT_TRANSFORM: Partial<Record<
   // Scale ~0.0015 brings a 30 cm plant down to roughly 0.45 m — fits
   // a pot of radius 0.16 with the foliage spreading outward.
   tomato: { scaleMul: 0.0015, yOffset: 0, rotY: 0 },
-  // Lettuce GLB is ~4.5 m tall in native units (much larger than expected).
-  // 0.07 brings stage-5 down to ~32 cm — fits the pot, fills the shelf.
-  lettuce: { scaleMul: 0.07, yOffset: 0, rotY: 0 },
-  // Pepper GLB is ~0.5 m tall in native meters — 0.15 was too small,
-  // pots looked seed-only. 0.60 puts stage-5 at ~30 cm canopy.
+  // Lettuce GLB is ~3 m tall in native units. 0.07 was too small — at
+  // stage 1 the rosette became invisible against the pot rim. 0.20 puts
+  // stage-5 at ~60 cm canopy and stage-1 still legible (~18 cm).
+  lettuce: { scaleMul: 0.20, yOffset: 0, rotY: 0 },
+  // Pepper GLB is ~0.5 m tall in meters; 0.60 stage-5 ~30 cm canopy fits
+  // the pot. Stays unchanged from previous tune.
   pepper: { scaleMul: 0.60, yOffset: 0, rotY: 0 },
 };
 
