@@ -5,6 +5,7 @@ import GreenhouseRack, { type Shelf, type PotState } from "../3d/GreenhouseRack"
 import { stageName, type PlantStage, type PlantSpecies } from "../3d/PlantStages";
 import type { PotColor } from "../3d/Pot";
 import { tauri } from "../../tauri";
+import PdfViewer from "../components/PdfViewer";
 
 type Props = {
   onClose: () => void;
@@ -257,6 +258,7 @@ export default function GreenhouseDetail({ onClose }: Props) {
   const [houstonReply, setHoustonReply] = useState<HoustonReply | null>(null);
   const [houstonBusy, setHoustonBusy] = useState(false);
   const [focusedCitation, setFocusedCitation] = useState<Citation | null>(null);
+  const [pdfCitation, setPdfCitation] = useState<Citation | null>(null);
   const houstonInflight = useRef<AbortController | null>(null);
   const lastFetchKey = useRef<string>("");
 
@@ -754,22 +756,39 @@ export default function GreenhouseDetail({ onClose }: Props) {
                       </div>
                     )}
                     {focusedCitation.path && (
-                      <button
-                        onClick={() => openCitation(focusedCitation)}
-                        className="font-mono px-2 py-1 rounded"
-                        style={{
-                          fontSize: 10,
-                          background:
-                            "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
-                          color: "#0a0a0a",
-                          border: "1px solid #67e8f9",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                        title={`Open ${focusedCitation.filename} in macOS Preview`}
-                      >
-                        📄 Open full PDF in Preview ↗
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setPdfCitation(focusedCitation)}
+                          className="font-mono px-2 py-1 rounded"
+                          style={{
+                            fontSize: 10,
+                            background:
+                              "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
+                            color: "#0a0a0a",
+                            border: "1px solid #fde68a",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                          title={`View ${focusedCitation.filename} with the cited paragraph highlighted`}
+                        >
+                          📄 Open PDF · highlight cited ↗
+                        </button>
+                        <button
+                          onClick={() => openCitation(focusedCitation)}
+                          className="font-mono px-2 py-1 rounded"
+                          style={{
+                            fontSize: 10,
+                            background: "rgba(34,211,238,0.10)",
+                            color: "#22d3ee",
+                            border: "1px solid rgba(34,211,238,0.5)",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                          title={`Also open ${focusedCitation.filename} in macOS Preview`}
+                        >
+                          macOS Preview
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -887,6 +906,15 @@ export default function GreenhouseDetail({ onClose }: Props) {
           </div>
         </div>
       </aside>
+
+      {/* Embedded PDF.js viewer for citation chips — opens above the
+          drill-in modal with the cited paragraph highlighted in yellow. */}
+      {pdfCitation && (
+        <PdfViewer
+          citation={pdfCitation}
+          onClose={() => setPdfCitation(null)}
+        />
+      )}
     </div>
   );
 }

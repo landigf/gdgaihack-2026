@@ -171,7 +171,7 @@ export default function AresApp() {
           ch4FillPct={ch4FillPct}
           onSelectBuilding={(id) => setSelected(id)}
           showStats={import.meta.env.DEV}
-          hideHints={selected === "greenhouse"}
+          hideHints={selected !== null}
         />
       </div>
 

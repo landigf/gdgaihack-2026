@@ -12,11 +12,12 @@ from __future__ import annotations
 import json
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from retriever import Retriever
@@ -790,9 +791,43 @@ HOUSTON_VOICE_SYSTEM = (
     + "or 'NASA-STD-3001 calls for'. Never say bracket-S-one.\n"
     + "  - Imperative voice when giving direction. Calm, factual otherwise.\n"
     + "  - If the crew asks about a tray, ground your answer in the GREENHOUSE "
-    + "STATUS block when one is provided.\n\n"
+    + "STATUS block when one is provided.\n"
+    + "  - **TRUTHFULNESS RULES (do NOT violate):**\n"
+    + "      * If asked about Earth wall-clock time (Rome, NYC, etc.) or any\n"
+    + "        topic outside the MISSION CONTEXT block, reply: \n"
+    + "        'I have no Earth-clock — I only know mission Sol N.' or\n"
+    + "        'That is outside my mission corpus.' Do NOT fabricate.\n"
+    + "      * If asked about the crew, USE the names from MISSION CONTEXT —\n"
+    + "        never say 'Crew Member 1' or invent placeholder names.\n"
+    + "      * If a fact is not in MISSION CONTEXT or in the GREENHOUSE STATUS\n"
+    + "        block or in the Reference chunks, say so. Refusal is correct;\n"
+    + "        invention is not.\n\n"
     + "Return PLAIN TEXT ONLY (no JSON, no formatting). Just the spoken reply."
 )
+
+
+def _build_mission_context_header() -> str:
+    """Inject ground truth Houston needs to STOP fabricating: real crew
+    roster (the team's actual names), the current local clock (so any
+    time-of-day question gets a real answer), and the mission day. The
+    voice system prompt's truthfulness rules tell the LLM to refuse
+    Earth-clock questions outside this header — so always include it."""
+    ts_local = datetime.now().astimezone()
+    sol = 423  # demo constant; tracks the mission narrative
+    crew = (
+        "Francesco Peluso (Commander), Francesco Gorga (Pilot), "
+        "Gennaro Landi (Surgeon), Nicola Ianniello (Engineer)"
+    )
+    return (
+        "MISSION CONTEXT — these are facts. Use them. Do NOT invent.\n"
+        f"  - Mission day: Sol {sol}\n"
+        f"  - Local timestamp on this workstation: "
+        f"{ts_local.strftime('%Y-%m-%d %H:%M %Z')}\n"
+        f"  - Crew on station (4): {crew}\n"
+        f"  - You DO NOT know wall-clock time on Earth in cities like Rome,\n"
+        f"    New York, Tokyo. If asked, say: 'I have no Earth-clock; I only\n"
+        f"    know Sol {sol}.' Same rule for stock prices, news, weather: refuse.\n"
+    )
 
 
 def _build_voice_user_prompt(
@@ -803,8 +838,10 @@ def _build_voice_user_prompt(
 ) -> str:
     """Voice user prompt with optional greenhouse + RAG context.
     Forward-port from feat/houston-voice (PR #7) so Houston grounds spoken
-    answers in the same tray data the operator sees on the drill-in."""
-    parts: list[str] = []
+    answers in the same tray data the operator sees on the drill-in.
+    Always prepended with a MISSION CONTEXT header so Houston knows the
+    real crew roster + clock and refuses Earth-clock fabrication."""
+    parts: list[str] = [_build_mission_context_header()]
     if trays_json:
         try:
             trays = json.loads(trays_json)
@@ -1114,6 +1151,89 @@ async def perf():
     from ares import perf as _perf
 
     return _perf.sample()
+
+
+# ---------------------------------------------------------------------------
+# Mission file access — lets the renderer fetch PDFs from the indexed
+# corpus directly so the citation [S_n] chip can open the actual NASA PDF
+# in an embedded viewer (PDF.js) with the cited paragraph highlighted.
+# ---------------------------------------------------------------------------
+
+
+def _safe_corpus_path(rel: str) -> Path:
+    """Resolve `rel` against the mars-corpus/ root, refusing path traversal.
+    Accepts both relative paths and absolute paths that already point
+    inside mars-corpus/ — useful because retriever hits store the absolute
+    path in their `path` field."""
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    base = (repo_root / "mars-corpus").resolve()
+    candidate = Path(rel)
+    if candidate.is_absolute():
+        target = candidate.resolve()
+    else:
+        target = (base / rel).resolve()
+    # Refuse anything outside mars-corpus/
+    try:
+        target.relative_to(base)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="path outside corpus") from exc
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+    return target
+
+
+@router.get("/files/pdf")
+async def files_pdf(path: str):
+    """Serve a single PDF from the indexed Mars corpus.
+
+    The renderer calls this from PdfViewer when the operator clicks an
+    [S_n] citation chip. The path can be relative (e.g. `manuals/foo.pdf`)
+    or absolute as long as it lives inside `mars-corpus/`.
+    """
+    target = _safe_corpus_path(path)
+    if target.suffix.lower() != ".pdf":
+        raise HTTPException(status_code=415, detail="not a PDF")
+    return FileResponse(
+        target,
+        media_type="application/pdf",
+        filename=target.name,
+        headers={"Cache-Control": "public, max-age=600"},
+    )
+
+
+@router.get("/files/list")
+async def files_list():
+    """List every PDF under mars-corpus/ grouped by top-level folder.
+    Lets the renderer build a "Mission Files" browser so the operator
+    can show real NASA PDFs to the audience on demand."""
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    base = (repo_root / "mars-corpus").resolve()
+    if not base.exists():
+        return {"groups": [], "base": str(base), "count": 0}
+    groups: dict[str, list[dict]] = {}
+    total = 0
+    for pdf in sorted(base.rglob("*.pdf")):
+        try:
+            rel = pdf.relative_to(base)
+        except ValueError:
+            continue
+        group = rel.parts[0] if len(rel.parts) > 1 else "(root)"
+        groups.setdefault(group, []).append(
+            {
+                "name": pdf.name,
+                "path": str(rel),
+                "size_bytes": pdf.stat().st_size,
+            }
+        )
+        total += 1
+    return {
+        "base": str(base),
+        "count": total,
+        "groups": [
+            {"name": g, "files": files}
+            for g, files in sorted(groups.items())
+        ],
+    }
 
 
 @router.post("/houston/survival", response_model=SurvivalResponse)

@@ -39,10 +39,10 @@ const INITIAL_INVENTORY: InventoryState = {
   medical_courses: 14, // antibiotic / EVA O2 unit count
   spare_filters: 6, // ECLSS replacement cartridges
   crew: [
-    { name: "Cmdr Garcia", role: "Commander", status: "NOMINAL" },
-    { name: "Lt Tanaka", role: "Pilot", status: "FATIGUE 4/10" },
-    { name: "Dr Okafor", role: "Surgeon", status: "NOMINAL" },
-    { name: "Sgt Hassan", role: "Engineer", status: "SLEEP DEBT 6 H" },
+    { name: "Francesco Peluso", role: "Commander", status: "NOMINAL" },
+    { name: "Francesco Gorga", role: "Pilot", status: "FATIGUE 4/10" },
+    { name: "Gennaro Landi", role: "Surgeon", status: "NOMINAL" },
+    { name: "Nicola Ianniello", role: "Engineer", status: "SLEEP DEBT 6 H" },
   ],
 };
 

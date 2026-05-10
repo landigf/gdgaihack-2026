@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { tauri } from "../../tauri";
 import { useInventoryState } from "../state/inventoryState";
+import PdfViewer from "./PdfViewer";
 
 type Citation = {
   id: string;
@@ -56,6 +57,7 @@ export default function RepairAssist() {
   const [error, setError] = useState<string>("");
   const [resp, setResp] = useState<RepairResponse | null>(null);
   const [focusedCitation, setFocusedCitation] = useState<Citation | null>(null);
+  const [pdfCitation, setPdfCitation] = useState<Citation | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   // Stop TTS + clear citation focus when modal closes
@@ -63,6 +65,7 @@ export default function RepairAssist() {
     if (!open) {
       if (audio.current) audio.current.pause();
       setFocusedCitation(null);
+      setPdfCitation(null);
     }
   }, [open]);
 
@@ -469,21 +472,37 @@ export default function RepairAssist() {
                         </div>
                       )}
                       {focusedCitation.path && (
-                        <button
-                          onClick={() => openPdfInPreview(focusedCitation)}
-                          className="text-[11px] font-mono px-3 py-1.5 rounded"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #22d3ee 0%, #0891b2 100%)",
-                            color: "#0a0a0a",
-                            border: "1px solid #67e8f9",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                          title={`Open ${focusedCitation.filename} in macOS Preview`}
-                        >
-                          📄 Open full PDF in Preview ↗
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => setPdfCitation(focusedCitation)}
+                            className="text-[11px] font-mono px-3 py-1.5 rounded"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
+                              color: "#0a0a0a",
+                              border: "1px solid #fde68a",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                            title={`View ${focusedCitation.filename} with the cited paragraph highlighted`}
+                          >
+                            📄 Open PDF · highlight cited ↗
+                          </button>
+                          <button
+                            onClick={() => openPdfInPreview(focusedCitation)}
+                            className="text-[11px] font-mono px-3 py-1.5 rounded"
+                            style={{
+                              background: "rgba(34,211,238,0.10)",
+                              color: "#22d3ee",
+                              border: "1px solid rgba(34,211,238,0.5)",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                            title={`Also open ${focusedCitation.filename} in macOS Preview`}
+                          >
+                            macOS Preview
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -502,6 +521,16 @@ export default function RepairAssist() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Embedded PDF.js viewer with chunk highlight — fired from the
+          "Open PDF · highlight cited" button. Modal sits ABOVE the repair
+          modal so closing the PDF returns to the citation context. */}
+      {pdfCitation && (
+        <PdfViewer
+          citation={pdfCitation}
+          onClose={() => setPdfCitation(null)}
+        />
       )}
     </>
   );
