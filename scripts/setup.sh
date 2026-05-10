@@ -39,6 +39,14 @@ echo "==> Node deps"
 cd "$ROOT"
 npm install
 
+# Voice stack: whisper.cpp + ggml-base.en.bin model. macOS-only; the
+# script no-ops on Linux. /ares/voice/houston returns 503 'voice
+# unavailable' until this runs.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "==> Voice stack (whisper.cpp + base.en model)"
+    bash "$ROOT/scripts/setup-voice.sh"
+fi
+
 echo
 echo "==> Done. Run: npm run tauri:dev"
 echo "    By default the LLM backend is 'auto' — uses MLX on Apple Silicon"
