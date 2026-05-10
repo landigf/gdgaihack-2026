@@ -14,11 +14,14 @@
     "test:py": "cd backend && . .venv/bin/activate && pytest -v"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-shell": "^2.0.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.160.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",
