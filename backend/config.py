@@ -12,6 +12,12 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 # gemma4:latest works out-of-the-box on this demo machine.
 # Override with GEN_MODEL=gemma3:4b (faster, smaller) or qwen3:4b on richer tiers.
 GEN_MODEL = os.getenv("GEN_MODEL", "gemma4:latest")
+# Vision model for image description. Defaults to GEN_MODEL because gemma4
+# is multimodal (vision capability per `ollama show`); override with
+# VISION_MODEL=llava:7b or qwen2.5-vl:7b on machines that pull a dedicated
+# one. Image-describe always goes through Ollama — MLX-LM doesn't ship
+# image input wrappers in our current setup.
+VISION_MODEL = os.getenv("VISION_MODEL", GEN_MODEL)
 EMBED_DIM = 768
 
 CHUNK_TOKENS = 512

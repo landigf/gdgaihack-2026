@@ -17,15 +17,35 @@ type Props = {
   onToast: (node: React.ReactNode) => void;
 };
 
-type FileKind = "pdf" | "doc" | "md" | "txt" | "default";
+type FileKind = "pdf" | "doc" | "md" | "txt" | "img" | "default";
+
+const IMAGE_EXTS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "bmp",
+  "tiff",
+  "heic",
+]);
+
+function fileExt(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(i + 1).toLowerCase() : "";
+}
+
+function isImageFilename(name: string): boolean {
+  return IMAGE_EXTS.has(fileExt(name));
+}
 
 function kindOfFilename(name: string): { kind: FileKind; label: string } {
-  const i = name.lastIndexOf(".");
-  const ext = i >= 0 ? name.slice(i + 1).toLowerCase() : "";
+  const ext = fileExt(name);
   if (ext === "pdf") return { kind: "pdf", label: "PDF" };
   if (ext === "doc" || ext === "docx") return { kind: "doc", label: ext.toUpperCase() };
   if (ext === "md" || ext === "markdown") return { kind: "md", label: "MD" };
   if (ext === "txt" || ext === "rtf") return { kind: "txt", label: ext.toUpperCase() };
+  if (IMAGE_EXTS.has(ext)) return { kind: "img", label: ext.toUpperCase() };
   return { kind: "default", label: ext.toUpperCase() || "FILE" };
 }
 
@@ -325,7 +345,10 @@ export default function DetailPanel({
               </button>
               {aiState === "idle" && (
                 <button className="btn ai" onClick={runSummary}>
-                  <Spark /> Summarize with AI
+                  <Spark />{" "}
+                  {isImageFilename(file!.filename)
+                    ? "Describe with AI"
+                    : "Summarize with AI"}
                 </button>
               )}
               <button
@@ -411,7 +434,8 @@ export default function DetailPanel({
             <div className="summary-thinking">
               <span className="pulse" />
               <span>
-                <b>gemma</b> is reading {name}…
+                <b>gemma</b>{" "}
+                {isImageFilename(name) ? "is looking at" : "is reading"} {name}…
               </span>
             </div>
           )}

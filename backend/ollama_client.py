@@ -29,17 +29,17 @@ class OllamaClient:
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [await self.embed(t) for t in texts]
 
-    async def generate(self, prompt: str, system: str | None = None) -> str:
-        payload = self._generate_payload(prompt, system)
-        payload["stream"] = False
-        r = await self._client.post(f"{self.host}/api/generate", json=payload)
-        r.raise_for_status()
-        data = r.json()
-        return (data.get("response") or data.get("thinking") or "").strip()
-
-    def _generate_payload(self, prompt: str, system: str | None) -> dict:
+    def _generate_payload(
+        self,
+        prompt: str,
+        system: str | None,
+        *,
+        model: str | None = None,
+        images: list[str] | None = None,
+    ) -> dict:
+        chosen = model or self.gen_model
         payload: dict = {
-            "model": self.gen_model,
+            "model": chosen,
             "prompt": prompt,
             "keep_alive": "30m",
             "think": False,
@@ -50,21 +50,59 @@ class OllamaClient:
                 "num_ctx": 4096,
             },
         }
-        if self.gen_model.startswith("qwen3"):
+        if chosen.startswith("qwen3"):
             payload["prompt"] = f"{prompt}\n\n/no_think"
         if system:
             payload["system"] = system
+        # Vision: list of base64-encoded image bytes (no 'data:' prefix).
+        # Ollama attaches them to the prompt for multimodal-capable models.
+        if images:
+            payload["images"] = images
+            # Vision needs a bigger context budget for the image embedding.
+            payload["options"]["num_predict"] = max(
+                512, payload["options"].get("num_predict", 512)
+            )
+            payload["options"]["num_ctx"] = max(
+                8192, payload["options"].get("num_ctx", 4096)
+            )
         return payload
 
+    async def generate(
+        self,
+        prompt: str,
+        system: str | None = None,
+        *,
+        model: str | None = None,
+        images: list[str] | None = None,
+    ) -> str:
+        payload = self._generate_payload(
+            prompt, system, model=model, images=images
+        )
+        payload["stream"] = False
+        r = await self._client.post(f"{self.host}/api/generate", json=payload)
+        r.raise_for_status()
+        data = r.json()
+        return (data.get("response") or data.get("thinking") or "").strip()
+
     async def generate_stream(
-        self, prompt: str, system: str | None = None
+        self,
+        prompt: str,
+        system: str | None = None,
+        *,
+        model: str | None = None,
+        images: list[str] | None = None,
     ) -> AsyncIterator[str]:
         """Yield token deltas as Ollama produces them.
 
         Each Ollama NDJSON line carries either an incremental `response`
         chunk or `done: true`. We yield the chunk text and stop at done.
+        Pass `model=` to use a different model than `self.gen_model`
+        (e.g. switching to a vision model for image describe). Pass
+        `images=[base64, ...]` for multimodal inputs.
         """
-        payload = self._generate_payload(prompt, system)
+        payload = self._generate_payload(
+            prompt, system, model=model, images=images
+        )
         payload["stream"] = True
         async with self._client.stream(
             "POST", f"{self.host}/api/generate", json=payload

@@ -64,6 +64,18 @@ _CODE_SUMMARIZER_TAIL = (
 )
 
 
+_IMAGE_DESCRIBER_TAIL = (
+    "ROLE: image describer. Given a single image, output 5-7 bullet "
+    "points describing what's in it. Cover: the dominant subject, the "
+    "setting / context, notable colours and composition, any visible "
+    "text (transcribe it verbatim, no paraphrasing), and the apparent "
+    "purpose of the image (photo / screenshot / diagram / artwork / "
+    "scan). Be specific and factual — describe what you SEE, don't "
+    "speculate about intent or origin. Use bold (**text**) on key "
+    "subjects or transcribed text. Reply in English."
+)
+
+
 def summarizer_system() -> str:
     """System message for /summarize. Cached prefix + summarizer tail."""
     return HOUSTON_PREFIX + _SUMMARIZER_TAIL
@@ -82,3 +94,8 @@ def filename_proposer_system() -> str:
 def code_summarizer_system() -> str:
     """System message for summarizing source code / config / data files."""
     return HOUSTON_PREFIX + _CODE_SUMMARIZER_TAIL
+
+
+def image_describer_system() -> str:
+    """System message for the multimodal image-describe persona."""
+    return HOUSTON_PREFIX + _IMAGE_DESCRIBER_TAIL

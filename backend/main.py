@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 import asyncio
+import base64
 import json
 
 import httpx
@@ -22,6 +23,7 @@ from config import (
     OLLAMA_HOST,
     EMBED_MODEL,
     GEN_MODEL,
+    VISION_MODEL,
 )
 from models import (
     ConfigResponse,
@@ -45,10 +47,11 @@ from ollama_client import OllamaClient
 from store import VectorStore
 from indexer import Indexer
 from retriever import Retriever
-from parsing import parse_file, is_code_path
+from parsing import parse_file, is_code_path, is_image_path
 from prompts import (
     code_summarizer_system,
     filename_proposer_system,
+    image_describer_system,
     note_writer_system,
     summarizer_system,
 )
@@ -63,6 +66,15 @@ def _summary_system_for(p: Path) -> str:
     Both share HOUSTON_PREFIX so chained calls hit the KV cache.
     """
     return code_summarizer_system() if is_code_path(p) else summarizer_system()
+
+
+def _read_image_b64(path: Path) -> str:
+    """Read an image and return raw base64 (no 'data:' prefix) suitable
+    for Ollama's `images: [...]` payload field."""
+    return base64.b64encode(path.read_bytes()).decode("ascii")
+
+
+IMAGE_PROMPT = "Describe this image."
 
 
 @dataclass
@@ -304,11 +316,25 @@ def _read_for_summary(path: str) -> str:
 @app.post("/summarize", response_model=SummarizeResponse)
 async def summarize(req: SummarizeRequest, state: AppState = Depends(get_app_state)):
     t0 = time.time()
-    text = _read_for_summary(req.path)
-    summary = await state.generator.generate(
-        _build_summary_prompt(text),
-        system=_summary_system_for(Path(req.path)),
-    )
+    p = Path(req.path).expanduser().resolve()
+    if not p.exists():
+        raise HTTPException(404, "file not found")
+    if is_image_path(p):
+        # Vision path — always via Ollama (state.embedder), even if the
+        # text generator is MLX.
+        b64 = _read_image_b64(p)
+        summary = await state.embedder.generate(
+            IMAGE_PROMPT,
+            system=image_describer_system(),
+            model=VISION_MODEL,
+            images=[b64],
+        )
+    else:
+        text = _read_for_summary(req.path)
+        summary = await state.generator.generate(
+            _build_summary_prompt(text),
+            system=_summary_system_for(p),
+        )
     return SummarizeResponse(
         summary=summary, elapsed_ms=int((time.time() - t0) * 1000)
     )
@@ -322,19 +348,40 @@ async def summarize_stream(
 
     Each event is `data: {"delta": "..."}\\n\\n`; the stream ends with
     `data: [DONE]\\n\\n`. Errors land as `data: {"error": "..."}\\n\\n`.
+
+    Auto-routes by file extension:
+      - images → vision model (gemma4 / llava / qwen2.5-vl) via Ollama
+      - code   → code summarizer persona
+      - other  → document summarizer persona
     """
-    text = _read_for_summary(req.path)
-    system = _summary_system_for(Path(req.path))
+    p = Path(req.path).expanduser().resolve()
+    if not p.exists():
+        raise HTTPException(404, "file not found")
+    is_image = is_image_path(p)
+    if is_image:
+        b64 = _read_image_b64(p)
+        prompt = IMAGE_PROMPT
+        system = image_describer_system()
+        model = VISION_MODEL
+        images: list[str] | None = [b64]
+        # Vision must use Ollama — the in-process MLX-LM doesn't take images.
+        gen = state.embedder
+    else:
+        text = _read_for_summary(req.path)
+        prompt = _build_summary_prompt(text)
+        system = _summary_system_for(p)
+        model = None
+        images = None
+        gen = state.generator
 
     async def event_gen():
         try:
-            async for delta in state.generator.generate_stream(
-                _build_summary_prompt(text),
-                system=system,
+            async for delta in gen.generate_stream(
+                prompt, system=system, model=model, images=images
             ):
                 yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as e:  # noqa: BLE001 — last-resort surface to client
+        except Exception as e:  # noqa: BLE001
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(

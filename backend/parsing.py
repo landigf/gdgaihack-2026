@@ -5,6 +5,15 @@ from docx import Document
 
 # Source-code and structured-text extensions. Treated as plain UTF-8 text;
 # the LLM gets a dedicated 'code summarizer' persona for these.
+IMAGE_EXT = frozenset(
+    {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".heic"}
+)
+
+
+def is_image_path(path: Path) -> bool:
+    return path.suffix.lower() in IMAGE_EXT
+
+
 CODE_EXT = frozenset(
     {
         # mainstream languages
