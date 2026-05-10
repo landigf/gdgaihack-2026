@@ -1,4 +1,10 @@
 fastapi==0.115.5
+# Required at FastAPI import time by any router that declares
+# File / Form / UploadFile (we use it for the voice round-trip in
+# backend/ares/router.py). FastAPI doesn't pull it in transitively —
+# leaving it implicit means uvicorn dies on startup with a RuntimeError
+# before serving the first request.
+python-multipart==0.0.28
 uvicorn[standard]==0.32.1
 httpx==0.28.1
 pydantic==2.10.3
