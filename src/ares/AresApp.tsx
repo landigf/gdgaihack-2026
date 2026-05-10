@@ -33,10 +33,18 @@ export default function AresApp() {
   const [habitatAlert, setHabitatAlert] = useState(false);
   const [greenhouseReady, setGreenhouseReady] = useState(true);
   const [ch4FillPct, setCh4FillPct] = useState(0.45);
+  // True when the Repair Assist modal is open — used to suppress the
+  // R3F <Html> tooltip on the greenhouse dome ("CLICK TO INSPECT")
+  // that otherwise bleeds through the modal at z-index seams.
+  const [repairOpen, setRepairOpen] = useState(false);
 
-  // Blackout timer ticks down each second
+  // Blackout timer ticks down each second; loops back to 5:42 when it
+  // hits zero so the chip never stays at 00:00 across long demos.
   useEffect(() => {
-    const t = setInterval(() => setBlackoutSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    const t = setInterval(
+      () => setBlackoutSecondsLeft((s) => (s <= 1 ? 5 * 60 + 42 : s - 1)),
+      1000,
+    );
     return () => clearInterval(t);
   }, []);
 
@@ -170,8 +178,8 @@ export default function AresApp() {
           greenhouseReady={greenhouseReady}
           ch4FillPct={ch4FillPct}
           onSelectBuilding={(id) => setSelected(id)}
-          showStats={import.meta.env.DEV}
-          hideHints={selected !== null}
+          showStats={false}
+          hideHints={selected !== null || repairOpen}
         />
       </div>
 
@@ -183,7 +191,7 @@ export default function AresApp() {
       {/* Houston Repair Assist — Houston layered on Rover Core RAG: free-text
           fault → NASA-cited diagnose + on-base inventory cross-check + 3-5
           step procedure (optional spoken). Killer Practical-Utility 25% beat. */}
-      <RepairAssist />
+      <RepairAssist onOpenChange={setRepairOpen} />
 
       {/* Demo controls (dev shortcuts — pinned higher than the bottom row
           so they don't overlap the VoicePTT block on the left or the

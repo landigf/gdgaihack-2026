@@ -240,6 +240,46 @@ export default function PdfViewer({ citation, onClose }: Props) {
           </div>
         </div>
 
+        {/* Big page-number banner — ALWAYS visible so the operator can
+            tell the audience exactly which page the citation lives on
+            ("see page 12 of NASA-STD-3001 Volume 1, paragraph on
+            radiation envelope"). Falls back to chunk_index if the
+            text-match couldn't pin a page. */}
+        {numPages > 0 && (
+          <div
+            className="px-5 py-2 font-mono"
+            style={{
+              borderBottom: "1px solid rgba(251,191,36,0.25)",
+              background:
+                "linear-gradient(90deg, rgba(251,191,36,0.18) 0%, rgba(251,191,36,0.05) 100%)",
+              fontSize: 13,
+              color: "#fde68a",
+              fontWeight: 600,
+              letterSpacing: 0.5,
+            }}
+          >
+            {highlightedPages.length > 0 ? (
+              <>
+                📍 cited paragraph on{" "}
+                <span style={{ color: "#fbbf24", fontWeight: 800, fontSize: 14 }}>
+                  page{highlightedPages.length > 1 ? "s" : ""}{" "}
+                  {highlightedPages.map((p) => p.pageNum).join(", ")}
+                </span>{" "}
+                of {numPages} · {highlightedPages.reduce((n, p) => n + p.rects.length, 0)} highlight
+                {highlightedPages.reduce((n, p) => n + p.rects.length, 0) === 1 ? "" : "s"} drawn
+              </>
+            ) : (
+              <>
+                📍 chunk #{citation.chunk_index ?? "?"} (estimated page ~
+                {citation.chunk_index !== undefined && numPages > 0
+                  ? Math.max(1, Math.min(numPages, Math.round(citation.chunk_index / 8)))
+                  : "?"}
+                ) · exact text-match couldn't be pinned (likely OCR'd PDF)
+              </>
+            )}
+          </div>
+        )}
+
         {/* Excerpt strip — operator + audience can read what was cited */}
         {citation.excerpt && (
           <div

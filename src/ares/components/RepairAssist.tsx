@@ -49,9 +49,21 @@ function severityColor(sev: RepairResponse["severity"]): string {
   return "#10b981";
 }
 
-export default function RepairAssist() {
+type Props = {
+  /** Fired whenever the modal opens or closes — lets the parent
+   * suppress overlapping 3D tooltips while the modal is up. */
+  onOpenChange?: (open: boolean) => void;
+};
+
+export default function RepairAssist({ onOpenChange }: Props = {}) {
   const { inventory, sensors } = useInventoryState();
   const [open, setOpen] = useState(false);
+
+  // Notify parent when open state changes so it can hide R3F <Html>
+  // tooltips that would otherwise bleed through this modal.
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   const [fault, setFault] = useState<string>(QUICK_FAULTS[0].text);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
