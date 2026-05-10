@@ -66,27 +66,66 @@ jobs:
       - name: Install Node deps
         run: npm ci
 
-      - name: Build Tauri (.app + .dmg)
-        run: npm run tauri build -- --bundles app,dmg
+      - name: Build Tauri (.app)
+        run: npm run tauri build -- --bundles app
         env:
           TAURI_SIGNING_PRIVATE_KEY: ""
           CI: true
 
-      # Belt-and-braces ad-hoc re-sign. tauri.conf.json macOS.signingIdentity
-      # is set to "-" so the bundler should already ad-hoc sign, but Tauri 2's
-      # bundle pipeline copies resources AFTER the inner binary is signed.
-      # Re-running codesign with --deep --force on the finished .app catches
-      # any embedded helpers/frameworks that slipped through the first pass.
-      # This stops Gatekeeper's "Houston is damaged and can't be opened"
-      # message on Apple Silicon — quarantined apps still need right-click ->
-      # Open the first time, but they no longer fail outright.
-      - name: Ad-hoc re-sign the .app bundle
+      # Step 1: patch Info.plist with mic + AppleEvents usage descriptions.
+      # Tauri 2's bundle.macOS config doesn't expose arbitrary Info.plist
+      # keys, so we use PlistBuddy on the freshly-built .app. WebKit's
+      # getUserMedia() and macOS `say` AppleEvents both refuse silently
+      # without these reason strings.
+      - name: Inject Info.plist usage descriptions (mic + AppleEvents)
+        run: |
+          PLIST="src-tauri/target/release/bundle/macos/Houston.app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Houston needs microphone access for the push-to-talk Capcom voice loop with whisper.cpp running 100% offline.'" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'Houston needs microphone access for the push-to-talk Capcom voice loop with whisper.cpp running 100% offline.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 'Houston uses macOS say(1) to read replies aloud — fully on-device TTS.'" "$PLIST" || \
+            /usr/libexec/PlistBuddy -c "Set :NSAppleEventsUsageDescription 'Houston uses macOS say(1) to read replies aloud — fully on-device TTS.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :NSAppleEventsUsageDescription" "$PLIST"
+
+      # Step 2: ad-hoc re-sign AFTER the plist mutation so the new
+      # Info.plist hash is captured + the entitlements.plist (mic input,
+      # network client/server, AppleEvents) lands on the binary.
+      # Belt-and-braces because tauri.conf.json macOS.signingIdentity
+      # is "-" already, but Tauri 2's bundle pipeline copies resources
+      # AFTER the inner binary is signed and we just modified
+      # Info.plist again.
+      # Stops Gatekeeper's "Houston is damaged" message on Apple
+      # Silicon — quarantined apps still need right-click → Open the
+      # first time, but they no longer fail outright.
+      - name: Ad-hoc re-sign the .app bundle (with entitlements)
         run: |
           APP=src-tauri/target/release/bundle/macos/Houston.app
-          codesign --deep --force --sign - --timestamp=none "$APP"
+          codesign --deep --force --sign - \
+            --entitlements src-tauri/entitlements.plist \
+            --timestamp=none --options runtime "$APP"
           codesign --verify --verbose=2 "$APP" || true
           echo "--- spctl assess (will likely fail because we're ad-hoc, that's fine) ---"
           spctl --assess --type execute --verbose=4 "$APP" 2>&1 || true
+
+      # Step 3: rebuild the .dmg from the patched + re-signed .app so the
+      # installer users open carries the same mic/say usage strings and
+      # signature as the zipped .app artifact. Hand-rolled with hdiutil
+      # because Tauri bakes the .dmg inside the same `tauri build` step
+      # and we need the post-build modifications inside it.
+      - name: Build .dmg from the patched .app
+        run: |
+          set -e
+          BUNDLE="src-tauri/target/release/bundle"
+          STAGE="$BUNDLE/dmg-stage"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE" "$BUNDLE/dmg"
+          cp -R "$BUNDLE/macos/Houston.app" "$STAGE/Houston.app"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "Houston" \
+            -srcfolder "$STAGE" \
+            -ov -format UDZO \
+            "$BUNDLE/dmg/Houston_0.1.0_aarch64.dmg"
+          ls -lh "$BUNDLE/dmg/"
 
       - name: Zip the .app for upload
         run: |
