@@ -29,6 +29,17 @@ import IndexedFoldersModal from "./components/IndexedFoldersModal";
 type HistoryState = { stack: string[]; index: number };
 type EngineState = "ready" | "starting" | "installing" | "error";
 
+// Tauri 2 sets `__TAURI_INTERNALS__` on window when running inside the
+// shell. When Rover is opened in a regular browser (e.g. dev mode at
+// http://127.0.0.1:1420 from a non-Tauri tab) the OS-level features
+// like folder pick / file open / mic / drag-drop don't exist — the
+// app would crash on the first `tauri.homeDir()` call. We detect once
+// at module load and gate filesystem effects on this flag, replacing
+// them with a friendly "open the .app" overlay in the main pane.
+const IS_TAURI =
+  typeof window !== "undefined" &&
+  ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+
 function homeRel(p: string, home: string) {
   if (!p) return p;
   if (!home) return p;
@@ -197,6 +208,13 @@ export default function App() {
   // are fetched separately once engineState transitions to 'ready' (see below)
   // because first-launch install can take a minute or two.
   useEffect(() => {
+    if (!IS_TAURI) {
+      // Browser mode — file system unavailable. The main pane will
+      // render a "open the .app" overlay; the Mars Habitat dashboard
+      // tile in the sidebar still works (pure web).
+      setBrowseError("BROWSER_MODE");
+      return;
+    }
     (async () => {
       try {
         const h = await tauri.homeDir();
@@ -923,7 +941,94 @@ export default function App() {
             )}
           </div>
 
-          {browseError && !isSearching && (
+          {browseError === "BROWSER_MODE" && !isSearching && (
+            <div
+              style={{
+                margin: "32px auto",
+                maxWidth: 640,
+                padding: 32,
+                borderRadius: 16,
+                border: "1px solid rgba(124,58,237,0.25)",
+                background:
+                  "linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(34,211,238,0.04) 100%)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+              <h2 style={{ margin: "0 0 8px", fontSize: 22 }}>
+                Rover file system needs the desktop app
+              </h2>
+              <p
+                style={{
+                  margin: "0 auto 18px",
+                  maxWidth: 460,
+                  color: "var(--ink-muted, #64748b)",
+                  lineHeight: 1.5,
+                }}
+              >
+                You're viewing Rover in a regular browser tab — file picking,
+                drag-and-drop, and "Reveal in Finder" all need OS-level access
+                that only the macOS .app provides.
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  marginBottom: 20,
+                }}
+              >
+                <a
+                  href="https://github.com/landigf/gdgaihack-2026/releases"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: 10,
+                    background:
+                      "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+                    color: "white",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    textDecoration: "none",
+                  }}
+                >
+                  Download Rover.dmg ↗
+                </a>
+                <button
+                  onClick={() => {
+                    window.location.hash = "ares";
+                    window.location.reload();
+                  }}
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: 10,
+                    background: "rgba(34,211,238,0.1)",
+                    color: "#0891b2",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    border: "1px solid rgba(34,211,238,0.4)",
+                    cursor: "pointer",
+                  }}
+                >
+                  🪐 Open Mars Habitat demo →
+                </button>
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--ink-muted, #94a3b8)",
+                  fontFamily: "ui-monospace, SF Mono, Menlo, monospace",
+                  opacity: 0.7,
+                }}
+              >
+                The Mars demo runs entirely in the browser — no .app required.
+              </div>
+            </div>
+          )}
+
+          {browseError && browseError !== "BROWSER_MODE" && !isSearching && (
             <div className="empty" style={{ height: 220 }}>
               <h3>Couldn't open this folder</h3>
               <p>{browseError}</p>

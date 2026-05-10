@@ -8,9 +8,9 @@ remote runtime fetch — the GLBs sit next to the buildings under
 | File | Author | License | Source URL |
 |---|---|---|---|
 | `tomato.glb` | _Sketchfab — see model page_ | CC-BY 4.0 | https://sketchfab.com/3d-models/tomato-plant-e0b559690e384fc0a9f3a05913f609c4 |
-| `lettuce.glb` | _to be downloaded_ | CC-BY 4.0 | _tbd_ |
-| `mizuna.glb`  | _to be downloaded_ | CC-BY 4.0 | _tbd_ |
-| `pepper.glb`  | _to be downloaded_ | CC-BY 4.0 | _tbd_ |
+| `lettuce.glb` | _Sketchfab — see model page_ | CC-BY 4.0 | https://skfb.ly/ozsUT |
+| `pepper.glb`  | _Sketchfab — see model page_ | CC-BY 4.0 | https://skfb.ly/pEITq |
+| `mizuna.glb`  | _no GLB shipped — falls back to procedural rendering_ | — | — |
 
 ## Required attribution text (per CC-BY 4.0)
 

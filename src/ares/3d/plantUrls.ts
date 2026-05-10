@@ -4,21 +4,18 @@
 // rest fall back to the procedural rendering in `PlantStages.tsx`.
 
 import { useGLTF } from "@react-three/drei";
+import lettuceUrl from "./assets/plants/lettuce.glb?url";
+import pepperUrl from "./assets/plants/pepper.glb?url";
 import tomatoUrl from "./assets/plants/tomato.glb?url";
 
-// We deliberately ship URLs only for species we have GLBs for — the
-// loader in PlantStages.tsx checks for `species in PLANT_URLS` and
-// falls back to the procedural mesh otherwise. Add new species here
-// as their GLBs land under assets/plants/.
-//
-// Why a partial map: gives us an incremental upgrade path. We can
-// ship the tomato model first, hand-tune its scale on the rack, then
-// extend to lettuce / mizuna / pepper without ever breaking the build.
+// Partial map: species without a GLB still fall through to the
+// procedural mesh in PlantStages.tsx. Add new species here as their
+// GLBs land under assets/plants/.
 export const PLANT_URLS: Partial<Record<"lettuce" | "mizuna" | "pepper" | "tomato", string>> = {
+  lettuce: lettuceUrl,
+  // mizuna:  mizunaUrl,   // ← uncomment after dropping the GLB
+  pepper: pepperUrl,
   tomato: tomatoUrl,
-  // lettuce: lettuceUrl,   // ← uncomment after dropping the GLB
-  // mizuna:  mizunaUrl,
-  // pepper:  pepperUrl,
 };
 
 // Per-species transform corrections. Sketchfab models come in arbitrary
@@ -32,6 +29,12 @@ export const PLANT_TRANSFORM: Partial<Record<
   // Scale ~0.0015 brings a 30 cm plant down to roughly 0.45 m — fits
   // a pot of radius 0.16 with the foliage spreading outward.
   tomato: { scaleMul: 0.0015, yOffset: 0, rotY: 0 },
+  // Lettuce GLB is ~1 unit ≈ 1 m, so scale 0.25 gives ~25 cm rosette.
+  // We will tune visually after first render.
+  lettuce: { scaleMul: 0.25, yOffset: 0, rotY: 0 },
+  // Pepper plant: pre-converted GLB, native scale unknown — start at
+  // 0.15 and tune. Plants are ~50 cm tall in real life.
+  pepper: { scaleMul: 0.15, yOffset: 0, rotY: 0 },
 };
 
 // Preload all GLBs we have at module-load time so the first drill-in

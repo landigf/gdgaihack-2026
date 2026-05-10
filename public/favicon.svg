@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="planet" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="55%" stop-color="#dc2626"/>
+      <stop offset="100%" stop-color="#7c2d12"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%"  stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#22d3ee" stop-opacity="1"/>
+      <stop offset="65%" stop-color="#22d3ee" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- backdrop -->
+  <rect width="64" height="64" rx="14" fill="#0a0a0a"/>
+  <!-- planet -->
+  <circle cx="32" cy="32" r="20" fill="url(#planet)"/>
+  <!-- crater highlights -->
+  <circle cx="26" cy="26" r="2.4" fill="#fde68a" opacity="0.55"/>
+  <circle cx="38" cy="36" r="1.6" fill="#fde68a" opacity="0.4"/>
+  <circle cx="30" cy="40" r="1.2" fill="#fde68a" opacity="0.35"/>
+  <!-- orbital ring -->
+  <ellipse cx="32" cy="32" rx="28" ry="6"
+           fill="none" stroke="url(#ring)" stroke-width="2"
+           transform="rotate(-22 32 32)"/>
+</svg>
