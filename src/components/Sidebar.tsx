@@ -4,6 +4,7 @@ import {
   Docs,
   Downloads,
   Desktop,
+  Folder,
   Star,
   IndexBars,
 } from "./Icon";
@@ -11,7 +12,7 @@ import {
 export type QuickItem = {
   label: string;
   path: string;
-  kind: "home" | "documents" | "downloads" | "desktop" | "starred";
+  kind: "home" | "documents" | "downloads" | "desktop" | "starred" | "custom";
 };
 
 type EngineState = "ready" | "starting" | "installing" | "error";
@@ -33,6 +34,8 @@ type Props = {
   onDropOnFavorite: (srcPaths: string[], targetPath: string) => void;
   /** Open the Indexed Folders modal. */
   onOpenIndexedFolders: () => void;
+  /** Right-click on a sidebar item — only fires for kind === 'custom'. */
+  onContextMenuCustomFavorite: (path: string, x: number, y: number) => void;
 };
 
 const ICONS = {
@@ -41,6 +44,7 @@ const ICONS = {
   downloads: Downloads,
   desktop: Desktop,
   starred: Star,
+  custom: Folder,
 };
 
 export default function Sidebar({
@@ -58,6 +62,7 @@ export default function Sidebar({
   canIndex,
   onDropOnFavorite,
   onOpenIndexedFolders,
+  onContextMenuCustomFavorite,
 }: Props) {
   const [dragOver, setDragOver] = useState<string | null>(null);
 
@@ -110,6 +115,12 @@ export default function Sidebar({
             className={`sb-item${dragOver === it.path ? " is-drag-over" : ""}`}
             aria-selected={selected}
             onClick={() => onNavigate(it.path)}
+            onContextMenu={(e) => {
+              if (it.kind !== "custom") return;
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenuCustomFavorite(it.path, e.clientX, e.clientY);
+            }}
             onDragOver={(e) => onDragOverFav(e, it.path)}
             onDragEnter={(e) => onDragOverFav(e, it.path)}
             onDragLeave={() => {

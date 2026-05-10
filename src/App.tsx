@@ -59,6 +59,31 @@ export default function App() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [indexedModalOpen, setIndexedModalOpen] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
+
+  // Custom sidebar favorites — persisted in localStorage so they survive
+  // restarts. The four built-in entries (Home, Documents, Downloads,
+  // Desktop) live below as `items`; `customFavorites` is appended to that.
+  const [customFavorites, setCustomFavorites] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("houston.customFavorites");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((x): x is string => typeof x === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "houston.customFavorites",
+        JSON.stringify(customFavorites)
+      );
+    } catch {
+      /* quota / private mode — drop silently */
+    }
+  }, [customFavorites]);
   const [modelGen, setModelGen] = useState<string>("loading…");
   const [modelEmbed, setModelEmbed] = useState<string>("loading…");
 
@@ -470,9 +495,40 @@ export default function App() {
   }
 
   // ---- Context menus --------------------------------------------------------
+  function addCustomFavorite(folderPath: string) {
+    if (!folderPath) return;
+    setCustomFavorites((cur) =>
+      cur.includes(folderPath) ? cur : [...cur, folderPath]
+    );
+    flashToast(
+      <>
+        Added <b>{folderPath.split("/").filter(Boolean).pop() || folderPath}</b>{" "}
+        to Favorites
+      </>
+    );
+  }
+  function removeCustomFavorite(folderPath: string) {
+    setCustomFavorites((cur) => cur.filter((p) => p !== folderPath));
+  }
+
+  function isInDefaultFavorites(p: string): boolean {
+    if (!home) return false;
+    return (
+      p === home ||
+      p === `${home}/Documents` ||
+      p === `${home}/Downloads` ||
+      p === `${home}/Desktop` ||
+      p === `${home}/demo-rover`
+    );
+  }
+
   function buildEntryContextMenu(entry: DirEntry, targets: string[]): MenuItem[] {
     const single = targets.length === 1;
     const isFolder = entry.is_dir;
+    const alreadyFavorite =
+      isFolder &&
+      single &&
+      (customFavorites.includes(entry.path) || isInDefaultFavorites(entry.path));
     return [
       {
         kind: "item",
@@ -487,6 +543,19 @@ export default function App() {
         onClick: () => tauri.revealInFinder(entry.path),
         disabled: !single,
       },
+      ...(isFolder && single
+        ? ([
+            { kind: "separator" },
+            {
+              kind: "item",
+              label: alreadyFavorite
+                ? "Already in Favorites"
+                : "Add to Favorites",
+              onClick: () => addCustomFavorite(entry.path),
+              disabled: alreadyFavorite,
+            },
+          ] as MenuItem[])
+        : []),
       { kind: "separator" },
       {
         kind: "item",
@@ -571,6 +640,33 @@ export default function App() {
 
   function onContextMenuEmpty(x: number, y: number) {
     setCtxMenu({ x, y, items: buildEmptyContextMenu() });
+  }
+
+  function onContextMenuCustomFavorite(
+    favPath: string,
+    x: number,
+    y: number
+  ) {
+    const items: MenuItem[] = [
+      {
+        kind: "item",
+        label: "Open",
+        onClick: () => navigateTo(favPath),
+      },
+      {
+        kind: "item",
+        label: "Show in Finder",
+        onClick: () => tauri.revealInFinder(favPath),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Remove from Favorites",
+        danger: true,
+        onClick: () => removeCustomFavorite(favPath),
+      },
+    ];
+    setCtxMenu({ x, y, items });
   }
 
   // ---- Global keyboard shortcuts -------------------------------------------
@@ -722,6 +818,11 @@ export default function App() {
     { label: "Downloads", path: `${home}/Downloads`, kind: "downloads" },
     { label: "Desktop", path: `${home}/Desktop`, kind: "desktop" },
     { label: "demo-rover", path: `${home}/demo-rover`, kind: "starred" },
+    ...customFavorites.map((p) => ({
+      label: p.split("/").filter(Boolean).pop() || p,
+      path: p,
+      kind: "custom" as const,
+    })),
   ];
 
   const isSearching = !!debouncedQuery;
@@ -787,6 +888,7 @@ export default function App() {
           canIndex={!!path}
           onDropOnFavorite={dropOntoFolder}
           onOpenIndexedFolders={() => setIndexedModalOpen(true)}
+          onContextMenuCustomFavorite={onContextMenuCustomFavorite}
         />
 
         <main className="main">
