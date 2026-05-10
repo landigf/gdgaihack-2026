@@ -121,10 +121,12 @@ input { font: inherit; color: inherit; }
   width: 100vw;
   height: 100vh;
   display: grid;
-  /* 40px toolbar so nav buttons (28px tall, centered → y_center=20) line
-     up exactly with the macOS traffic lights placed at trafficLightPosition
-     y=14 (12px tall → y_center=20). 52px broke that alignment. */
-  grid-template-rows: 40px 1fr 26px;
+  /* 48px toolbar — gives 18pt of breathing room above the traffic lights
+     (vs 14pt at 40px which felt cramped against the rounded window
+     corner). Alignment math: nav button (28pt, centered in 48pt) →
+     y_center=24. Traffic light (12pt) at trafficLightPosition.y=18 →
+     y_center=24. Both at y=24. ✓ */
+  grid-template-rows: 48px 1fr 26px;
   background: var(--bg);
   position: relative;
   overflow: hidden;
@@ -155,8 +157,8 @@ input { font: inherit; color: inherit; }
 .search .clear {
   -webkit-app-region: no-drag;
 }
-.tb-left, .tb-mid, .tb-right { display: flex; align-items: center; height: 40px; }
-.tb-left { padding: 0 12px 0 78px; gap: 6px; }  /* 78px = 16(left) + ~62(lights cluster) */
+.tb-left, .tb-mid, .tb-right { display: flex; align-items: center; height: 48px; }
+.tb-left { padding: 0 12px 0 80px; gap: 6px; }  /* 80px clears the lights cluster (x=18 + ~62 wide) */
 .tb-mid  { padding: 0 14px; gap: 6px; }
 .tb-right { padding: 0 14px 0 0; gap: 8px; justify-content: flex-end; }
 
@@ -896,7 +898,7 @@ mark {
    ========================================================================= */
 .welcome-scrim {
   position: absolute;
-  inset: 40px 0 26px 0;
+  inset: 48px 0 26px 0;
   background: rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
