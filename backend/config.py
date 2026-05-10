@@ -18,7 +18,22 @@ CHUNK_TOKENS = 512
 CHUNK_OVERLAP = 64
 TOP_K = 8
 
-SUPPORTED_EXT = {".pdf", ".md", ".markdown", ".txt", ".docx"}
+SUPPORTED_EXT = {
+    # Documents
+    ".pdf", ".md", ".markdown", ".txt", ".rtf", ".docx", ".xlsx",
+    # Source code
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+    ".java", ".kt", ".scala", ".groovy",
+    ".c", ".h", ".cpp", ".cxx", ".cc", ".hpp", ".hxx",
+    ".cs", ".m", ".mm",
+    ".rs", ".go", ".rb", ".swift",
+    ".php", ".pl", ".lua", ".r", ".sql",
+    ".sh", ".bash", ".zsh", ".fish",
+    ".html", ".htm", ".css", ".scss", ".sass", ".less",
+    # Structured text / config
+    ".json", ".yaml", ".yml", ".toml", ".ini", ".xml",
+    ".csv", ".tsv", ".log",
+}
 
 # Hard cap on files per index run — protects against runaway scans of huge home dirs.
 MAX_FILES = int(os.getenv("ROVER_MAX_FILES", "3000"))

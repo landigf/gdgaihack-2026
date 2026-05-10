@@ -45,12 +45,24 @@ from ollama_client import OllamaClient
 from store import VectorStore
 from indexer import Indexer
 from retriever import Retriever
-from parsing import parse_file
+from parsing import parse_file, is_code_path
 from prompts import (
+    code_summarizer_system,
     filename_proposer_system,
     note_writer_system,
     summarizer_system,
 )
+
+
+def _summary_system_for(p: Path) -> str:
+    """Pick the right summarizer persona based on the file extension.
+
+    Source code + structured-text files get the code-summarizer tail
+    (focuses on what the code does, key exports, deps). Everything
+    else uses the document summarizer (5-8 bullets in source language).
+    Both share HOUSTON_PREFIX so chained calls hit the KV cache.
+    """
+    return code_summarizer_system() if is_code_path(p) else summarizer_system()
 
 
 @dataclass
@@ -295,7 +307,7 @@ async def summarize(req: SummarizeRequest, state: AppState = Depends(get_app_sta
     text = _read_for_summary(req.path)
     summary = await state.generator.generate(
         _build_summary_prompt(text),
-        system=summarizer_system(),
+        system=_summary_system_for(Path(req.path)),
     )
     return SummarizeResponse(
         summary=summary, elapsed_ms=int((time.time() - t0) * 1000)
@@ -312,12 +324,13 @@ async def summarize_stream(
     `data: [DONE]\\n\\n`. Errors land as `data: {"error": "..."}\\n\\n`.
     """
     text = _read_for_summary(req.path)
+    system = _summary_system_for(Path(req.path))
 
     async def event_gen():
         try:
             async for delta in state.generator.generate_stream(
                 _build_summary_prompt(text),
-                system=summarizer_system(),
+                system=system,
             ):
                 yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
@@ -347,7 +360,7 @@ async def write_note(req: NoteRequest, state: AppState = Depends(get_app_state))
     if not summary:
         summary = await state.generator.generate(
             _build_summary_prompt(text),
-            system=summarizer_system(),
+            system=_summary_system_for(Path(req.path)),
         )
     note = await state.generator.generate(
         _build_note_prompt(text, summary),
@@ -364,7 +377,7 @@ async def write_note_stream(
     text = _read_for_summary(req.path)
     summary = req.summary or await state.generator.generate(
         _build_summary_prompt(text),
-        system=summarizer_system(),
+        system=_summary_system_for(Path(req.path)),
     )
 
     async def event_gen():

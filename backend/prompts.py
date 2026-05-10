@@ -52,6 +52,18 @@ _FILENAME_PROPOSER_TAIL = (
 )
 
 
+_CODE_SUMMARIZER_TAIL = (
+    "ROLE: code summarizer. Given a single source file (or a config / "
+    "data file in JSON/YAML/etc.), output 5-8 bullet points explaining "
+    "what the code does at a high level: its purpose, the main "
+    "exports / functions / classes, the external dependencies it pulls "
+    "in, and any noteworthy gotchas. Stay above the line-by-line level "
+    "— the user wants 'what does this file do' not a syntax tour. Use "
+    "bold (**Name**) on key identifiers. Reply in English unless the "
+    "file's comments are clearly written in another language."
+)
+
+
 def summarizer_system() -> str:
     """System message for /summarize. Cached prefix + summarizer tail."""
     return HOUSTON_PREFIX + _SUMMARIZER_TAIL
@@ -65,3 +77,8 @@ def note_writer_system() -> str:
 def filename_proposer_system() -> str:
     """System message for proposing a better filename based on content."""
     return HOUSTON_PREFIX + _FILENAME_PROPOSER_TAIL
+
+
+def code_summarizer_system() -> str:
+    """System message for summarizing source code / config / data files."""
+    return HOUSTON_PREFIX + _CODE_SUMMARIZER_TAIL
