@@ -72,6 +72,22 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ""
           CI: true
 
+      # Belt-and-braces ad-hoc re-sign. tauri.conf.json macOS.signingIdentity
+      # is set to "-" so the bundler should already ad-hoc sign, but Tauri 2's
+      # bundle pipeline copies resources AFTER the inner binary is signed.
+      # Re-running codesign with --deep --force on the finished .app catches
+      # any embedded helpers/frameworks that slipped through the first pass.
+      # This stops Gatekeeper's "Houston is damaged and can't be opened"
+      # message on Apple Silicon — quarantined apps still need right-click ->
+      # Open the first time, but they no longer fail outright.
+      - name: Ad-hoc re-sign the .app bundle
+        run: |
+          APP=src-tauri/target/release/bundle/macos/Houston.app
+          codesign --deep --force --sign - --timestamp=none "$APP"
+          codesign --verify --verbose=2 "$APP" || true
+          echo "--- spctl assess (will likely fail because we're ad-hoc, that's fine) ---"
+          spctl --assess --type execute --verbose=4 "$APP" 2>&1 || true
+
       - name: Zip the .app for upload
         run: |
           cd src-tauri/target/release/bundle/macos
@@ -106,23 +122,45 @@ jobs:
             src-tauri/target/release/bundle/dmg/*.dmg
           generate_release_notes: true
           body: |
-            ## Rover Houston · macOS download
+            ## Houston · macOS download
 
-            **Drag-and-drop install:**
+            > **⚠️  If macOS says "Houston is damaged and can't be opened":**
+            > That's Gatekeeper, not a corrupt download. Houston is
+            > **ad-hoc signed but not notarized** (no Apple Developer
+            > Program for a hackathon demo). Strip the quarantine xattr
+            > that Safari/Chrome added and you're good:
+            >
+            > ```bash
+            > xattr -cr /Applications/Houston.app
+            > ```
+            >
+            > Then double-click as normal. Do this **once** per install.
+
+            **Install:**
             1. Download `Houston_*.dmg` below.
             2. Open it, drag **Houston** into `/Applications`.
-            3. First launch: macOS warns "unidentified developer" (we're
-               unsigned for the hackathon). Right-click → Open → Open.
-            4. Make sure Ollama is running:
+            3. First launch — pick whichever applies:
+               - **Best path**: terminal → `xattr -cr /Applications/Houston.app`
+                 → double-click. No prompts.
+               - **GUI path**: right-click Houston → **Open** → **Open**
+                 in the dialog. (May still say "damaged" on Sonoma+; if
+                 so, fall back to the xattr command.)
+            4. Make sure Ollama is running with the models we use:
                ```bash
                brew install ollama && ollama serve
                ollama pull gemma3:4b nomic-embed-text
                ```
-            5. Open Rover → click **Mars Habitat** in the sidebar to see
-               the on-device Mars demo.
+               Or for vision (image describe):
+               ```bash
+               ollama pull gemma4:latest
+               ```
+            5. Open Houston → click **Mars Habitat** in the sidebar to
+               see the on-device demo corpus, or pick any folder.
 
             See [README.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md)
-            for the full feature list + measured benchmarks.
+            for the full feature list + measured benchmarks, and
+            [docs/diagrams/](https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}/docs/diagrams)
+            for the architecture write-up.
 
       - name: Build summary
         if: always()
@@ -141,8 +179,13 @@ jobs:
             echo
             echo "1. Download the artifact below (click → unzip / mount the .dmg)."
             echo "2. Drag Houston.app to /Applications (or anywhere)."
-            echo "3. **First launch only**: macOS will warn 'unidentified developer'."
-            echo "   Right-click → Open → Open. Subsequent launches work normally."
+            echo "3. **If macOS says 'Houston is damaged and can't be opened':**"
+            echo "   That's Gatekeeper hitting the quarantine flag on an ad-hoc"
+            echo "   signed (not notarized) build. Strip it once:"
+            echo "   \`\`\`bash"
+            echo "   xattr -cr /Applications/Houston.app"
+            echo "   \`\`\`"
+            echo "   Then double-click. Subsequent launches work normally."
             echo "4. Houston will auto-create its Python venv on first launch (~1 min,"
             echo "   ~150 MB) inside ~/Library/Application Support/app.houston.demo/."
             echo "5. Have **Ollama** running with at least 'gemma4:latest' or another"
