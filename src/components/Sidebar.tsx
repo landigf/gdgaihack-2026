@@ -31,6 +31,8 @@ type Props = {
   canIndex: boolean;
   /** Called when files are dropped onto a Favorites item. */
   onDropOnFavorite: (srcPaths: string[], targetPath: string) => void;
+  /** Open the Indexed Folders modal. */
+  onOpenIndexedFolders: () => void;
 };
 
 const ICONS = {
@@ -55,6 +57,7 @@ export default function Sidebar({
   onIndex,
   canIndex,
   onDropOnFavorite,
+  onOpenIndexedFolders,
 }: Props) {
   const [dragOver, setDragOver] = useState<string | null>(null);
 
@@ -170,6 +173,13 @@ export default function Sidebar({
             >
               <IndexBars />
               {indexedRoot ? "Re-index this folder" : "Index this folder"}
+            </button>
+            <button
+              className="ix-link"
+              onClick={onOpenIndexedFolders}
+              title="See all folders Houston has indexed"
+            >
+              View indexed folders →
             </button>
           </>
         )}

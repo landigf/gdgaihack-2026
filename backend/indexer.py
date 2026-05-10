@@ -90,18 +90,36 @@ class Indexer:
             "elapsed_ms": elapsed_ms,
         }
         # Persist state so the UI can show "what's indexed" across restarts.
+        # Schema is now {history: [..., newest first]}; the first entry is
+        # the currently-active corpus that /search hits. We also accept and
+        # migrate the legacy single-object format.
         try:
+            existing: list[dict] = []
+            if STATE_PATH.exists():
+                try:
+                    raw = json.loads(STATE_PATH.read_text())
+                    if isinstance(raw, dict):
+                        if isinstance(raw.get("history"), list):
+                            existing = raw["history"]
+                        elif "root" in raw:
+                            existing = [raw]
+                except Exception:
+                    existing = []
+            new_entry = {
+                "root": str(root.resolve()),
+                "files": len(files),
+                "chunks": len(all_vecs),
+                "indexed_at_ms": int(time.time() * 1000),
+                "elapsed_ms": elapsed_ms,
+            }
+            # Dedup by root path, prepend, cap at 20.
+            existing = [
+                e for e in existing if e.get("root") != new_entry["root"]
+            ]
+            existing.insert(0, new_entry)
+            existing = existing[:20]
             STATE_PATH.write_text(
-                json.dumps(
-                    {
-                        "root": str(root.resolve()),
-                        "files": len(files),
-                        "chunks": len(all_vecs),
-                        "indexed_at_ms": int(time.time() * 1000),
-                        "elapsed_ms": elapsed_ms,
-                    },
-                    ensure_ascii=False,
-                )
+                json.dumps({"history": existing}, ensure_ascii=False)
             )
         except Exception:
             pass

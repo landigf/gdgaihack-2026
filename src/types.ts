@@ -33,6 +33,18 @@ export type IndexState = {
   indexed_at_ms?: number | null;
 };
 
+export type IndexedRoot = {
+  root: string;
+  files: number;
+  chunks: number;
+  indexed_at_ms: number;
+  elapsed_ms: number;
+};
+
+export type IndexListResponse = {
+  roots: IndexedRoot[];
+};
+
 export type ModelInfo = {
   name: string;
   params?: string | null;

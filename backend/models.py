@@ -66,6 +66,24 @@ class IndexState(BaseModel):
     indexed_at_ms: int | None = None
 
 
+class IndexedRoot(BaseModel):
+    root: str
+    files: int
+    chunks: int
+    indexed_at_ms: int
+    elapsed_ms: int
+
+
+class IndexListResponse(BaseModel):
+    """All folders Houston has ever indexed, newest first.
+    The first entry is the currently-active corpus that /search hits."""
+    roots: list[IndexedRoot]
+
+
+class ForgetRequest(BaseModel):
+    root: str
+
+
 class ModelInfo(BaseModel):
     name: str
     params: str | None = None

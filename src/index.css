@@ -1118,3 +1118,91 @@ mark {
 .row.is-clipped .name b {
   font-style: italic;
 }
+
+/* =========================================================================
+   Indexed-folders modal — list of historic indexing roots
+   ========================================================================= */
+.indexed-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.indexed-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 12px;
+  padding: 12px 14px;
+  align-items: start;
+  position: relative;
+}
+.indexed-row.is-active {
+  background: var(--ai-wash);
+}
+.indexed-row .ix-icon {
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  margin-top: 2px;
+}
+.indexed-row.is-active .ix-icon { color: var(--ai); }
+.indexed-row .ix-body { min-width: 0; }
+.indexed-row .ix-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 2px;
+}
+.indexed-row .ix-active-chip {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ai);
+  background: var(--ai-wash-strong);
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.indexed-row .ix-path {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.indexed-row .ix-meta {
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.indexed-row .ix-actions {
+  display: flex; flex-direction: column; gap: 4px;
+  align-items: stretch;
+}
+.indexed-row .ix-actions .btn { white-space: nowrap; padding: 0 8px; }
+.indexed-row .ix-sep {
+  position: absolute;
+  bottom: 0; left: 14px; right: 14px;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* Sidebar link that opens the modal */
+.sb-engine .ix-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--ai);
+  letter-spacing: -0.005em;
+  cursor: default;
+  transition: color 100ms;
+}
+.sb-engine .ix-link:hover { color: var(--ai-2); text-decoration: underline; }

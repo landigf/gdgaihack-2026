@@ -27,6 +27,9 @@ from models import (
     ConfigResponse,
     FilenameRequest,
     FilenameResponse,
+    ForgetRequest,
+    IndexedRoot,
+    IndexListResponse,
     IndexRequest,
     IndexResponse,
     IndexState,
@@ -164,21 +167,78 @@ async def get_config():
     return ConfigResponse(gen=gen, embed=embed, backend=_active_backend)
 
 
+def _read_history() -> list[dict]:
+    """Read state.json and normalise to the {history: [...]} shape."""
+    if not STATE_PATH.exists():
+        return []
+    try:
+        raw = json.loads(STATE_PATH.read_text())
+    except Exception:
+        return []
+    if not isinstance(raw, dict):
+        return []
+    hist = raw.get("history")
+    if isinstance(hist, list):
+        return [e for e in hist if isinstance(e, dict) and e.get("root")]
+    if "root" in raw:  # legacy single-object format
+        return [raw]
+    return []
+
+
+def _write_history(history: list[dict]) -> None:
+    STATE_PATH.write_text(json.dumps({"history": history}, ensure_ascii=False))
+
+
 @app.get("/state", response_model=IndexState)
 def index_state():
-    if not STATE_PATH.exists():
+    """Returns the currently-active corpus (newest history entry)."""
+    hist = _read_history()
+    if not hist:
         return IndexState(indexed=False)
-    try:
-        s = json.loads(STATE_PATH.read_text())
-        return IndexState(
-            indexed=True,
-            root=s.get("root"),
-            files=s.get("files"),
-            chunks=s.get("chunks"),
-            indexed_at_ms=s.get("indexed_at_ms"),
+    s = hist[0]
+    return IndexState(
+        indexed=True,
+        root=s.get("root"),
+        files=s.get("files"),
+        chunks=s.get("chunks"),
+        indexed_at_ms=s.get("indexed_at_ms"),
+    )
+
+
+@app.get("/state/list", response_model=IndexListResponse)
+def index_list():
+    """Full history of every folder Houston has ever indexed, newest first."""
+    hist = _read_history()
+    roots = [
+        IndexedRoot(
+            root=e["root"],
+            files=int(e.get("files") or 0),
+            chunks=int(e.get("chunks") or 0),
+            indexed_at_ms=int(e.get("indexed_at_ms") or 0),
+            elapsed_ms=int(e.get("elapsed_ms") or 0),
         )
-    except Exception:
-        return IndexState(indexed=False)
+        for e in hist
+    ]
+    return IndexListResponse(roots=roots)
+
+
+@app.post("/forget")
+def forget_root(req: ForgetRequest):
+    """Remove a folder from the indexed history.
+
+    Note: this only edits the history bookkeeping; the live FAISS store
+    still holds whatever was last indexed. If the user forgets the
+    currently-active root, /search will keep returning hits from it
+    until something else is indexed (intentional — destroying the
+    vector store would be a more dangerous operation).
+    """
+    hist = _read_history()
+    before = len(hist)
+    hist = [e for e in hist if e.get("root") != req.root]
+    if len(hist) == before:
+        raise HTTPException(404, f"not in history: {req.root}")
+    _write_history(hist)
+    return {"ok": True, "remaining": len(hist)}
 
 
 @app.post("/index", response_model=IndexResponse)

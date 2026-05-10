@@ -24,6 +24,7 @@ import DetailPanel from "./components/DetailPanel";
 import StatusBar from "./components/StatusBar";
 import WelcomeOverlay from "./components/WelcomeOverlay";
 import ContextMenu, { type MenuItem } from "./components/ContextMenu";
+import IndexedFoldersModal from "./components/IndexedFoldersModal";
 
 type HistoryState = { stack: string[]; index: number };
 type EngineState = "ready" | "starting" | "installing" | "error";
@@ -56,6 +57,7 @@ export default function App() {
 
   const [engineState, setEngineState] = useState<EngineState>("starting");
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [indexedModalOpen, setIndexedModalOpen] = useState(false);
   const [bootChecked, setBootChecked] = useState(false);
   const [modelGen, setModelGen] = useState<string>("loading…");
   const [modelEmbed, setModelEmbed] = useState<string>("loading…");
@@ -784,6 +786,7 @@ export default function App() {
           onIndex={() => path && indexFolder(path)}
           canIndex={!!path}
           onDropOnFavorite={dropOntoFolder}
+          onOpenIndexedFolders={() => setIndexedModalOpen(true)}
         />
 
         <main className="main">
@@ -895,6 +898,20 @@ export default function App() {
           onClose={() => setCtxMenu(null)}
         />
       )}
+
+      <IndexedFoldersModal
+        open={indexedModalOpen}
+        currentRoot={indexedRoot}
+        home={home}
+        onClose={() => setIndexedModalOpen(false)}
+        onReindex={(root) => {
+          setIndexedModalOpen(false);
+          indexFolder(root).catch(() => {});
+        }}
+        onNavigate={(root) => {
+          navigateTo(root);
+        }}
+      />
     </div>
   );
 }

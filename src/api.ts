@@ -1,6 +1,7 @@
 import type {
   ConfigResponse,
   FilenameResponse,
+  IndexListResponse,
   IndexResponse,
   IndexState,
   NoteResponse,
@@ -99,6 +100,9 @@ async function streamSSE(
 export const api = {
   health: () => get<{ ok: boolean }>("/health"),
   state: () => get<IndexState>("/state"),
+  stateList: () => get<IndexListResponse>("/state/list"),
+  forget: (root: string) =>
+    post<{ ok: boolean; remaining: number }>("/forget", { root }),
   config: () => get<ConfigResponse>("/config"),
   // Index can take a while on large home folders — generous timeout.
   index: (folder: string) =>
