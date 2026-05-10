@@ -66,6 +66,16 @@ jobs:
       - name: Install Node deps
         run: npm ci
 
+      # tauri.conf.json bundle.resources globs `mars-corpus/**/*.pdf` +
+      # ships `mars-corpus/manifest.json`. Both are git-ignored (the PDFs
+      # are pulled fresh from NASA at setup time per their TOS), so CI has
+      # to materialize them before `tauri build` resolves resources or
+      # cargo's build-script fails with "resource path doesn't exist".
+      - name: Download Mars NASA corpus (manifest + PDFs)
+        run: bash scripts/download-mars-corpus.sh
+        env:
+          PYTHON_BIN: python3
+
       - name: Build Tauri (.app)
         run: npm run tauri build -- --bundles app
         env:
