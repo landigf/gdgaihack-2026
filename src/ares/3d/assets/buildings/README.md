@@ -8,15 +8,15 @@
 
 | File | Bbox W×H×D (m) | Size | Tris | Highlights |
 |---|---|---:|---:|---|
-| `habitat.glb` | 2.5 × 2.0 × 1.6 | 11 KB | 420 | white horizontal cylinder + caps + roof solar panel + antenna |
-| `greenhouse.glb` | 2.4 × 1.3 × 2.4 | 31 KB | 1480 | translucent green dome (alpha 0.55) + 4 plant racks visible inside + central planter |
-| `eclss.glb` | 2.4 × 1.1 × 1.6 | 12 KB | 316 | 3 grey racks side-by-side + grilles + cyan LED accents + top pipes |
-| `isru.glb` | 2.8 × 2.3 × 1.4 | 20 KB | 1004 | tall reactor + emissive red glow slots + dome storage tank + connector pipe |
-| `power.glb` | 3.6 × 0.9 × 2.2 | 23 KB | 952 | 3 tilted blue solar panels + 5 Kilopower cylinders with purple emissive rings |
-| `airlock.glb` | 1.1 × 1.2 × 1.0 | 15 KB | 660 | yellow chamber + dark hatch ring + emissive caution lamp on top |
-| `rover_garage.glb` | 1.5 × 1.4 × 1.6 | 10 KB | 292 | open half-cylinder shell + small rover (body, 4 wheels, blue solar lid) sticking out |
+| `habitat.glb` | 2.3 × 1.9 × 1.4 | 26 KB | 1056 | pressure ribs + landing feet + gridded roof solar + antenna + docking collar |
+| `greenhouse.glb` | 2.4 × 1.3 × 2.4 | 45 KB | 2040 | translucent green dome + ribs + floor rings + racks + grow lights |
+| `eclss.glb` | 2.4 × 1.2 × 1.5 | 21 KB | 536 | 3 grey racks + grilles + cyan status strips + top duct + pipes |
+| `isru.glb` | 2.8 × 2.4 × 1.4 | 27 KB | 1348 | reactor stack + orange valves + glowing slots + CH4 tank + pipe network |
+| `power.glb` | 3.6 × 0.9 × 2.2 | 37 KB | 1332 | gridded solar panels + feeder cables + 5 Kilopower cylinders with purple rings |
+| `airlock.glb` | 1.1 × 1.2 × 1.0 | 23 KB | 868 | hatch stripes + handrails + yellow chamber + emissive caution lamp |
+| `rover_garage.glb` | 1.6 × 1.4 × 1.6 | 21 KB | 632 | ramp + side rails + rover hubs + camera mast + arched shell |
 
-Total: **~120 KB for all 7 files**, well under the 500 KB-per-file budget.
+Total: **~200 KB for all 7 files**, well under the 500 KB-per-file budget.
 All triangle counts are inside the 500–2000 target.
 
 ## Conventions

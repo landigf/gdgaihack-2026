@@ -131,7 +131,7 @@ export default function RepairAssist() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open Houston Repair Assist"
-        className="absolute bottom-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
+        className="ares-repair-button absolute bottom-6 z-20 px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
         style={{
           right: 360, // clear the 340px side rail with a small gap
           background:

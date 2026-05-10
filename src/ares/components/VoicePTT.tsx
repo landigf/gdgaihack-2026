@@ -213,7 +213,7 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
         : "🎙 HOLD TO TALK TO HOUSTON";
 
   return (
-    <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2 max-w-sm">
+    <div className="ares-voice absolute bottom-6 left-6 z-20 flex flex-col gap-2 max-w-sm">
       <button
         aria-label="Push to talk to Houston"
         disabled={disabled && !recording}
@@ -225,7 +225,7 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
         tabIndex={0}
-        className="px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
+        className="ares-voice-button px-5 py-3 rounded-full font-mono text-sm flex items-center gap-2"
         style={{
           background: recording
             ? "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)"
@@ -249,7 +249,7 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
 
       {/* Text input — same Houston pipeline as voice but skips ASR. Useful for
           the demo video when mic / STT isn't reliable. */}
-      <div className="flex items-center gap-2" style={{ minWidth: 280 }}>
+      <div className="ares-voice-input-row flex items-center gap-2" style={{ minWidth: 280 }}>
         <input
           type="text"
           value={textInput}
@@ -330,7 +330,7 @@ export default function VoicePTT({ onResult, trays, selectedTrayId }: Props) {
 
       {voiceAvailable === false && (
         <div
-          className="text-[10px] font-mono px-3 py-2 rounded-md"
+          className="ares-voice-note text-[10px] font-mono px-3 py-2 rounded-md"
           style={{
             background: "rgba(251,191,36,0.12)",
             border: "1px solid rgba(251,191,36,0.4)",

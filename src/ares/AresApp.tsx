@@ -50,7 +50,7 @@ export default function AresApp() {
 
   return (
     <div
-      className="w-screen h-screen relative overflow-hidden"
+      className="ares-root w-screen h-screen relative overflow-hidden"
       style={{
         background: "radial-gradient(ellipse at 50% 30%, #2c0a0a 0%, #0a0506 70%, #050203 100%)",
         fontFamily: "Inter, system-ui, sans-serif",
@@ -59,23 +59,23 @@ export default function AresApp() {
     >
       {/* Header bar */}
       <header
-        className="absolute top-0 left-0 right-0 h-14 px-6 flex items-center justify-between z-20"
+        className="ares-header absolute top-0 left-0 right-0 h-14 px-6 flex items-center justify-between z-20"
         style={{
           background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.0) 100%)",
         }}
       >
-        <div className="flex items-baseline gap-3">
+        <div className="ares-title flex items-baseline gap-3">
           <span
-            className="font-mono text-base tracking-[0.3em] font-semibold"
+            className="ares-brand font-mono text-base tracking-[0.3em] font-semibold"
             style={{ color: "#22d3ee", textShadow: "0 0 12px #22d3ee55" }}
           >
             ROVER HOUSTON
           </span>
-          <span className="text-xs uppercase tracking-widest" style={{ color: "#94a3b8" }}>
+          <span className="ares-subtitle text-xs uppercase tracking-widest" style={{ color: "#94a3b8" }}>
             Mars Habitat · Sol {SOL_NUMBER}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="ares-status flex items-center gap-3">
           <MarsLatencyChip />
           <div
             className="px-3 py-1.5 rounded-md font-mono text-xs flex items-center gap-2"
@@ -107,7 +107,7 @@ export default function AresApp() {
 
       {/* Side rail (right) */}
       <aside
-        className="absolute top-14 right-0 bottom-0 w-[340px] z-10 p-4 flex flex-col gap-3 overflow-auto"
+        className="ares-side absolute top-14 right-0 bottom-0 w-[340px] z-10 p-4 flex flex-col gap-3 overflow-auto"
         style={{
           background:
             "linear-gradient(180deg, rgba(8,4,8,0.85) 0%, rgba(20,10,15,0.7) 100%)",
@@ -136,7 +136,7 @@ export default function AresApp() {
             Agent Log
           </div>
           <div
-            className="rounded-md p-3 text-xs font-mono space-y-2"
+            className="ares-agent-log rounded-md p-3 text-xs font-mono space-y-2"
             style={{
               background: "rgba(0,0,0,0.4)",
               border: "1px solid rgba(34,211,238,0.15)",
@@ -164,7 +164,7 @@ export default function AresApp() {
       </aside>
 
       {/* 3D scene fills the remaining left space */}
-      <div className="absolute top-14 left-0 right-[340px] bottom-0">
+      <div className="ares-scene absolute top-14 left-0 right-[340px] bottom-0">
         <MarsBase
           habitatAlert={habitatAlert}
           greenhouseReady={greenhouseReady}
@@ -187,7 +187,7 @@ export default function AresApp() {
 
       {/* Demo controls (will be removed when real sensor sim is wired) */}
       <div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 text-xs font-mono"
+        className="ares-demo-controls absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 text-xs font-mono"
         style={{ color: "#94a3b8" }}
       >
         <button
