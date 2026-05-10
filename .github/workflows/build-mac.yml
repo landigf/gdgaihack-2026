@@ -2,13 +2,18 @@ name: Build macOS .app
 
 on:
   push:
-    branches: [main, mvp-finder]
+    branches: [main, mvp-finder, feat/rover-final]
+    tags: ['v*']
   workflow_dispatch:
 
 # One concurrent build per branch. Newer push cancels older runs.
 concurrency:
   group: build-mac-${{ github.ref }}
   cancel-in-progress: true
+
+# softprops/action-gh-release needs write access to the Releases API.
+permissions:
+  contents: write
 
 jobs:
   build-mac:
@@ -88,6 +93,36 @@ jobs:
           path: src-tauri/target/release/bundle/dmg/*.dmg
           if-no-files-found: error
           retention-days: 30
+
+      # On tag push (v*), publish a GitHub Release that pinpoints the
+      # .app.zip + .dmg as downloadable assets — no login required, no
+      # 30-day retention timer.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/macos/Houston.app.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          generate_release_notes: true
+          body: |
+            ## Rover Houston · macOS download
+
+            **Drag-and-drop install:**
+            1. Download `Houston_*.dmg` below.
+            2. Open it, drag **Houston** into `/Applications`.
+            3. First launch: macOS warns "unidentified developer" (we're
+               unsigned for the hackathon). Right-click → Open → Open.
+            4. Make sure Ollama is running:
+               ```bash
+               brew install ollama && ollama serve
+               ollama pull gemma3:4b nomic-embed-text
+               ```
+            5. Open Rover → click **Mars Habitat** in the sidebar to see
+               the on-device Mars demo.
+
+            See [README.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md)
+            for the full feature list + measured benchmarks.
 
       - name: Build summary
         if: always()

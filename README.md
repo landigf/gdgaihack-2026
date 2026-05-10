@@ -80,32 +80,66 @@ in the response payload (`powered_by: rover-core-rag+houston-repair`).
 - Rust main = native OS write/dialog layer. Every mutation gated by a native confirm dialog.
 - Renderer = stateless UI. Calls Python via `fetch`, calls Rust via `invoke()`.
 
-## Install
+## Install (end user)
 
-One-shot setup (Rust toolchain + Ollama models + Python venv + npm):
+The fastest path: download a signed-by-no-one-but-it-works `.dmg` from
+the latest tagged release.
+
+1. **Download** the latest `Houston_*.dmg` from the
+   [Releases page](https://github.com/landigf/gdgaihack-2026/releases).
+   (No login required — picks up `.app.zip` + `.dmg` from CI.)
+2. **Open the .dmg**, drag **Houston** into `/Applications`.
+3. **First launch:** macOS will warn *"unidentified developer"*. We
+   didn't pay for an Apple notarization cert; the app is safe. Either:
+   - Right-click the app → **Open** → **Open** in the dialog. *Or*
+   - System Settings → Privacy & Security → **Open Anyway**.
+4. **Make sure Ollama is running** locally with the models pulled:
+   ```bash
+   brew install ollama
+   ollama serve &
+   ollama pull gemma3:4b nomic-embed-text
+   ```
+5. **Open Rover.** First launch creates the Python venv at
+   `~/Library/Application Support/app.houston.demo/backend/.venv`
+   (~150 MB, ~1 min). The status footer goes green when ready.
+6. **Pick a folder** via the toolbar's folder picker → click **Index folder**.
+7. **Click "Mars Habitat"** in the sidebar to see the on-device Mars
+   Habitat AI demo (greenhouse drill-in, voice loop, repair assist).
+
+### Voice + STT (optional)
+
+To use push-to-talk to Houston, drop the whisper.cpp model at
+`~/.local/whisper-models/ggml-base.en.bin` (one-time, ~140 MB):
 
 ```bash
-./scripts/setup.sh
+mkdir -p ~/.local/whisper-models
+curl -L -o ~/.local/whisper-models/ggml-base.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
 ```
 
-Prerequisites you bring: macOS 12+ · Python 3.12 · Node 22+ · Ollama running.
+Text-to-speech ships natively (`/usr/bin/say`). No download needed.
 
-`setup.sh` is idempotent and pulls these models if they're not present:
+## Install (developer)
+
+If you want to hack on Rover, clone the repo and run:
+
+```bash
+./scripts/setup.sh        # pulls models + creates backend/.venv
+bash scripts/dev.sh       # launches the live-reload dev stack
+                          # (kills zombies, sets LLM_BACKEND=ollama,
+                          #  caffeinate so wifi/sleep don't kill it)
+```
+
+Open http://127.0.0.1:1420 (Finder) or http://127.0.0.1:1420/#ares
+(Mars demo).
+
+Prereqs: macOS 12+, Rust 1.95, Node 22, Python 3.12, Ollama.
+
+`setup.sh` is idempotent and pulls these models if missing:
 - `gemma3:4b` — generation (~3.3 GB) — default `GEN_MODEL`
-- `qwen3:4b` — heavier alternative; export `GEN_MODEL=qwen3:4b` on M4 Pro / 24 GB+
 - `nomic-embed-text` — embeddings, 768 dim (~274 MB)
 
-## Run (dev)
-
-```bash
-. "$HOME/.cargo/env"
-npm run tauri:dev
-```
-
-The Rust main spawns the Python sidecar at boot and emits a `sidecar-status`
-event when it's healthy. The footer dot turns green when ready.
-
-## Build (.app + .dmg)
+## Build (.app + .dmg) locally
 
 ```bash
 . "$HOME/.cargo/env"
@@ -116,9 +150,20 @@ Outputs:
 - `src-tauri/target/release/bundle/macos/Houston.app`
 - `src-tauri/target/release/bundle/dmg/Houston_0.1.0_aarch64.dmg`
 
-The Python `backend/` directory ships as a Tauri resource. The bundled `.app`
-expects `backend/.venv` to be present (run `setup.sh` once on the demo machine
-before launching from the .dmg).
+The Python `backend/*.py` source ships inside the .app as a Tauri
+resource. On first launch, [src-tauri/src/sidecar.rs](src-tauri/src/sidecar.rs)
+copies it to `~/Library/Application Support/app.houston.demo/backend/`
+and creates the venv there — no `setup.sh` needed for end users.
+
+For tagged releases, [`build-mac.yml`](.github/workflows/build-mac.yml)
+auto-publishes both files to the GitHub Release page. To cut a new
+release:
+
+```bash
+git tag v0.1.0-demo && git push origin v0.1.0-demo
+gh run watch        # watch the macOS runner build (~10 min)
+gh release view v0.1.0-demo
+```
 
 ## Demo script (3 minutes for judges)
 

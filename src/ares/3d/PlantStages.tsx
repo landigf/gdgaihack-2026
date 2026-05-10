@@ -1,7 +1,20 @@
 import { useMemo } from "react";
+import { Clone, useGLTF } from "@react-three/drei";
+import { PLANT_TRANSFORM, PLANT_URLS } from "./plantUrls";
 
 export type PlantStage = 0 | 1 | 2 | 3 | 4 | 5;
 export type PlantSpecies = "lettuce" | "mizuna" | "pepper" | "tomato";
+
+// Stage → outer scale multiplier for the GLB plant. Stage 0 stays
+// hidden (we already render a small dirt mound below). Stage 5 is the
+// reference scale tuned in PLANT_TRANSFORM.<species>.scaleMul.
+const STAGE_GROW: Record<Exclude<PlantStage, 0>, number> = {
+  1: 0.30,
+  2: 0.55,
+  3: 0.75,
+  4: 0.90,
+  5: 1.0,
+};
 
 const STAGE_NAMES = [
   "Germination",
@@ -41,6 +54,23 @@ export default function Plant({ species, stage, position = [0, 0, 0], jitter = 0
         <sphereGeometry args={[0.025, 6, 6]} />
         <meshStandardMaterial color="#3b1d10" roughness={0.95} />
       </mesh>
+    );
+  }
+
+  // GLB path: if we have a downloaded model for this species, use it.
+  // Otherwise fall through to the procedural sub-components below.
+  // Allows incremental rollout — tomato GLB ships first, the rest stay
+  // procedural until their assets land in src/ares/3d/assets/plants/.
+  const glbUrl = PLANT_URLS[species];
+  if (glbUrl) {
+    return (
+      <GLBPlant
+        url={glbUrl}
+        species={species}
+        stage={stage}
+        position={position}
+        yRot={yRot}
+      />
     );
   }
 
@@ -290,5 +320,51 @@ function Tomato({ position, stage, grow, yRot, jitter }: SubProps) {
         );
       })}
     </group>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// GLB-backed plant — used when PLANT_URLS[species] resolves to a real
+// downloaded model. Stage drives an outer scale ramp; the per-species
+// PLANT_TRANSFORM.<species> tunes for source-axis quirks (centimeter
+// units in the Sketchfab tomato, etc.).
+// ---------------------------------------------------------------------------
+
+function GLBPlant({
+  url,
+  species,
+  stage,
+  position,
+  yRot,
+}: {
+  url: string;
+  species: PlantSpecies;
+  stage: PlantStage;
+  position: [number, number, number];
+  yRot: number;
+}) {
+  const { scene } = useGLTF(url);
+  // Clone once per pot so each instance has its own transforms (drei's
+  // <Clone> handles material sharing internally — no GPU duplication).
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+
+  if (stage === 0) return null;
+  const grow = STAGE_GROW[stage];
+
+  const t = PLANT_TRANSFORM[species];
+  const scaleMul = t?.scaleMul ?? 1;
+  const yOffset = t?.yOffset ?? 0;
+  const rotYExtra = t?.rotY ?? 0;
+
+  const finalScale = scaleMul * grow;
+
+  return (
+    <Clone
+      object={cloned}
+      position={[position[0], position[1] + yOffset, position[2]]}
+      scale={[finalScale, finalScale, finalScale]}
+      rotation={[0, yRot + rotYExtra, 0]}
+    />
   );
 }

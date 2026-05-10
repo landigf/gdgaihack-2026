@@ -138,6 +138,37 @@ export default function Sidebar({
       })}
 
       <div className="sb-section">
+        <span>Dashboards</span>
+      </div>
+      <div
+        className="sb-item"
+        role="button"
+        tabIndex={0}
+        title="Open the on-device Mars Habitat AI dashboard"
+        onClick={() => {
+          window.location.hash = "ares";
+          // Reload so main.tsx picks AresApp at the next render.
+          window.location.reload();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            window.location.hash = "ares";
+            window.location.reload();
+          }
+        }}
+        style={{ cursor: "pointer" }}
+      >
+        <span className="gly" aria-hidden>
+          🪐
+        </span>
+        <span>Mars Habitat</span>
+        <span className="sb-count" style={{ color: "#22d3ee" }}>
+          live
+        </span>
+      </div>
+
+      <div className="sb-section">
         <span>Smart Search</span>
       </div>
       <div className="sb-engine">
