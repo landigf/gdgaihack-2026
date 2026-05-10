@@ -1420,11 +1420,26 @@ async def houston_repair(req: RepairRequest, state=Depends(_get_state)):
         parts_missing = [str(p) for p in (parsed.get("parts_missing") or []) if p]
         steps_raw = parsed.get("steps") or []
         steps = [str(s).strip() for s in steps_raw if str(s).strip()]
+    elif used_llm and (raw or "").strip():
+        # The LLM answered but didn't produce JSON (most often happens for
+        # out-of-scope queries — propulsion, medical, philosophy). Surface
+        # its actual prose as the diagnosis instead of dropping it for a
+        # generic template; the operator + audience get a real answer.
+        diagnosis = (
+            (raw or "").strip()[:600]
+            + "\n\n[note] Houston returned prose, not the structured JSON "
+            "schema — likely an out-of-scope fault. Use the diagnosis above; "
+            "no parts list / step procedure for this fault."
+        )
+        severity = "ok"
+        parts_needed = []
+        parts_missing = []
+        steps = []
     else:
         diagnosis = (
             f"Fallback advisory — corpus retrieval ran ({len(hits)} hits) but the "
-            "LLM did not return parseable JSON. Treat the steps below as a "
-            "generic isolate-replace-verify template per NASA-STD-3001 [S1]."
+            "LLM did not respond. Treat the steps below as a generic "
+            "isolate-replace-verify template per NASA-STD-3001 [S1]."
         )
         severity = "watch"
         parts_needed = []

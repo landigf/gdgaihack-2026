@@ -106,8 +106,18 @@ REPAIR_TAIL = (
     "Each step is one short sentence (max 16 words), starts with an "
     "imperative verb. The first step MUST cite at least one [S_n] from "
     "CONTEXT. Steps are ordered: isolate → prep → execute → verify → log.\n\n"
-    "Return STRICT JSON ONLY (no preamble, no markdown fences):\n"
-    '{"diagnosis":"<1-2 sentences, at least one [S_n] citation>",'
+    "OUT-OF-SCOPE handling — if the FAULT is NOT a habitat repair issue\n"
+    "(e.g. propulsion, navigation, medical symptoms, philosophical\n"
+    "questions, Earth-side topics), STILL return the JSON shape, with:\n"
+    "  - diagnosis: 1 plain sentence saying WHY it's out of scope and\n"
+    "    which other persona/system the operator should consult\n"
+    "    (medic, mission control via DSN window, propulsion checklist).\n"
+    "  - severity: 'ok'\n"
+    "  - parts_needed: []  parts_missing: []  steps: []\n"
+    "Do NOT refuse with free-form prose — refuse INSIDE the JSON shape.\n\n"
+    "Return STRICT JSON ONLY (no preamble, no markdown fences, no code\n"
+    "fences). Plain {…} object on a single line if possible.\n"
+    '{"diagnosis":"<1-2 sentences, [S_n] citation if in scope>",'
     '"severity":"ok"|"watch"|"critical",'
     '"parts_needed":["<part name>",...],'
     '"parts_missing":["<part name>",...],'

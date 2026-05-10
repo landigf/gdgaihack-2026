@@ -185,9 +185,11 @@ export default function AresApp() {
           step procedure (optional spoken). Killer Practical-Utility 25% beat. */}
       <RepairAssist />
 
-      {/* Demo controls (will be removed when real sensor sim is wired) */}
+      {/* Demo controls (dev shortcuts — pinned higher than the bottom row
+          so they don't overlap the VoicePTT block on the left or the
+          Repair Assist button on the right). */}
       <div
-        className="ares-demo-controls absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 text-xs font-mono"
+        className="ares-demo-controls absolute bottom-24 left-1/2 -translate-x-1/2 z-20 flex gap-2 text-xs font-mono"
         style={{ color: "#94a3b8" }}
       >
         <button
