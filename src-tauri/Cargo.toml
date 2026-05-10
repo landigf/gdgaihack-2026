@@ -22,6 +22,12 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "sync"] }
 trash = "5"
 
+# Info.plist embedding is handled by tauri-build (auto-detects
+# src-tauri/Info.plist). We don't add the embed_plist crate directly
+# here because tauri-build already calls embed_plist::embed_info_plist!
+# internally, and a second call from our code produces a duplicate
+# `_EMBED_INFO_PLIST` symbol at link time.
+
 [profile.release]
 codegen-units = 1
 lto = true

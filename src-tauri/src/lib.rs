@@ -4,6 +4,14 @@ mod sidecar;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 
+// NOTE: macOS dev mic access lives in src-tauri/Info.plist. tauri-build
+// auto-detects that file during the build script and embeds it as
+// `__TEXT,__info_plist` in the dev binary, which is exactly what
+// WebKit needs to expose navigator.mediaDevices. We do NOT call
+// embed_plist::embed_info_plist!() here — that conflicts with
+// tauri-build's own embed (duplicate `_EMBED_INFO_PLIST` symbol at
+// link time).
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

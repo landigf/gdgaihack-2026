@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>app.houston.demo</string>
+    <key>CFBundleName</key>
+    <string>Houston</string>
+    <key>CFBundleDisplayName</key>
+    <string>Houston</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Houston uses your microphone for voice push-to-talk commands. Audio is transcribed locally with whisper.cpp and never leaves your Mac.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Houston does not use the camera. This entry exists so the WebView can expose mediaDevices when you grant microphone access.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Houston uses AppleEvents to reveal selected files in Finder.</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>
